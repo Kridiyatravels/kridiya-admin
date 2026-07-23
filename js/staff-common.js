@@ -19,7 +19,15 @@ const SUPABASE_ANON_KEY = "sb_publishable_wiA9tSt74X-UQhW4yOXgIQ_lEUG1Q1Q";
 const ICONS_STAFF = {
   whatsapp: "M12 2a10 10 0 0 0-8.6 15L2 22l5.2-1.4A10 10 0 1 0 12 2zm0 18.2c-1.5 0-3-.4-4.3-1.2l-.3-.2-3 .8.8-3-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1-.2.2-.6.8-.8 1-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.4-3c-.3-.4 0-.5.2-.7l.4-.5c.1-.2.2-.3.3-.5v-.5c0-.1-.6-1.4-.8-1.9-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.2.3-.9.9-.9 2.2s1 2.5 1.1 2.7c.1.2 1.9 3 4.7 4.2.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.6-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.1-1.2l-.4-.3z",
   mail: "M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z",
-  logout: "M10 17v-2H3v-6h7V7l5 5-5 5zM10 3h9v2h-9V3zm0 16h9v2h-9v-2zm0-8h9v2h-9v-2z"
+  logout: "M10 17v-2H3v-6h7V7l5 5-5 5zM10 3h9v2h-9V3zm0 16h9v2h-9v-2zm0-8h9v2h-9v-2z",
+  check: "M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z",
+  clock: "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm4.2 14.2L11 13.3V7h1.5v5.4l4.5 2.7-.8 1.1z",
+  quote: "M7 7h5v5c0 2.2-1.8 4-4 4H7v-2h1c1.1 0 2-.9 2-2H7V7zm9 0h5v5c0 2.2-1.8 4-4 4h-1v-2h1c1.1 0 2-.9 2-2h-3V7z",
+  note: "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm2 5h10v2H7V8zm0 4h10v2H7v-2zm0 4h6v2H7v-2z",
+  doc: "M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm7 1.5V9h5.5L13 3.5z",
+  user: "M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm0 2c-4.4 0-8 2.2-8 5v3h16v-3c0-2.8-3.6-5-8-5z",
+  chevron: "M7 10l5 5 5-5z",
+  settings: "M19.14 12.94a7.14 7.14 0 0 0 0-1.88l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.03 7.03 0 0 0-1.63-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.59.24-1.14.56-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.71 8.84a.5.5 0 0 0 .12.64l2.03 1.58a7.14 7.14 0 0 0 0 1.88l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.14.24.42.32.6.22l2.39-.96c.49.38 1.04.7 1.63.94l.36 2.54c.05.24.26.42.5.42h3.84c.24 0 .45-.18.5-.42l.36-2.54c.59-.24 1.14-.56 1.63-.94l2.39.96c.24.1.5 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"
 };
 
 function icon(name, cls) {
@@ -82,6 +90,21 @@ function renderStaffChrome() {
   }
 }
 
+const STATUS_META = {
+  received: { color: "var(--status-received)", bg: "var(--status-received-bg)" },
+  checking_availability: { color: "var(--status-checking)", bg: "var(--status-checking-bg)" },
+  quote_sent: { color: "var(--status-quoted)", bg: "var(--status-quoted-bg)" },
+  confirmed: { color: "var(--status-confirmed)", bg: "var(--status-confirmed-bg)" },
+  payment_pending: { color: "var(--status-payment)", bg: "var(--status-payment-bg)" },
+  booked: { color: "var(--status-booked)", bg: "var(--status-booked-bg)" },
+  documents_sent: { color: "var(--status-docs)", bg: "var(--status-docs-bg)" },
+  closed: { color: "var(--status-closed)", bg: "var(--status-closed-bg)" }
+};
+function statusStyle(status) {
+  const m = STATUS_META[status] || STATUS_META.received;
+  return "color:" + m.color + ";background:" + m.bg;
+}
+
 /* Best-effort activity log write — never blocks the real action if it
    fails (e.g. RLS denies it for a non-staff caller mid-session). */
 async function logActivity(sb, actorId, eventType, entityType, entityId, metadata) {
@@ -107,7 +130,20 @@ async function logActivity(sb, actorId, eventType, entityType, entityId, metadat
      owners/admins only. */
 function renderLoginForm(gateEl, onSuccess) {
   gateEl.innerHTML =
-    '<div class="account-main" style="max-width:460px;margin:2rem auto">' +
+    '<div class="login-shell">' +
+      '<div class="login-brand-panel">' +
+        "<div>" +
+          '<img src="https://kridiyatravel.com/assets/logo.png" alt="">' +
+          "<h1>Staff Tools</h1>" +
+          "<p>Enquiries, quotes, documents and activity for Kridiya Travel and Tourism.</p>" +
+        "</div>" +
+        '<ul class="login-brand-list">' +
+          '<li>' + icon("check") + " Every enquiry, one place</li>" +
+          '<li>' + icon("check") + " Invoices &amp; e-tickets in seconds</li>" +
+          '<li>' + icon("check") + " Full activity history</li>" +
+        "</ul>" +
+      "</div>" +
+      '<div class="login-form-panel">' +
       '<div class="login-tabs" role="tablist">' +
         '<button type="button" class="login-tab active" data-tab="staff" role="tab" aria-selected="true">Staff (PIN)</button>' +
         '<button type="button" class="login-tab" data-tab="admin" role="tab" aria-selected="false">Admin</button>' +
@@ -133,6 +169,7 @@ function renderLoginForm(gateEl, onSuccess) {
           '<button class="btn btn-primary btn-block" type="submit">Log in</button>' +
         "</form>" +
         '<p class="form-note" style="margin-top:0.8rem"><a href="https://kridiyatravel.com/forgot-password.html" target="_blank" rel="noopener">Forgot password?</a></p>' +
+      "</div>" +
       "</div>" +
     "</div>";
 

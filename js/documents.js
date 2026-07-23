@@ -113,6 +113,7 @@
         (settings.bank_name ? '<span class="k">Bank</span><span class="v">' + esc(settings.bank_name) + "</span>" : "") +
         (settings.bank_iban ? '<span class="k">IBAN</span><span class="v">' + esc(settings.bank_iban) + "</span>" : "") +
         (settings.bank_swift ? '<span class="k">SWIFT/BIC</span><span class="v">' + esc(settings.bank_swift) + "</span>" : "") +
+        (settings.bank_address ? '<span class="k">Bank address</span><span class="v">' + esc(settings.bank_address) + "</span>" : "") +
       "</div></div>"
     );
   }
@@ -647,6 +648,7 @@
     form.bank_account_name.value = settings.bank_account_name || "";
     form.bank_iban.value = settings.bank_iban || "";
     form.bank_swift.value = settings.bank_swift || "";
+    form.bank_address.value = settings.bank_address || "";
     form.cancellation_policy.value = settings.cancellation_policy || "";
     form.invoice_footer_note.value = settings.invoice_footer_note || "";
   }
@@ -664,6 +666,7 @@
       bank_account_name: form.bank_account_name.value.trim() || null,
       bank_iban: form.bank_iban.value.trim() || null,
       bank_swift: form.bank_swift.value.trim() || null,
+      bank_address: form.bank_address.value.trim() || null,
       cancellation_policy: form.cancellation_policy.value.trim() || null,
       invoice_footer_note: form.invoice_footer_note.value.trim() || null
     };

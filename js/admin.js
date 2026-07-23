@@ -56,7 +56,27 @@
     return true;
   }
 
+  function renderStatTiles() {
+    const row = document.getElementById("stat-row");
+    if (!row) return;
+    const today = new Date().toDateString();
+    const newToday = allEnquiries.filter(function (e) { return new Date(e.created_at).toDateString() === today; }).length;
+    const awaitingQuote = allEnquiries.filter(function (e) { return e.status === "received" || e.status === "checking_availability"; }).length;
+    const quotesOut = allEnquiries.filter(function (e) { return e.status === "quote_sent" || e.status === "payment_pending"; }).length;
+    const confirmed = allEnquiries.filter(function (e) { return e.status === "confirmed" || e.status === "booked"; }).length;
+    const tiles = [
+      { num: newToday, label: "New today", accent: "var(--status-checking)" },
+      { num: awaitingQuote, label: "Awaiting a quote", accent: "var(--status-received)" },
+      { num: quotesOut, label: "Quote sent, waiting", accent: "var(--status-quoted)" },
+      { num: confirmed, label: "Confirmed", accent: "var(--status-confirmed)" }
+    ];
+    row.innerHTML = tiles.map(function (t) {
+      return '<div class="stat-tile" style="--tile-accent:' + t.accent + '"><div class="num">' + t.num + '</div><div class="label">' + t.label + "</div></div>";
+    }).join("");
+  }
+
   function renderList() {
+    renderStatTiles();
     const listEl = document.getElementById("admin-list");
     const visible = allEnquiries.filter(matchesFilters);
     document.getElementById("admin-count").textContent = visible.length + " of " + allEnquiries.length + " enquiries";
@@ -72,21 +92,27 @@
       const requests = requestsByEnquiry[enq.id] || [];
       const quotes = quotesByEnquiry[enq.id] || [];
       const wa = waReplyLink(enq);
+      const initial = (enq.full_name || "?").trim().charAt(0).toUpperCase();
       return (
-        '<div class="account-main admin-enq">' +
-          '<div class="enq-top">' +
-            '<div><b>' + KridiyaAuth.escapeHTML(enq.reference) + "</b> " +
-              '<span class="admin-badge">' + KridiyaAuth.escapeHTML(KridiyaAuth.statusLabel(enq.service_type)) + "</span></div>" +
-            '<time datetime="' + KridiyaAuth.escapeHTML(enq.created_at) + '">' +
-              created.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) +
-            "</time>" +
+        '<div class="account-main admin-enq" data-id="' + enq.id + '">' +
+          '<div class="enq-row-head">' +
+            '<div class="enq-avatar">' + initial + "</div>" +
+            '<div class="enq-row-main">' +
+              '<div class="top-line"><b>' + KridiyaAuth.escapeHTML(enq.full_name) + "</b>" +
+                '<span class="status-badge" style="' + statusStyle(enq.status) + '">' + KridiyaAuth.statusLabel(enq.status) + "</span>" +
+                '<span class="admin-badge">' + KridiyaAuth.escapeHTML(KridiyaAuth.statusLabel(enq.service_type)) + "</span>" +
+              "</div>" +
+              '<div class="sub-line">' + KridiyaAuth.escapeHTML(enq.reference) + " · " + KridiyaAuth.escapeHTML(enq.summary) + "</div>" +
+            "</div>" +
+            '<time class="enq-row-time">' + created.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) + "</time>" +
+            icon("chevron", "enq-chevron") +
           "</div>" +
-          '<p style="margin:0.4rem 0 0.2rem"><b>' + KridiyaAuth.escapeHTML(enq.full_name) + "</b> · " +
+          '<div class="enq-row-body">' +
+          '<p style="margin:0 0 0.2rem"><b>Contact</b> · ' +
             (enq.phone ? '<a href="tel:' + KridiyaAuth.escapeHTML(enq.phone) + '">' + KridiyaAuth.escapeHTML(enq.phone) + "</a> · " : "") +
             '<a href="mailto:' + KridiyaAuth.escapeHTML(enq.email) + '">' + KridiyaAuth.escapeHTML(enq.email) + "</a></p>" +
-          '<p class="form-note" style="margin:0 0 0.8rem">' + KridiyaAuth.escapeHTML(enq.summary) + "</p>" +
           '<div class="admin-enq-actions">' +
-            '<select class="status-select" data-id="' + enq.id + '">' +
+            '<select class="status-select status-pill-select" data-id="' + enq.id + '" style="' + statusStyle(enq.status) + '">' +
               STATUS_OPTIONS.map(function (s) {
                 return '<option value="' + s + '"' + (s === enq.status ? " selected" : "") + ">" + KridiyaAuth.statusLabel(s) + "</option>";
               }).join("") +
@@ -154,6 +180,7 @@
               '<button class="btn btn-primary" type="submit">Send quote</button>' +
             "</form>" +
           "</div>" +
+          "</div>" +
         "</div>"
       );
     }).join("");
@@ -210,15 +237,23 @@
     el.innerHTML = rows.map(function (r) {
       const isSelf = r.user_id === currentStaffId;
       const displayName = r.full_name || r.email;
-      return '<div class="admin-note"><p><b>' + KridiyaAuth.escapeHTML(displayName) + '</b> <span class="admin-badge">' + KridiyaAuth.statusLabel(r.role) + "</span>" +
-        (r.active === false ? ' <span class="admin-badge">Inactive</span>' : "") +
-        (isSelf ? ' <span class="form-note">(you)</span>' : "") + "</p>" +
-        '<p class="form-note" style="margin:0.2rem 0 0">' + KridiyaAuth.escapeHTML(r.email) +
-          (r.department ? " · " + KridiyaAuth.escapeHTML(r.department) : "") + " · Added " + fmtWhen(r.created_at) + "</p>" +
+      const initial = displayName.trim().charAt(0).toUpperCase();
+      return '<div class="staff-row">' +
+        '<div class="enq-avatar">' + initial + "</div>" +
+        '<div class="staff-row-main">' +
+          '<div class="top-line" style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap">' +
+            "<b>" + KridiyaAuth.escapeHTML(displayName) + "</b>" +
+            '<span class="admin-badge">' + KridiyaAuth.statusLabel(r.role) + "</span>" +
+            (r.active === false ? '<span class="admin-badge" style="color:var(--status-closed);background:var(--status-closed-bg)">Inactive</span>' : "") +
+            (isSelf ? '<span class="form-note">(you)</span>' : "") +
+          "</div>" +
+          '<div class="sub-line" style="font-size:0.82rem;color:var(--text-muted)">' + KridiyaAuth.escapeHTML(r.email) +
+            (r.department ? " · " + KridiyaAuth.escapeHTML(r.department) : "") + " · Added " + fmtWhen(r.created_at) + "</div>" +
+        "</div>" +
         (isSelf ? "" :
-          '<div style="display:flex;gap:0.5rem;margin-top:0.5rem">' +
+          '<div class="staff-row-actions">' +
             '<button type="button" class="btn btn-outline reset-pin-btn" data-id="' + r.user_id + '" data-name="' + KridiyaAuth.escapeHTML(displayName) + '">Reset PIN</button>' +
-            '<button type="button" class="btn btn-outline revoke-staff-btn" data-id="' + r.user_id + '">Remove access</button>' +
+            '<button type="button" class="btn btn-outline revoke-staff-btn" data-id="' + r.user_id + '">Remove</button>' +
           "</div>") +
         "</div>";
     }).join("");
@@ -373,11 +408,22 @@
       const row = allEnquiries.find(function (r) { return r.id === id; });
       const prevStatus = row ? row.status : null;
       if (row) row.status = newStatus;
+      select.setAttribute("style", statusStyle(newStatus));
+      const badge = select.closest(".admin-enq").querySelector(".enq-row-head .status-badge");
+      if (badge) {
+        badge.setAttribute("style", statusStyle(newStatus));
+        badge.textContent = KridiyaAuth.statusLabel(newStatus);
+      }
       logActivity(sb, currentStaffId, "enquiry.status_changed", "enquiry", id, { reference: row ? row.reference : null, from: prevStatus, to: newStatus });
       toast("Status updated.");
     });
 
     listEl.addEventListener("click", async function (e) {
+      const rowHead = e.target.closest(".enq-row-head");
+      if (rowHead) {
+        rowHead.closest(".admin-enq").classList.toggle("expanded");
+        return;
+      }
       const notesBtn = e.target.closest(".notes-toggle");
       if (notesBtn) {
         const panel = listEl.querySelector('.admin-notes[data-notes-for="' + notesBtn.dataset.id + '"]');
