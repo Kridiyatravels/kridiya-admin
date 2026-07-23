@@ -13,22 +13,28 @@
   --staff-shadow-md: 0 2px 4px oklch(0.2 0.02 40 / 0.06), 0 8px 20px oklch(0.2 0.02 40 / 0.07);
   --staff-radius: 14px;
 
-  --status-received: oklch(0.55 0.01 270);
-  --status-received-bg: oklch(0.94 0.005 270);
-  --status-checking: oklch(0.62 0.15 70);
-  --status-checking-bg: oklch(0.95 0.07 85);
-  --status-quoted: oklch(0.55 0.17 255);
-  --status-quoted-bg: oklch(0.94 0.03 255);
-  --status-confirmed: oklch(0.56 0.13 150);
+  /* Every status colour lives in the same warm family as the brand
+     (orange/gold/terracotta), never blue or teal — matches the main
+     site's palette exactly. Green is used only for "confirmed/booked",
+     the one place the main site itself already uses green (the
+     enquiry-received checkmark), so it reads as an intentional accent
+     rather than a foreign colour. */
+  --status-received: oklch(0.5 0.02 60);
+  --status-received-bg: oklch(0.94 0.006 70);
+  --status-checking: var(--gold-deep, oklch(0.6 0.15 82));
+  --status-checking-bg: oklch(0.95 0.06 85);
+  --status-quoted: var(--brand, oklch(0.67 0.23 39));
+  --status-quoted-bg: var(--brand-soft, oklch(0.965 0.04 76));
+  --status-confirmed: var(--success, oklch(0.55 0.14 150));
   --status-confirmed-bg: oklch(0.94 0.05 150);
-  --status-payment: oklch(0.6 0.18 40);
-  --status-payment-bg: oklch(0.95 0.06 50);
-  --status-booked: oklch(0.5 0.14 155);
-  --status-booked-bg: oklch(0.93 0.05 155);
-  --status-docs: oklch(0.55 0.12 200);
-  --status-docs-bg: oklch(0.94 0.04 200);
-  --status-closed: oklch(0.55 0.01 270);
-  --status-closed-bg: oklch(0.92 0.005 270);
+  --status-payment: oklch(0.6 0.22 32);
+  --status-payment-bg: oklch(0.95 0.05 38);
+  --status-booked: oklch(0.46 0.12 150);
+  --status-booked-bg: oklch(0.91 0.05 150);
+  --status-docs: var(--brand-deep, oklch(0.55 0.22 32));
+  --status-docs-bg: oklch(0.94 0.04 45);
+  --status-closed: oklch(0.5 0.015 60);
+  --status-closed-bg: oklch(0.92 0.008 65);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
