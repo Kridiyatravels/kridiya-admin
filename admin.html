@@ -31,6 +31,23 @@
           <span class="form-note" id="admin-count"></span>
         </div>
 
+        <div class="account-main">
+          <div class="account-section-head">
+            <div><h2>Staff access</h2><p>Who can sign in here. They must register on the main site first — you're just granting the account access.</p></div>
+            <button type="button" id="staff-toggle" class="btn btn-outline">Manage</button>
+          </div>
+          <div id="staff-panel" hidden>
+            <div id="staff-list"></div>
+            <form id="grant-staff-form" style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:flex-end;margin-top:1rem" onsubmit="return false">
+              <div class="field" style="flex:1 1 260px;margin:0"><label>EMAIL (MUST HAVE AN ACCOUNT ALREADY)</label><input id="grant-email" type="email" placeholder="name@example.com" required></div>
+              <div class="field" style="width:150px;margin:0"><label>ROLE</label>
+                <select id="grant-role"><option value="staff">Staff</option><option value="admin">Admin</option><option value="support">Support</option><option value="owner">Owner</option></select>
+              </div>
+              <button type="submit" class="btn btn-primary">Grant access</button>
+            </form>
+          </div>
+        </div>
+
         <div class="account-main admin-filters-card">
           <div class="admin-filters">
             <div class="field">

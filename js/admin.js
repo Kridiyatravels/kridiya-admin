@@ -195,6 +195,84 @@
     });
   }
 
+  async function loadStaffList() {
+    const result = await sb.rpc("list_staff");
+    if (result.error) throw result.error;
+    return result.data || [];
+  }
+
+  function renderStaffList(rows) {
+    const el = document.getElementById("staff-list");
+    if (!rows.length) {
+      el.innerHTML = '<p class="form-note">No staff yet.</p>';
+      return;
+    }
+    el.innerHTML = rows.map(function (r) {
+      const isSelf = r.user_id === currentStaffId;
+      return '<div class="admin-note"><p><b>' + KridiyaAuth.escapeHTML(r.email) + '</b> <span class="admin-badge">' + KridiyaAuth.statusLabel(r.role) + "</span>" +
+        (isSelf ? ' <span class="form-note">(you)</span>' : "") + "</p>" +
+        '<p class="form-note" style="margin:0.2rem 0 0">Added ' + fmtWhen(r.created_at) + "</p>" +
+        (isSelf ? "" : '<button type="button" class="btn btn-outline revoke-staff-btn" data-id="' + r.user_id + '" style="margin-top:0.4rem">Remove access</button>') +
+        "</div>";
+    }).join("");
+  }
+
+  async function refreshStaffList() {
+    try {
+      const rows = await loadStaffList();
+      renderStaffList(rows);
+    } catch (err) {
+      document.getElementById("staff-list").innerHTML = '<p class="form-note">Could not load staff list: ' + KridiyaAuth.escapeHTML(err.message) + "</p>";
+    }
+  }
+
+  function wireStaffPanel() {
+    document.getElementById("staff-toggle").addEventListener("click", function () {
+      const panel = document.getElementById("staff-panel");
+      const opening = panel.hidden;
+      panel.hidden = !opening;
+      this.textContent = opening ? "Hide" : "Manage";
+      if (opening) refreshStaffList();
+    });
+
+    document.getElementById("grant-staff-form").addEventListener("submit", async function () {
+      const email = document.getElementById("grant-email").value.trim();
+      const role = document.getElementById("grant-role").value;
+      if (!email) return;
+      const btn = this.querySelector('button[type="submit"]');
+      btn.disabled = true;
+      try {
+        const result = await sb.rpc("grant_staff_by_email", { target_email: email, target_role: role });
+        if (result.error) throw result.error;
+        if (result.data === "not_found") {
+          toast(email + " needs to register an account on kridiyatravel.com first, then try again.");
+        } else {
+          toast(email + " now has " + role + " access.");
+          document.getElementById("grant-email").value = "";
+          refreshStaffList();
+        }
+      } catch (err) {
+        toast("Could not grant access: " + err.message);
+      }
+      btn.disabled = false;
+    });
+
+    document.getElementById("staff-list").addEventListener("click", async function (e) {
+      const btn = e.target.closest(".revoke-staff-btn");
+      if (!btn) return;
+      btn.disabled = true;
+      try {
+        const result = await sb.rpc("revoke_staff", { target_user_id: btn.dataset.id });
+        if (result.error) throw result.error;
+        toast("Access removed.");
+        refreshStaffList();
+      } catch (err) {
+        toast("Could not remove access: " + err.message);
+        btn.disabled = false;
+      }
+    });
+  }
+
   function populateFilterOptions() {
     const statusSel = document.getElementById("flt-status");
     STATUS_OPTIONS.forEach(function (s) {
@@ -403,5 +481,6 @@
     app.hidden = false;
     renderList();
     wireEvents();
+    wireStaffPanel();
   });
 })();
