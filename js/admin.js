@@ -440,13 +440,13 @@
     });
   }
 
-  document.addEventListener("DOMContentLoaded", async function () {
+  async function boot() {
     const gate = document.getElementById("admin-gate");
     const app = document.getElementById("admin-app");
 
     const user = await KridiyaAuth.currentUser();
     if (!user) {
-      location.replace("https://kridiyatravel.com/login.html?next=" + encodeURIComponent(location.href));
+      renderLoginForm(gate, boot);
       return;
     }
     currentStaffId = user.id;
@@ -464,8 +464,12 @@
       gate.innerHTML =
         '<div class="account-main empty-state">' +
           "<p><b>You do not have admin access.</b><br>This site is for Kridiya Travel staff only.</p>" +
-          '<a class="btn btn-primary" href="https://kridiyatravel.com/account.html">Back to my account</a>' +
+          '<button type="button" class="btn btn-primary" id="staff-gate-logout">Log out</button>' +
         "</div>";
+      document.getElementById("staff-gate-logout").addEventListener("click", async function () {
+        await KridiyaAuth.logout();
+        location.reload();
+      });
       return;
     }
 
@@ -482,5 +486,7 @@
     renderList();
     wireEvents();
     wireStaffPanel();
-  });
+  }
+
+  document.addEventListener("DOMContentLoaded", boot);
 })();

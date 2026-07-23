@@ -769,12 +769,12 @@
     );
   }
 
-  document.addEventListener("DOMContentLoaded", async function () {
+  async function boot() {
     const gate = document.getElementById("doc-gate");
     const app = document.getElementById("doc-app");
 
     const user = await KridiyaAuth.currentUser();
-    if (!user) { location.replace("https://kridiyatravel.com/login.html?next=" + encodeURIComponent(location.href)); return; }
+    if (!user) { renderLoginForm(gate, boot); return; }
     currentUserId = user.id;
 
     sb = await KridiyaAuth.client();
@@ -785,7 +785,11 @@
     } catch (e) { staff = false; }
 
     if (!staff) {
-      gate.innerHTML = '<div class="account-main empty-state"><p><b>You do not have access to this page.</b><br>Documents are for Kridiya Travel staff only.</p><a class="btn btn-primary" href="https://kridiyatravel.com/account.html">Back to my account</a></div>';
+      gate.innerHTML = '<div class="account-main empty-state"><p><b>You do not have access to this page.</b><br>Documents are for Kridiya Travel staff only.</p><button type="button" class="btn btn-primary" id="staff-gate-logout">Log out</button></div>';
+      document.getElementById("staff-gate-logout").addEventListener("click", async function () {
+        await KridiyaAuth.logout();
+        location.reload();
+      });
       return;
     }
 
@@ -880,5 +884,7 @@
       document.getElementById("linked-enquiry-box").hidden = true;
       rebuildForm();
     });
-  });
+  }
+
+  document.addEventListener("DOMContentLoaded", boot);
 })();

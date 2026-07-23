@@ -1,9 +1,11 @@
 /* ============================================================
    Kridiya Travel — staff site shared chrome
-   admin.kridiyatravel.com only. Auth logic (js/auth.js) is loaded
-   from the main site so there is one source of truth for login;
-   this file only provides the small bits main.js would otherwise
-   supply (icon/toast) plus the staff-only header/footer.
+   admin.kridiyatravel.com only. Auth *logic* (js/auth.js — the
+   Supabase client, KridiyaAuth.login/currentUser/etc.) is loaded from
+   the main site so there is one source of truth for password handling
+   and account data. The *session* is NOT shared with kridiyatravel.com
+   though — this site has its own independent sign-in, deliberately, so
+   being logged into one never implies being logged into the other.
    ============================================================ */
 "use strict";
 
@@ -63,6 +65,55 @@ function renderStaffChrome() {
   if (footer) {
     footer.innerHTML = '<div class="container staff-footer-inner">Kridiya Travel and Tourism FZ-LLC &mdash; internal staff tools, not for public access.</div>';
   }
+}
+
+/* Renders a self-contained email/password sign-in form into `gateEl`
+   and calls `onSuccess()` once KridiyaAuth.login() resolves. Used by
+   admin.html and documents.html instead of redirecting to the main
+   site's login page, since this site keeps its own session. */
+function renderLoginForm(gateEl, onSuccess) {
+  gateEl.innerHTML =
+    '<div class="account-main" style="max-width:420px;margin:2rem auto">' +
+      "<h2 style=\"margin-top:0\">Staff sign in</h2>" +
+      '<p class="form-note">A separate login from the customer site — use your Kridiya staff account.</p>' +
+      '<form id="staff-login-form" class="form-grid" novalidate>' +
+        '<div class="form-banner error" hidden role="alert"></div>' +
+        '<div class="field"><label>EMAIL</label><input name="email" type="email" required autocomplete="username"></div>' +
+        '<div class="field"><label>PASSWORD</label>' +
+          '<div class="pw-wrap"><input name="password" type="password" required autocomplete="current-password">' +
+          '<button type="button" class="pw-toggle" aria-label="Show password">SHOW</button></div>' +
+        "</div>" +
+        '<button class="btn btn-primary btn-block" type="submit">Log in</button>' +
+      "</form>" +
+      '<p class="form-note" style="margin-top:0.8rem"><a href="https://kridiyatravel.com/forgot-password.html" target="_blank" rel="noopener">Forgot password?</a></p>' +
+    "</div>";
+
+  const form = document.getElementById("staff-login-form");
+  const banner = form.querySelector(".form-banner");
+  const pwInput = form.querySelector('input[name="password"]');
+  const pwToggle = form.querySelector(".pw-toggle");
+  pwToggle.addEventListener("click", function () {
+    const show = pwInput.type === "password";
+    pwInput.type = show ? "text" : "password";
+    pwToggle.textContent = show ? "HIDE" : "SHOW";
+  });
+
+  form.addEventListener("submit", async function (e) {
+    e.preventDefault();
+    banner.hidden = true;
+    const btn = form.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.textContent = "Signing in…";
+    try {
+      await KridiyaAuth.login(form.email.value, form.password.value);
+      onSuccess();
+    } catch (err) {
+      banner.hidden = false;
+      banner.textContent = err.message;
+      btn.disabled = false;
+      btn.textContent = "Log in";
+    }
+  });
 }
 
 document.addEventListener("DOMContentLoaded", renderStaffChrome);
