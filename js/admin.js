@@ -209,12 +209,33 @@
     }
     el.innerHTML = rows.map(function (r) {
       const isSelf = r.user_id === currentStaffId;
-      return '<div class="admin-note"><p><b>' + KridiyaAuth.escapeHTML(r.email) + '</b> <span class="admin-badge">' + KridiyaAuth.statusLabel(r.role) + "</span>" +
+      const displayName = r.full_name || r.email;
+      return '<div class="admin-note"><p><b>' + KridiyaAuth.escapeHTML(displayName) + '</b> <span class="admin-badge">' + KridiyaAuth.statusLabel(r.role) + "</span>" +
+        (r.active === false ? ' <span class="admin-badge">Inactive</span>' : "") +
         (isSelf ? ' <span class="form-note">(you)</span>' : "") + "</p>" +
-        '<p class="form-note" style="margin:0.2rem 0 0">Added ' + fmtWhen(r.created_at) + "</p>" +
-        (isSelf ? "" : '<button type="button" class="btn btn-outline revoke-staff-btn" data-id="' + r.user_id + '" style="margin-top:0.4rem">Remove access</button>') +
+        '<p class="form-note" style="margin:0.2rem 0 0">' + KridiyaAuth.escapeHTML(r.email) +
+          (r.department ? " · " + KridiyaAuth.escapeHTML(r.department) : "") + " · Added " + fmtWhen(r.created_at) + "</p>" +
+        (isSelf ? "" :
+          '<div style="display:flex;gap:0.5rem;margin-top:0.5rem">' +
+            '<button type="button" class="btn btn-outline reset-pin-btn" data-id="' + r.user_id + '" data-name="' + KridiyaAuth.escapeHTML(displayName) + '">Reset PIN</button>' +
+            '<button type="button" class="btn btn-outline revoke-staff-btn" data-id="' + r.user_id + '">Remove access</button>' +
+          "</div>") +
         "</div>";
     }).join("");
+  }
+
+  async function callAdminEdgeFunction(name, body) {
+    const sessionResult = await sb.auth.getSession();
+    const token = sessionResult.data && sessionResult.data.session ? sessionResult.data.session.access_token : null;
+    if (!token) throw new Error("Your session expired — please log in again.");
+    const resp = await fetch(SUPABASE_URL + "/functions/v1/" + name, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: SUPABASE_ANON_KEY, Authorization: "Bearer " + token },
+      body: JSON.stringify(body)
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || "Request failed");
+    return data;
   }
 
   async function refreshStaffList() {
@@ -233,6 +254,44 @@
       panel.hidden = !opening;
       this.textContent = opening ? "Hide" : "Manage";
       if (opening) refreshStaffList();
+    });
+
+    document.getElementById("create-staff-form").addEventListener("submit", async function () {
+      const name = document.getElementById("new-staff-name").value.trim();
+      const department = document.getElementById("new-staff-dept").value.trim();
+      const email = document.getElementById("new-staff-email").value.trim();
+      const role = document.getElementById("new-staff-role").value;
+      if (!name || !email) return;
+      const btn = this.querySelector('button[type="submit"]');
+      btn.disabled = true;
+      btn.textContent = "Creating…";
+      const resultBox = document.getElementById("new-staff-result");
+      try {
+        const data = await callAdminEdgeFunction("create-staff-account", { full_name: name, department: department, email: email, role: role });
+        resultBox.hidden = false;
+        resultBox.innerHTML = "Account created for <b>" + KridiyaAuth.escapeHTML(name) + "</b>. Their PIN is <b style=\"font-size:1.2rem;letter-spacing:0.1em\">" + KridiyaAuth.escapeHTML(data.pin) + "</b> — give it to them now, it won't be shown again.";
+        document.getElementById("new-staff-name").value = "";
+        document.getElementById("new-staff-dept").value = "";
+        document.getElementById("new-staff-email").value = "";
+        refreshStaffList();
+      } catch (err) {
+        toast("Could not create account: " + err.message);
+      }
+      btn.disabled = false;
+      btn.textContent = "Create account";
+    });
+
+    document.getElementById("staff-list").addEventListener("click", async function (e) {
+      const resetBtn = e.target.closest(".reset-pin-btn");
+      if (!resetBtn) return;
+      resetBtn.disabled = true;
+      try {
+        const data = await callAdminEdgeFunction("reset-staff-pin", { user_id: resetBtn.dataset.id });
+        toast("New PIN for " + resetBtn.dataset.name + ": " + data.pin + " — give it to them now, it won't be shown again.");
+      } catch (err) {
+        toast("Could not reset PIN: " + err.message);
+      }
+      resetBtn.disabled = false;
     });
 
     document.getElementById("grant-staff-form").addEventListener("submit", async function () {

@@ -38,7 +38,23 @@
           </div>
           <div id="staff-panel" hidden>
             <div id="staff-list"></div>
-            <form id="grant-staff-form" style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:flex-end;margin-top:1rem" onsubmit="return false">
+
+            <h3 style="margin:1.4rem 0 0.5rem">Create a new staff account (PIN login)</h3>
+            <p class="form-note" style="margin-bottom:0.6rem">Creates the account for them and generates a 6-digit PIN — give it to them yourself, it's only shown once here.</p>
+            <form id="create-staff-form" style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:flex-end" onsubmit="return false">
+              <div class="field" style="flex:1 1 180px;margin:0"><label>FULL NAME</label><input id="new-staff-name" required></div>
+              <div class="field" style="flex:1 1 160px;margin:0"><label>DEPARTMENT</label><input id="new-staff-dept" placeholder="e.g. Visa, Flights"></div>
+              <div class="field" style="flex:1 1 220px;margin:0"><label>EMAIL</label><input id="new-staff-email" type="email" required></div>
+              <div class="field" style="width:130px;margin:0"><label>ROLE</label>
+                <select id="new-staff-role"><option value="staff">Staff</option><option value="support">Support</option><option value="admin">Admin</option></select>
+              </div>
+              <button type="submit" class="btn btn-primary">Create account</button>
+            </form>
+            <div id="new-staff-result" hidden class="linked-box" style="margin-top:0.8rem"></div>
+
+            <h3 style="margin:1.6rem 0 0.5rem">Grant staff access to an existing account</h3>
+            <p class="form-note" style="margin-bottom:0.6rem">For someone who already registered on the main site with a password (typically another owner/admin) rather than a new PIN account.</p>
+            <form id="grant-staff-form" style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:flex-end" onsubmit="return false">
               <div class="field" style="flex:1 1 260px;margin:0"><label>EMAIL (MUST HAVE AN ACCOUNT ALREADY)</label><input id="grant-email" type="email" placeholder="name@example.com" required></div>
               <div class="field" style="width:150px;margin:0"><label>ROLE</label>
                 <select id="grant-role"><option value="staff">Staff</option><option value="admin">Admin</option><option value="support">Support</option><option value="owner">Owner</option></select>

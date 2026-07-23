@@ -18,6 +18,14 @@
 .staff-actions { display: flex; gap: 0.6rem; align-items: center; }
 .staff-actions .btn { min-height: 38px; padding: 0 0.9rem; font-size: 0.82rem; }
 .staff-footer-inner { padding: 1.2rem 0; text-align: center; font-size: 0.8rem; color: var(--text-muted); }
+
+.login-tabs { display: flex; gap: 0.4rem; margin-bottom: 1.1rem; border-bottom: 1px solid var(--line); }
+.login-tab {
+  background: none; border: none; border-bottom: 2px solid transparent; padding: 0.6rem 0.2rem; margin-right: 1.2rem;
+  font-weight: 700; font-size: 0.92rem; color: var(--text-muted); cursor: pointer;
+}
+.login-tab.active { color: var(--brand-deep); border-bottom-color: var(--brand); }
+.login-tab-panel h2 { margin-top: 0; }
 @media (max-width: 720px) {
   .staff-topbar-inner { flex-direction: column; align-items: flex-start; }
   .staff-nav { order: 3; width: 100%; }
