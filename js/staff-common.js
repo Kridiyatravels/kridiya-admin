@@ -131,19 +131,11 @@ async function logActivity(sb, actorId, eventType, entityType, entityId, metadat
 function renderLoginForm(gateEl, onSuccess) {
   gateEl.innerHTML =
     '<div class="login-shell">' +
-      '<div class="login-brand-panel">' +
-        "<div>" +
-          '<img src="https://kridiyatravel.com/assets/logo.png" alt="">' +
-          "<h1>Staff Tools</h1>" +
-          "<p>Enquiries, quotes, documents and activity for Kridiya Travel and Tourism.</p>" +
-        "</div>" +
-        '<ul class="login-brand-list">' +
-          '<li>' + icon("check") + " Every enquiry, one place</li>" +
-          '<li>' + icon("check") + " Invoices &amp; e-tickets in seconds</li>" +
-          '<li>' + icon("check") + " Full activity history</li>" +
-        "</ul>" +
+      '<div class="login-shell-header">' +
+        '<img src="https://kridiyatravel.com/assets/logo.png" alt="">' +
+        "<h1>Staff Tools</h1>" +
+        "<p>Sign in to Kridiya Travel and Tourism</p>" +
       "</div>" +
-      '<div class="login-form-panel">' +
       '<div class="login-tabs" role="tablist">' +
         '<button type="button" class="login-tab active" data-tab="staff" role="tab" aria-selected="true">Staff (PIN)</button>' +
         '<button type="button" class="login-tab" data-tab="admin" role="tab" aria-selected="false">Admin</button>' +
@@ -169,7 +161,6 @@ function renderLoginForm(gateEl, onSuccess) {
           '<button class="btn btn-primary btn-block" type="submit">Log in</button>' +
         "</form>" +
         '<p class="form-note" style="margin-top:0.8rem"><a href="https://kridiyatravel.com/forgot-password.html" target="_blank" rel="noopener">Forgot password?</a></p>' +
-      "</div>" +
       "</div>" +
     "</div>";
 
