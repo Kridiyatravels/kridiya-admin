@@ -247,6 +247,7 @@
         if (result.data === "not_found") {
           toast(email + " needs to register an account on kridiyatravel.com first, then try again.");
         } else {
+          logActivity(sb, currentStaffId, "staff.granted", "user", null, { email: email, role: role });
           toast(email + " now has " + role + " access.");
           document.getElementById("grant-email").value = "";
           refreshStaffList();
@@ -264,6 +265,7 @@
       try {
         const result = await sb.rpc("revoke_staff", { target_user_id: btn.dataset.id });
         if (result.error) throw result.error;
+        logActivity(sb, currentStaffId, "staff.revoked", "user", btn.dataset.id, {});
         toast("Access removed.");
         refreshStaffList();
       } catch (err) {
@@ -310,7 +312,9 @@
         return;
       }
       const row = allEnquiries.find(function (r) { return r.id === id; });
+      const prevStatus = row ? row.status : null;
       if (row) row.status = newStatus;
+      logActivity(sb, currentStaffId, "enquiry.status_changed", "enquiry", id, { reference: row ? row.reference : null, from: prevStatus, to: newStatus });
       toast("Status updated.");
     });
 
@@ -371,6 +375,8 @@
       renderList();
       const panel = listEl.querySelector('.admin-notes[data-notes-for="' + id + '"]');
       if (panel) panel.hidden = false;
+      const noteRow = allEnquiries.find(function (r) { return r.id === id; });
+      logActivity(sb, currentStaffId, "enquiry.note_added", "enquiry", id, { reference: noteRow ? noteRow.reference : null });
     });
 
     listEl.addEventListener("submit", async function (e) {
@@ -397,6 +403,8 @@
       renderList();
       const panel = listEl.querySelector('.admin-notes[data-requests-for="' + id + '"]');
       if (panel) panel.hidden = false;
+      const reqEnq = allEnquiries.find(function (r) { return r.id === id; });
+      logActivity(sb, currentStaffId, "enquiry.request_sent", "enquiry", id, { reference: reqEnq ? reqEnq.reference : null, kind: form.kind.value, label: label });
       toast("Request sent to customer.");
     });
 
@@ -436,6 +444,8 @@
       renderList();
       const panel = listEl.querySelector('.admin-notes[data-quotes-for="' + id + '"]');
       if (panel) panel.hidden = false;
+      const quoteEnq = allEnquiries.find(function (r) { return r.id === id; });
+      logActivity(sb, currentStaffId, "enquiry.quote_sent", "enquiry", id, { reference: quoteEnq ? quoteEnq.reference : null, title: title, amount: price, currency: currency });
       toast("Quote sent to customer.");
     });
   }

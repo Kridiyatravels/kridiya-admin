@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Activity — Kridiya Staff Tools</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Great+Vibes&family=Playfair+Display:ital,wght@1,700;1,800&display=swap" rel="stylesheet">
+<link rel="icon" href="https://kridiyatravel.com/assets/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="https://kridiyatravel.com/assets/favicon-180.png">
+<link rel="stylesheet" href="https://kridiyatravel.com/css/styles.css">
+<link rel="stylesheet" href="css/staff.css">
+</head>
+<body data-page="activity">
+<header id="site-header" class="site-header"></header>
+<main>
+  <section class="section">
+    <div class="container">
+      <div id="activity-gate">
+        <div class="account-main empty-state"><p>Checking access…</p></div>
+      </div>
+
+      <div id="activity-app" hidden>
+        <div class="account-head">
+          <div>
+            <h1>Activity</h1>
+            <p>Everything staff have done, newest first. Owners and admins only.</p>
+          </div>
+          <span class="form-note" id="activity-count"></span>
+        </div>
+
+        <div class="account-main admin-filters-card">
+          <div class="admin-filters">
+            <div class="field">
+              <label for="flt-event-type">EVENT TYPE</label>
+              <select id="flt-event-type"><option value="">All activity</option></select>
+            </div>
+            <label class="admin-filter-check"><input type="checkbox" id="flt-event-today"> Today only</label>
+          </div>
+        </div>
+
+        <div id="activity-list"></div>
+      </div>
+    </div>
+  </section>
+</main>
+<footer id="site-footer" class="site-footer"></footer>
+<script src="https://kridiyatravel.com/js/auth.js" defer></script>
+<script src="js/staff-common.js" defer></script>
+<script src="js/activity.js" defer></script>
+</body>
+</html>

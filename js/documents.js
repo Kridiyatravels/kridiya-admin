@@ -671,6 +671,7 @@
     btn.disabled = false;
     if (result.error) { toast("Could not save settings: " + result.error.message); return; }
     settings = result.data;
+    logActivity(sb, currentUserId, "settings.updated", "business_settings", null, {});
     toast("Business settings saved.");
   }
 
@@ -735,6 +736,7 @@
       showInlinePreview(title, bodyHTML);
       document.getElementById("doc-preview-number").textContent = doc.document_number;
       openPrintWindow(title, bodyHTML);
+      logActivity(sb, currentUserId, "document.generated", "document", doc.id, { number: doc.document_number, kind: kindId, customer: customerName });
       toast(title + " saved.");
     } catch (err) {
       toast("Could not save document: " + err.message);

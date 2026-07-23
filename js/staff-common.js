@@ -47,6 +47,7 @@ function renderStaffChrome() {
         '<nav class="staff-nav">' +
           '<a href="admin.html"' + (page === "admin" ? ' aria-current="page"' : "") + ">Enquiries</a>" +
           '<a href="documents.html"' + (page === "documents" ? ' aria-current="page"' : "") + ">Documents</a>" +
+          '<a href="activity.html"' + (page === "activity" ? ' aria-current="page"' : "") + ">Activity</a>" +
         "</nav>" +
         '<div class="staff-actions">' +
           '<a class="btn btn-outline" href="https://kridiyatravel.com" target="_blank" rel="noopener">Main site ↗</a>' +
@@ -65,6 +66,20 @@ function renderStaffChrome() {
   if (footer) {
     footer.innerHTML = '<div class="container staff-footer-inner">Kridiya Travel and Tourism FZ-LLC &mdash; internal staff tools, not for public access.</div>';
   }
+}
+
+/* Best-effort activity log write — never blocks the real action if it
+   fails (e.g. RLS denies it for a non-staff caller mid-session). */
+async function logActivity(sb, actorId, eventType, entityType, entityId, metadata) {
+  try {
+    await sb.from("audit_events").insert({
+      actor_user_id: actorId,
+      event_type: eventType,
+      entity_type: entityType || null,
+      entity_id: entityId || null,
+      metadata: metadata || {}
+    });
+  } catch (e) { /* logging is best-effort */ }
 }
 
 /* Renders a self-contained email/password sign-in form into `gateEl`
