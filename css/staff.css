@@ -8,7 +8,6 @@
    ============================================================ */
 
 :root {
-  --staff-bg: oklch(0.975 0.006 75);
   --staff-shadow-sm: 0 1px 2px oklch(0.2 0.02 40 / 0.05), 0 1px 1px oklch(0.2 0.02 40 / 0.04);
   --staff-shadow-md: 0 2px 4px oklch(0.2 0.02 40 / 0.06), 0 8px 20px oklch(0.2 0.02 40 / 0.07);
   --staff-radius: 14px;
@@ -36,20 +35,20 @@
   --status-closed: oklch(0.5 0.015 60);
   --status-closed-bg: oklch(0.92 0.008 65);
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --staff-bg: oklch(0.19 0.012 60);
-    --staff-shadow-sm: 0 1px 2px oklch(0 0 0 / 0.25);
-    --staff-shadow-md: 0 4px 16px oklch(0 0 0 / 0.35);
-  }
-}
+/* Deliberately no @media (prefers-color-scheme: dark) block: the main
+   site itself doesn't auto-switch on OS preference, only via an
+   explicit [data-theme="dark"] toggle it doesn't currently expose. If
+   this site auto-darkened on its own, it would drift out of sync with
+   borrowed tokens (--surface, --ink, --text-muted...) that stay in
+   light mode — exactly the "black page, unreadable text" bug this
+   replaced. Kept the explicit selector for symmetry if a toggle is
+   ever added later. */
 :root[data-theme="dark"] {
-  --staff-bg: oklch(0.19 0.012 60);
   --staff-shadow-sm: 0 1px 2px oklch(0 0 0 / 0.25);
   --staff-shadow-md: 0 4px 16px oklch(0 0 0 / 0.35);
 }
 
-body { background: var(--staff-bg); }
+body { background: var(--bg); }
 
 /* ---------- Top bar ---------- */
 .staff-topbar { border-bottom: 1px solid var(--line); background: var(--surface); position: sticky; top: 0; z-index: 20; box-shadow: var(--staff-shadow-sm); }
@@ -58,7 +57,7 @@ body { background: var(--staff-bg); }
 .staff-logo img { border-radius: 8px; }
 .staff-logo span { font-weight: 600; color: var(--ink); font-size: 0.95rem; letter-spacing: -0.01em; }
 .staff-logo b { color: var(--brand-deep); }
-.staff-nav { display: flex; gap: 0.3rem; background: var(--staff-bg); padding: 0.25rem; border-radius: 999px; }
+.staff-nav { display: flex; gap: 0.3rem; background: var(--brand-soft); padding: 0.25rem; border-radius: 999px; }
 .staff-nav a {
   font-weight: 600; font-size: 0.86rem; color: var(--ink-2); text-decoration: none;
   padding: 0.4rem 0.9rem; border-radius: 999px; transition: background-color 0.15s, color 0.15s;
@@ -92,13 +91,13 @@ body { background: var(--staff-bg); }
   .login-brand-panel { display: none; }
 }
 
-.login-tabs { display: flex; gap: 0.3rem; margin-bottom: 1.3rem; background: var(--staff-bg); padding: 0.25rem; border-radius: 999px; }
+.login-tabs { display: flex; gap: 0.3rem; margin-bottom: 1.3rem; background: var(--brand-soft); padding: 0.25rem; border-radius: 999px; }
 .login-tab { flex: 1; background: none; border: none; border-radius: 999px; padding: 0.55rem 0.8rem; font-weight: 700; font-size: 0.86rem; color: var(--text-muted); cursor: pointer; transition: background-color 0.15s, color 0.15s; }
 .login-tab.active { color: #fff; background: var(--brand-deep); }
 .login-tab-panel h2 { margin-top: 0; }
 
 /* ---------- Stat tiles ---------- */
-.stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.9rem; margin-bottom: 1.4rem; }
+.stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.9rem; }
 .stat-tile {
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--staff-radius);
   padding: 1.1rem 1.2rem; box-shadow: var(--staff-shadow-sm); position: relative; overflow: hidden;
@@ -158,6 +157,22 @@ body { background: var(--staff-bg); }
 .activity-row .desc { flex: 1; font-size: 0.9rem; color: var(--ink-2); }
 .activity-row .desc b { color: var(--ink); }
 .activity-row time { font-size: 0.76rem; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
+
+/* ---------- Page rhythm ----------
+   One consistent gap between every top-level card on a staff page,
+   instead of ad-hoc per-element margins that left some touching and
+   some not. */
+#admin-app > .account-main,
+#admin-app > .stat-row,
+#doc-app > .account-main,
+#activity-app > .account-main {
+  margin-bottom: 1.2rem;
+}
+#admin-app > .account-head,
+#doc-app > .account-head,
+#activity-app > .account-head {
+  margin-bottom: 1.4rem;
+}
 
 /* ---------- Filters ---------- */
 .admin-filters-card { padding: 0.9rem 1.1rem; }
