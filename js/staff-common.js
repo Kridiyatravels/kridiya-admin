@@ -55,7 +55,7 @@ function renderStaffChrome() {
   if (header) {
     header.innerHTML =
       '<div class="staff-topbar"><div class="container staff-topbar-inner">' +
-        '<a class="staff-logo" href="https://kridiyatravel.com">' +
+        '<a class="staff-logo" href="dashboard.html">' +
           '<img src="https://kridiyatravel.com/assets/logo.png" alt="Kridiya Travel" width="36" height="36">' +
           "<span>Kridiya <b>Staff Tools</b></span>" +
         "</a>" +
@@ -150,14 +150,17 @@ function renderLoginForm(gateEl, onSuccess) {
           '<div class="form-banner error" hidden role="alert"></div>' +
           '<div class="field">' +
             '<label>PIN</label>' +
-            '<div class="pin-boxes" role="group" aria-label="6-digit PIN">' +
-              new Array(6).fill(0).map(function (_, i) {
-                return (i === 3 ? '<span class="pin-sep" aria-hidden="true">&ndash;</span>' : "") +
-                  '<input class="pin-box" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" aria-label="PIN digit">';
-              }).join("") +
+            '<div class="pin-group">' +
+              '<div class="pin-boxes" role="group" aria-label="6-digit PIN">' +
+                new Array(6).fill(0).map(function (_, i) {
+                  return (i === 3 ? '<span class="pin-sep" aria-hidden="true">&ndash;</span>' : "") +
+                    '<input class="pin-box" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" aria-label="PIN digit">';
+                }).join("") +
+              "</div>" +
+              '<button type="button" class="pin-toggle" aria-pressed="false">Show</button>' +
             "</div>" +
           "</div>" +
-          '<button class="btn btn-primary btn-block" type="submit">Log in</button>' +
+          '<div class="login-actions"><button class="btn btn-primary" type="submit">Log in</button></div>' +
         "</form>" +
       "</div>" +
       '<div id="login-tab-admin" class="login-tab-panel" hidden>' +
@@ -169,7 +172,7 @@ function renderLoginForm(gateEl, onSuccess) {
             '<div class="pw-wrap"><input name="password" type="password" required autocomplete="current-password">' +
             '<button type="button" class="pw-toggle" aria-label="Show password">SHOW</button></div>' +
           "</div>" +
-          '<button class="btn btn-primary btn-block" type="submit">Log in</button>' +
+          '<div class="login-actions"><button class="btn btn-primary" type="submit">Log in</button></div>' +
         "</form>" +
         '<p class="form-note" style="margin-top:0.8rem"><a href="https://kridiyatravel.com/forgot-password.html" target="_blank" rel="noopener">Forgot password?</a></p>' +
       "</div>" +
@@ -201,6 +204,16 @@ function renderLoginForm(gateEl, onSuccess) {
       }
     });
   });
+
+  const pinToggle = gateEl.querySelector(".pin-toggle");
+  if (pinToggle) {
+    pinToggle.addEventListener("click", function () {
+      const showing = pinBoxes[0] && pinBoxes[0].type === "text";
+      pinBoxes.forEach(function (b) { b.type = showing ? "password" : "text"; });
+      pinToggle.textContent = showing ? "Show" : "Hide";
+      pinToggle.setAttribute("aria-pressed", String(!showing));
+    });
+  }
 
   const pinForm = gateEl.querySelector("#pin-login-form");
   pinForm.addEventListener("submit", async function (e) {
