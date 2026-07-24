@@ -252,6 +252,8 @@ body { background: var(--bg); }
 .ops-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.85rem 0; border-bottom: 1px solid var(--line); }
 .ops-row:last-child { border-bottom: none; }
 .ops-row.is-muted { opacity: 0.62; }
+.reminder-overdue { border-left: 3px solid var(--status-payment); padding-left: 0.75rem; }
+.reminder-today { border-left: 3px solid var(--status-quoted); padding-left: 0.75rem; }
 .ops-row-main { min-width: 0; flex: 1; }
 .ops-row-main b { color: var(--ink); }
 .ops-row-main p { margin: 0.2rem 0 0; color: var(--text-muted); font-size: 0.84rem; }
