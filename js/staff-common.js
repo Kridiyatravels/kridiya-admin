@@ -284,9 +284,48 @@ function renderLoginForm(gateEl, onSuccess) {
   });
 }
 
-function showStaffNav() {
+/* Which nav links require a permission (or admin) to be shown. A link
+   is hidden ONLY when its page would actually reject the person, so the
+   menu never hides a page they can still open. Pages gated by is_staff
+   alone (dashboard, enquiries, bookings, documents, templates, portals)
+   are not listed here and always show for staff. Mirrors the gate each
+   page enforces in its own boot(). */
+const NAV_ACCESS = {
+  "corporate.html": { perm: "view_corporates" },
+  "payments.html": { perm: "view_payments" },
+  "accounting.html": { perm: "view_payments" },
+  "staff.html": { adminOnly: true },
+  "activity.html": { adminOnly: true },
+  "backups.html": { adminOnly: true }
+};
+
+/* Reveals the nav, first removing links the signed-in person isn't
+   allowed to use. Admins see everything. If anything fails, we fall
+   back to showing the full nav (the pages still enforce access on
+   their own, so this is convenience, not the security boundary). */
+async function showStaffNav() {
   const nav = document.querySelector(".staff-nav");
-  if (nav) nav.hidden = false;
+  if (!nav) return;
+  try {
+    const sb = await KridiyaAuth.client();
+    const adminRes = await sb.rpc("is_admin");
+    const isAdmin = adminRes.data === true;
+    if (!isAdmin) {
+      const user = await KridiyaAuth.currentUser();
+      let perms = {};
+      if (user) {
+        const permRes = await sb.from("staff_permissions").select("*").eq("user_id", user.id).maybeSingle();
+        perms = permRes.data || {};
+      }
+      nav.querySelectorAll("a").forEach(function (link) {
+        const rule = NAV_ACCESS[link.getAttribute("href")];
+        if (!rule) return;
+        const allowed = rule.adminOnly ? false : Boolean(perms[rule.perm]);
+        if (!allowed) link.remove();
+      });
+    }
+  } catch (e) { /* best-effort: show full nav on any error */ }
+  nav.hidden = false;
 }
 
 document.addEventListener("DOMContentLoaded", renderStaffChrome);
