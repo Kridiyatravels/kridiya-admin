@@ -384,15 +384,22 @@ body { background: var(--bg); }
 .admin-badge-converted svg { width: 0.9em; height: 0.9em; fill: currentColor; }
 
 /* ---------- Professional quote builder ---------- */
-.quote-actions-bar { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; margin-bottom: 0.8rem; }
+.quote-actions-bar { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; margin-bottom: 0.9rem; }
 .quote-option { border-left: 3px solid var(--brand); }
 .quote-line { margin: 0.15rem 0 0; font-size: 0.86rem; color: var(--ink-2); }
-.pro-quote-form { display: flex; flex-direction: column; gap: 0.6rem; margin-top: 0.8rem; }
-.pro-quote-form .qf-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.6rem; }
-.pro-quote-form .qf { min-height: 44px; border: 1px solid var(--line); border-radius: var(--r-sm, 10px); padding: 0 0.7rem; background: var(--surface); color: var(--ink); font: inherit; }
-.pro-quote-form .qf-wide { grid-column: span 3; }
-.pro-quote-form .qf[name="stops"], .pro-quote-form .qf[name="baggage"], .pro-quote-form .qf[name="airline"] { grid-column: span 2; }
-.pro-quote-form .qf[name="price_amount"], .pro-quote-form .qf[name="currency"], .pro-quote-form .qf[name="valid_until"] { grid-column: span 2; }
-.pro-quote-form textarea.qf-area { min-height: 68px; padding: 0.6rem 0.7rem; line-height: 1.5; resize: vertical; }
+.pro-quote-form { display: flex; flex-direction: column; gap: 0.7rem; margin-top: 0.9rem; }
+.pro-quote-form .qf-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.7rem; align-items: start; }
+.pro-quote-form .qf {
+  width: 100%; box-sizing: border-box; min-height: 44px; font: inherit;
+  border: 1px solid var(--line); border-radius: var(--r-sm, 10px);
+  padding: 0 0.75rem; background: var(--surface); color: var(--ink);
+}
+.pro-quote-form .qf-grid .qf-wide { grid-column: 1 / -1; }
+.pro-quote-form textarea.qf-area {
+  width: 100%; box-sizing: border-box; min-height: 72px;
+  padding: 0.6rem 0.75rem; line-height: 1.5; resize: vertical;
+}
+.pro-quote-form .qf::placeholder { color: var(--text-muted); }
 .pro-quote-form .qf:focus { outline: 2px solid var(--brand); outline-offset: 1px; border-color: var(--brand); }
-@media (max-width: 720px) { .pro-quote-form .qf-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .pro-quote-form .qf-wide, .pro-quote-form .qf[name="stops"], .pro-quote-form .qf[name="baggage"], .pro-quote-form .qf[name="airline"], .pro-quote-form .qf[name="price_amount"], .pro-quote-form .qf[name="currency"], .pro-quote-form .qf[name="valid_until"] { grid-column: span 2; } }
+.pro-quote-form > button[type="submit"] { align-self: flex-start; }
+@media (max-width: 520px) { .pro-quote-form .qf-grid { grid-template-columns: 1fr; } }
