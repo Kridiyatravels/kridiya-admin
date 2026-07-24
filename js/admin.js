@@ -20,6 +20,8 @@
   let notesByEnquiry = {};
   let requestsByEnquiry = {};
   let quotesByEnquiry = {};
+  let canCreateBookings = false;
+  let canEditCorporates = false;
 
   function fmtMoney(amount, currency) {
     return currency + " " + Number(amount).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -44,6 +46,45 @@
     const subject = "Re: " + enq.reference + " — your Kridiya Travel enquiry";
     const body = "Hi " + firstName + ",\n\nThanks for your enquiry (" + enq.summary + ").\n\n";
     return "mailto:" + encodeURIComponent(enq.email) + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
+  }
+
+  function detail(enq, key) {
+    return enq && enq.details && enq.details[key] ? String(enq.details[key]).trim() : "";
+  }
+
+  function isCorporateEnquiry(enq) {
+    const requestType = detail(enq, "Request_type");
+    return Boolean(
+      detail(enq, "Company_name") ||
+      /corporate|b2b/i.test(requestType) ||
+      /corporate/i.test(enq.summary || "")
+    );
+  }
+
+  function corporatePreview(enq) {
+    if (!isCorporateEnquiry(enq)) return "";
+    const items = [
+      ["Company", detail(enq, "Company_name")],
+      ["Service", detail(enq, "Service_needed")],
+      ["Route", detail(enq, "Route_or_destination")],
+      ["Travellers", detail(enq, "Travellers_count")],
+      ["LPO", detail(enq, "LPO_required")],
+      ["Billing", detail(enq, "Billing_email")]
+    ].filter(function (x) { return x[1]; });
+    return items.length ? '<div class="ops-kv corporate-enquiry-preview">' + items.map(function (x) {
+      return '<span class="ops-chip">' + KridiyaAuth.escapeHTML(x[0]) + ': ' + KridiyaAuth.escapeHTML(x[1]) + '</span>';
+    }).join("") + '</div>' : "";
+  }
+
+  function convertPanel(enq) {
+    if (!isCorporateEnquiry(enq)) return "";
+    if (!canCreateBookings || !canEditCorporates) {
+      return '<div class="admin-notes" data-convert-for="' + enq.id + '" hidden><p class="form-note">You need create booking and edit corporate permissions to convert this enquiry.</p></div>';
+    }
+    return '<div class="admin-notes corporate-convert-panel" data-convert-for="' + enq.id + '" hidden>' +
+      '<p class="form-note">This will create or reuse the corporate company, create the contact, create a linked corporate booking, and mark this enquiry as confirmed.</p>' +
+      '<button type="button" class="btn btn-primary convert-corporate-btn" data-id="' + enq.id + '">Convert to corporate booking</button>' +
+    '</div>';
   }
 
   function matchesFilters(enq) {
@@ -93,6 +134,7 @@
       const quotes = quotesByEnquiry[enq.id] || [];
       const wa = waReplyLink(enq);
       const initial = (enq.full_name || "?").trim().charAt(0).toUpperCase();
+      const corporate = isCorporateEnquiry(enq);
       return (
         '<div class="account-main admin-enq" data-id="' + enq.id + '">' +
           '<div class="enq-row-head">' +
@@ -111,6 +153,7 @@
           '<p style="margin:0 0 0.2rem"><b>Contact</b> · ' +
             (enq.phone ? '<a href="tel:' + KridiyaAuth.escapeHTML(enq.phone) + '">' + KridiyaAuth.escapeHTML(enq.phone) + "</a> · " : "") +
             '<a href="mailto:' + KridiyaAuth.escapeHTML(enq.email) + '">' + KridiyaAuth.escapeHTML(enq.email) + "</a></p>" +
+          corporatePreview(enq) +
           '<div class="admin-enq-actions">' +
             '<select class="status-select status-pill-select" data-id="' + enq.id + '" style="' + statusStyle(enq.status) + '">' +
               STATUS_OPTIONS.map(function (s) {
@@ -122,6 +165,7 @@
             '<button type="button" class="btn btn-outline notes-toggle" data-id="' + enq.id + '">Notes (' + notes.length + ")</button>" +
             '<button type="button" class="btn btn-outline requests-toggle" data-id="' + enq.id + '">Requests (' + requests.length + ")</button>" +
             '<button type="button" class="btn btn-outline quotes-toggle" data-id="' + enq.id + '">Quote (' + quotes.length + ")</button>" +
+            (corporate ? '<button type="button" class="btn btn-outline convert-toggle" data-id="' + enq.id + '">Convert</button>' : "") +
             '<a class="btn btn-outline" href="documents.html?enquiry=' + enq.id + '">Document</a>' +
           "</div>" +
           '<div class="admin-notes" data-notes-for="' + enq.id + '" hidden>' +
@@ -180,6 +224,7 @@
               '<button class="btn btn-primary" type="submit">Send quote</button>' +
             "</form>" +
           "</div>" +
+          convertPanel(enq) +
           "</div>" +
         "</div>"
       );
@@ -442,6 +487,17 @@
         if (panel) panel.hidden = !panel.hidden;
         return;
       }
+      const convertBtn = e.target.closest(".convert-toggle");
+      if (convertBtn) {
+        const panel = listEl.querySelector('.admin-notes[data-convert-for="' + convertBtn.dataset.id + '"]');
+        if (panel) panel.hidden = !panel.hidden;
+        return;
+      }
+      const doConvertBtn = e.target.closest(".convert-corporate-btn");
+      if (doConvertBtn) {
+        await convertCorporateEnquiry(doConvertBtn);
+        return;
+      }
       const viewBtn = e.target.closest(".view-file-btn");
       if (viewBtn) {
         viewBtn.disabled = true;
@@ -555,6 +611,39 @@
     });
   }
 
+  async function convertCorporateEnquiry(btn) {
+    const id = btn.dataset.id;
+    const enq = allEnquiries.find(function (r) { return r.id === id; });
+    if (!enq) return;
+    if (!detail(enq, "Company_name")) {
+      toast("Company name is missing on this enquiry.");
+      return;
+    }
+    if (!confirm("Convert " + detail(enq, "Company_name") + " into a corporate booking?")) return;
+    btn.disabled = true;
+    btn.textContent = "Converting...";
+    try {
+      const result = await sb.rpc("convert_corporate_enquiry_to_booking", {
+        p_enquiry_id: id
+      });
+      if (result.error) throw result.error;
+      const data = result.data || {};
+      logActivity(sb, currentStaffId, "enquiry.converted_to_corporate_booking", "booking", data.booking_id || null, {
+        reference: enq.reference,
+        company_name: detail(enq, "Company_name"),
+        existing_booking: data.existing_booking === true
+      });
+      toast(data.existing_booking ? "Booking already exists. Opening it now." : "Corporate booking created.");
+      setTimeout(function () {
+        location.href = "booking-detail.html?id=" + encodeURIComponent(data.booking_id);
+      }, 450);
+    } catch (err) {
+      toast("Could not convert enquiry: " + err.message);
+      btn.disabled = false;
+      btn.textContent = "Convert to corporate booking";
+    }
+  }
+
   async function boot() {
     const gate = document.getElementById("admin-gate");
     const app = document.getElementById("admin-app");
@@ -590,6 +679,12 @@
 
     try {
       await Promise.all([loadEnquiries(), loadNotes(), loadRequests(), loadQuotes()]);
+      const perms = await Promise.all([
+        sb.rpc("has_staff_permission", { permission_name: "create_bookings" }),
+        sb.rpc("has_staff_permission", { permission_name: "edit_corporates" })
+      ]);
+      canCreateBookings = !perms[0].error && perms[0].data === true;
+      canEditCorporates = !perms[1].error && perms[1].data === true;
     } catch (err) {
       gate.innerHTML = '<div class="account-main empty-state"><p>Could not load enquiries: ' + KridiyaAuth.escapeHTML(err.message) + "</p></div>";
       return;

@@ -21,6 +21,7 @@
     "enquiry.note_added": { icon: "note", color: "var(--ink-2)", bg: "var(--surface-tint)" },
     "enquiry.request_sent": { icon: "mail", color: "var(--status-checking)", bg: "var(--status-checking-bg)" },
     "enquiry.quote_sent": { icon: "quote", color: "var(--status-confirmed)", bg: "var(--status-confirmed-bg)" },
+    "enquiry.converted_to_corporate_booking": { icon: "check", color: "var(--status-confirmed)", bg: "var(--status-confirmed-bg)" },
     "staff.created": { icon: "user", color: "var(--status-confirmed)", bg: "var(--status-confirmed-bg)" },
     "staff.granted": { icon: "user", color: "var(--status-confirmed)", bg: "var(--status-confirmed-bg)" },
     "staff.revoked": { icon: "user", color: "var(--status-closed)", bg: "var(--status-closed-bg)" },
@@ -47,6 +48,8 @@
         return who + " asked for “" + (m.label || "information") + "” (" + (m.kind || "text") + ") on " + (m.reference || "an enquiry");
       case "enquiry.quote_sent":
         return who + " sent a quote of " + (m.currency || "AED") + " " + Number(m.amount || 0).toLocaleString("en-GB") + " for " + (m.reference || "an enquiry") + (m.title ? " (" + m.title + ")" : "");
+      case "enquiry.converted_to_corporate_booking":
+        return who + " converted " + (m.reference || "an enquiry") + " into a corporate booking" + (m.company_name ? " for " + m.company_name : "");
       case "staff.created":
         return who + " created a staff account for " + (m.full_name || m.email || "someone") + (m.role ? " (" + m.role + ")" : "");
       case "staff.granted":

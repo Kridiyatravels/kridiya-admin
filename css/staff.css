@@ -260,6 +260,8 @@ body { background: var(--bg); }
 .ops-row-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 0.45rem; }
 .ops-kv { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.4rem; }
 .ops-chip { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px; padding: 0.24rem 0.55rem; font-size: 0.72rem; font-weight: 700; color: var(--ink-2); background: var(--surface-tint); }
+.corporate-enquiry-preview { margin: 0.6rem 0 0.75rem; }
+.corporate-convert-panel { border-color: color-mix(in oklab, var(--brand) 36%, var(--line)); background: color-mix(in oklab, var(--brand-soft) 72%, #fff); }
 .permission-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.45rem 0.8rem; margin-top: 0.7rem; }
 .permission-grid label { display: flex; align-items: center; gap: 0.42rem; font-size: 0.78rem; font-weight: 700; color: var(--ink-2); }
 .permission-grid input { width: 16px; height: 16px; }
