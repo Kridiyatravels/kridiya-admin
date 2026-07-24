@@ -4,6 +4,7 @@
   let sb = null;
   let bookingId = null;
   let detail = null;
+  let businessSettings = null;
 
   const BOOKING_STATUS = ["enquiry", "quote_sent", "payment_pending", "confirmed", "paid", "ticketed", "completed", "cancelled", "refunded"];
   const PAYMENT_STATUS = ["not_requested", "request_sent", "proof_received", "partially_paid", "paid", "supplier_payment_pending", "supplier_paid", "refund_pending", "refunded", "failed", "cancelled"];
@@ -57,6 +58,7 @@
       return;
     }
     detail = result.data;
+    if (!businessSettings) await loadBusinessSettings();
     renderAll();
   }
 
@@ -220,10 +222,55 @@
     return '<div class="ops-list payment-history">' + rows.map(function (r) {
       const title = customer ? (r.payment_reference || "Payment") : r.supplier_name;
       const amount = customer ? money(r.amount, r.currency) : money(r.amount_paid, r.currency) + ' / ' + money(r.amount_payable, r.currency);
-      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(title) + '</b><p>' + esc(label(r.status)) + (r.notes ? ' - ' + esc(r.notes) : '') + '</p></div><div class="ops-row-actions"><span class="finance-value">' + esc(amount) + '</span></div></div>';
+      const receiptBtn = customer && (r.status === "received" || r.status === "proof_received")
+        ? '<button class="btn btn-outline js-print-receipt" data-id="' + esc(r.id) + '" type="button">Receipt</button>'
+        : '';
+      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(title) + '</b><p>' + esc(label(r.status)) + (r.notes ? ' - ' + esc(r.notes) : '') + '</p></div><div class="ops-row-actions"><span class="finance-value">' + esc(amount) + '</span>' + receiptBtn + '</div></div>';
     }).join("") + '</div>';
   }
 
+
+  async function loadBusinessSettings() {
+    const result = await sb.from("business_settings").select("*").eq("id", true).maybeSingle();
+    businessSettings = result.data || { legal_name: "KRIDIYA Travel and Tourism FZ-LLC" };
+  }
+
+  function fmtDateTime(v) {
+    if (!v) return new Date().toLocaleString("en-GB");
+    return new Date(v).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
+  }
+
+  function receiptHTML(doc) {
+    const payload = doc.payload || {};
+    const settings = businessSettings || {};
+    const legalName = settings.legal_name || "KRIDIYA Travel and Tourism FZ-LLC";
+    const contact = "Ras Al Khaimah, United Arab Emirates<br>info@kridiyatravel.com &middot; kridiyatravel.com";
+    const trn = settings.vat_registered && settings.trn ? "<br>TRN: " + esc(settings.trn) : "";
+    return "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Receipt " + esc(doc.document_number) + "</title><style>" +
+      "body{font-family:Arial,sans-serif;color:#1a1a1a;margin:0;padding:42px;background:#fff}.head{display:flex;justify-content:space-between;gap:24px;border-bottom:3px solid #c9601c;padding-bottom:18px;margin-bottom:28px}.brand{display:flex;gap:14px}.brand img{width:56px;height:56px;object-fit:contain}.brand b{color:#a3480f;font-size:18px}.brand p{margin:5px 0 0;color:#555;font-size:12px;line-height:1.5}.meta{text-align:right}.label{font-size:12px;font-weight:800;letter-spacing:.08em;color:#a3480f}.num{font-size:22px;font-weight:800;margin-top:5px}.box{border:1px solid #eed6bd;background:#fff8f0;border-radius:10px;padding:18px;margin:18px 0}.kv{display:grid;grid-template-columns:180px 1fr;gap:8px 18px;font-size:14px}.k{color:#777}.v{font-weight:700}.amount{font-size:28px;color:#a3480f;font-weight:800}.foot{margin-top:36px;border-top:1px solid #eee;padding-top:16px;color:#777;font-size:12px;line-height:1.6}@media print{body{padding:.45in}}" +
+      "</style></head><body><div class='head'><div class='brand'><img src='https://kridiyatravel.com/assets/logo.png' alt=''><div><b>" + esc(legalName) + "</b><p>" + contact + trn + "</p></div></div><div class='meta'><div class='label'>Payment Receipt</div><div class='num'>" + esc(doc.document_number) + "</div><p>" + esc(fmtDateTime(doc.created_at)) + "</p></div></div>" +
+      "<div class='box'><div class='kv'><span class='k'>Received from</span><span class='v'>" + esc(doc.customer_name || payload.customer_name || "Customer") + "</span><span class='k'>Booking reference</span><span class='v'>" + esc(payload.booking_reference || "") + "</span><span class='k'>Service</span><span class='v'>" + esc(label(payload.service_type)) + (payload.route_or_destination ? " / " + esc(payload.route_or_destination) : "") + "</span><span class='k'>Payment reference</span><span class='v'>" + esc(payload.payment_reference || "") + "</span><span class='k'>Payment method</span><span class='v'>" + esc(label(payload.payment_method)) + "</span><span class='k'>Received date</span><span class='v'>" + esc(fmtDateTime(payload.received_at)) + "</span></div></div>" +
+      "<div class='box'><div class='label'>Amount received</div><div class='amount'>" + esc(money(doc.amount_total, doc.currency)) + "</div></div>" +
+      (payload.payment_notes ? "<div class='box'><div class='label'>Notes</div><p>" + esc(payload.payment_notes) + "</p></div>" : "") +
+      "<div class='foot'>This receipt confirms payment recorded by KRIDIYA Travel and Tourism. It does not replace airline, hotel, visa authority, or supplier terms. Please keep this document for your records.</div></body></html>";
+  }
+
+  function openReceipt(doc) {
+    const win = window.open("", "_blank");
+    if (!win) { toast("Please allow pop-ups to print the receipt."); return; }
+    win.document.open();
+    win.document.write(receiptHTML(doc));
+    win.document.close();
+    win.focus();
+  }
+
+  async function generateReceipt(paymentId) {
+    const result = await sb.rpc("generate_booking_receipt_document", { p_booking_id: bookingId, p_payment_id: paymentId });
+    if (result.error) { toast("Could not generate receipt: " + result.error.message); return; }
+    toast("Receipt ready: " + result.data.document_number);
+    openReceipt(result.data);
+    await loadDetail();
+  }
   async function recordCustomerPayment() {
     const form = document.getElementById("customer-payment-form");
     const result = await sb.rpc("record_customer_payment", {
@@ -260,8 +307,10 @@
   document.addEventListener("click", function (event) {
     const passengerButton = event.target.closest(".js-delete-passenger");
     const documentButton = event.target.closest(".js-delete-document");
+    const receiptButton = event.target.closest(".js-print-receipt");
     if (passengerButton) deletePassenger(passengerButton.dataset.id);
     if (documentButton) deleteDocument(documentButton.dataset.id);
+    if (receiptButton) generateReceipt(receiptButton.dataset.id);
   });
   document.addEventListener("DOMContentLoaded", boot);
 })();
