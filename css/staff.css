@@ -83,7 +83,7 @@ body { background: var(--bg); }
    panel. The gate containers (#admin-gate etc.) hold both the
    "Checking access..." loading state and this form, so centering them
    also centers that loading message for free. */
-#admin-gate, #doc-gate, #activity-gate, #dashboard-gate, #bookings-gate, #payments-gate, #portals-gate, #staff-gate {
+#admin-gate, #doc-gate, #activity-gate, #dashboard-gate, #bookings-gate, #corporate-gate, #payments-gate, #portals-gate, #staff-gate {
   min-height: 72vh;
   display: flex;
   align-items: center;
@@ -94,7 +94,7 @@ body { background: var(--bg); }
    card it holds) would stay on screen even after sign-in sets
    gate.hidden = true. This restores "hidden means gone". */
 #admin-gate[hidden], #doc-gate[hidden], #activity-gate[hidden],
-#dashboard-gate[hidden], #bookings-gate[hidden], #payments-gate[hidden],
+#dashboard-gate[hidden], #bookings-gate[hidden], #corporate-gate[hidden], #payments-gate[hidden],
 #portals-gate[hidden], #staff-gate[hidden] { display: none; }
 .login-shell {
   width: 100%;
@@ -315,3 +315,9 @@ body { background: var(--bg); }
 .doc-check.is-done { border-color: oklch(0.74 0.12 145); background: oklch(0.96 0.04 145); color: oklch(0.42 0.11 145); }
 .payment-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin: 0 0 0.75rem; }
 @media (max-width: 720px) { .payment-actions .btn { width: 100%; justify-content: center; } }
+.corporate-card { border: 1px solid var(--line); border-radius: var(--staff-radius); background: var(--surface); padding: 0.9rem 1rem; box-shadow: var(--staff-shadow-sm); }
+.corporate-card summary { display: flex; align-items: center; justify-content: space-between; gap: 1rem; cursor: pointer; list-style: none; }
+.corporate-card summary::-webkit-details-marker { display: none; }
+.corporate-card-body { border-top: 1px solid var(--line); margin-top: 0.85rem; padding-top: 0.85rem; }
+.compact-row { padding: 0.55rem 0; }
+.corporate-card h3 { margin: 0 0 0.55rem; font-size: 0.95rem; }

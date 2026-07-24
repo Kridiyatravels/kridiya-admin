@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Great+Vibes&family=Playfair+Display:ital,wght@1,700;1,800&display=swap" rel="stylesheet">
+<link rel="icon" href="https://kridiyatravel.com/assets/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="https://kridiyatravel.com/assets/favicon-180.png">
+<link rel="stylesheet" href="https://kridiyatravel.com/css/styles.css">
+<link rel="stylesheet" href="css/staff.css"><title>Corporate Accounts - Kridiya Staff Tools</title>
+</head>
+<body data-page="corporate">
+<header id="site-header" class="site-header"></header>
+<main><section class="section"><div class="container">
+  <div id="corporate-gate"><div class="account-main empty-state"><p>Checking access...</p></div></div>
+  <div id="corporate-app" hidden>
+    <div class="account-head"><div><h1>Corporate Accounts</h1><p>Company clients, billing contacts, payment terms, LPO rules, and corporate booking readiness.</p></div><button type="button" class="btn btn-primary" id="corporate-new-toggle">Add company</button></div>
+    <div class="stat-row" id="corporate-stats"></div>
+    <div class="account-main" id="corporate-form-card" hidden>
+      <div class="account-section-head"><div><h2>Create company</h2><p>Keep every corporate client separate from individual customers.</p></div></div>
+      <form id="corporate-form" class="form-grid" onsubmit="return false">
+        <div class="field-row">
+          <div class="field col-6"><label>COMPANY NAME</label><input name="company_name" required></div>
+          <div class="field col-3"><label>STATUS</label><select name="status"><option value="prospect">Prospect</option><option value="active">Active</option><option value="on_hold">On hold</option><option value="inactive">Inactive</option></select></div>
+          <div class="field col-3"><label>PAYMENT TERMS</label><select name="payment_terms"><option value="payment_before_booking">Payment before booking</option><option value="credit_approved">Credit approved</option><option value="monthly_billing">Monthly billing</option></select></div>
+          <div class="field col-4"><label>BILLING EMAIL</label><input name="billing_email" type="email"></div>
+          <div class="field col-4"><label>ACCOUNTS EMAIL</label><input name="accounts_email" type="email"></div>
+          <div class="field col-4"><label>PHONE</label><input name="phone"></div>
+          <div class="field col-4"><label>TRADE LICENCE NO.</label><input name="trade_license_no"></div>
+          <div class="field col-4"><label>TRN</label><input name="trn"></div>
+          <div class="field col-4"><label>ADDRESS</label><input name="address"></div>
+          <div class="field col-4"><label>CREDIT ALLOWED?</label><select name="credit_allowed"><option value="false">No</option><option value="true">Yes</option></select></div>
+          <div class="field col-4"><label>MONTHLY BILLING?</label><select name="monthly_billing"><option value="false">No</option><option value="true">Yes</option></select></div>
+          <div class="field col-4"><label>LPO REQUIRED?</label><select name="lpo_required"><option value="false">No</option><option value="true">Yes</option></select></div>
+          <div class="field col-12"><label>NOTES</label><textarea name="notes"></textarea></div>
+        </div>
+        <button type="submit" class="btn btn-primary">Save company</button>
+      </form>
+    </div>
+    <div class="account-main"><div class="account-section-head"><div><h2>Company list</h2><p>Open a company row to add contacts and see account controls.</p></div><span class="form-note" id="corporate-count"></span></div><div id="corporate-list"></div></div>
+  </div>
+</div></section></main>
+<footer id="site-footer" class="site-footer"></footer>
+<script src="https://kridiyatravel.com/js/auth.js" defer></script>
+<script src="js/staff-common.js" defer></script>
+<script src="js/corporate.js" defer></script>
+</body></html>

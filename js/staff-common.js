@@ -1,15 +1,15 @@
 /* ============================================================
-   Kridiya Travel — staff site shared chrome
-   admin.kridiyatravel.com only. Auth *logic* (js/auth.js — the
+   Kridiya Travel - staff site shared chrome
+   admin.kridiyatravel.com only. Auth *logic* (js/auth.js - the
    Supabase client, KridiyaAuth.login/currentUser/etc.) is loaded from
    the main site so there is one source of truth for password handling
    and account data. The *session* is NOT shared with kridiyatravel.com
-   though — this site has its own independent sign-in, deliberately, so
+   though - this site has its own independent sign-in, deliberately, so
    being logged into one never implies being logged into the other.
    ============================================================ */
 "use strict";
 
-/* Public values (not secrets) — same ones baked into the main site's
+/* Public values (not secrets) - same ones baked into the main site's
    js/auth.js. Needed here only to call the staff-pin-login Edge
    Function directly by URL, which isn't reachable through the
    supabase-js client the way a normal RPC call is. */
@@ -63,6 +63,7 @@ function renderStaffChrome() {
           '<a href="dashboard.html"' + (page === "dashboard" ? ' aria-current="page"' : "") + '>Dashboard</a>' +
           '<a href="admin.html"' + (page === "admin" ? ' aria-current="page"' : "") + '>Enquiries</a>' +
           '<a href="bookings.html"' + (page === "bookings" ? ' aria-current="page"' : "") + '>Bookings</a>' +
+          '<a href="corporate.html"' + (page === "corporate" ? ' aria-current="page"' : "") + '>Corporate</a>' +
           '<a href="payments.html"' + (page === "payments" ? ' aria-current="page"' : "") + '>Payments</a>' +
           '<a href="documents.html"' + (page === "documents" ? ' aria-current="page"' : "") + '>Documents</a>' +
           '<a href="portals.html"' + (page === "portals" ? ' aria-current="page"' : "") + '>Portals</a>' +
@@ -70,7 +71,7 @@ function renderStaffChrome() {
           '<a href="activity.html"' + (page === "activity" ? ' aria-current="page"' : "") + '>Activity</a>' +
         '</nav>' +
         '<div class="staff-actions">' +
-          '<a class="btn btn-outline" href="https://kridiyatravel.com" target="_blank" rel="noopener">Main site ↗</a>' +
+          '<a class="btn btn-outline" href="https://kridiyatravel.com" target="_blank" rel="noopener">Main site</a>' +
           '<button type="button" class="btn btn-outline" id="staff-logout">' + icon("logout") + " Log out</button>" +
         "</div>" +
       "</div></div>";
@@ -91,7 +92,7 @@ function renderStaffChrome() {
   }
   const footer = document.getElementById("site-footer");
   if (footer) {
-    footer.innerHTML = '<div class="container staff-footer-inner">Kridiya Travel and Tourism FZ-LLC &mdash; internal staff tools, not for public access.</div>';
+    footer.innerHTML = '<div class="container staff-footer-inner">Kridiya Travel and Tourism FZ-LLC - internal staff tools, not for public access.</div>';
   }
 }
 
@@ -110,7 +111,7 @@ function statusStyle(status) {
   return "color:" + m.color + ";background:" + m.bg;
 }
 
-/* Best-effort activity log write — never blocks the real action if it
+/* Best-effort activity log write - never blocks the real action if it
    fails (e.g. RLS denies it for a non-staff caller mid-session). */
 async function logActivity(sb, actorId, eventType, entityType, entityId, metadata) {
   try {
@@ -127,7 +128,7 @@ async function logActivity(sb, actorId, eventType, entityType, entityId, metadat
 /* Renders a tabbed sign-in form into `gateEl` and calls `onSuccess()`
    once a session is established. Two independent paths, both landing
    in the same KridiyaAuth session either way:
-   - Staff: pick your name, enter your PIN — goes through the
+   - Staff: pick your name, enter your PIN - goes through the
      staff-pin-login Edge Function, which resolves the real email
      server-side (the browser never sees it) and returns session
      tokens to adopt.
@@ -164,7 +165,7 @@ function renderLoginForm(gateEl, onSuccess) {
         "</form>" +
       "</div>" +
       '<div id="login-tab-admin" class="login-tab-panel" hidden>' +
-        '<p class="form-note">Email and password — owners/admins only.</p>' +
+        '<p class="form-note">Email and password - owners/admins only.</p>' +
         '<form id="admin-login-form" class="form-grid" novalidate>' +
           '<div class="form-banner error" hidden role="alert"></div>' +
           '<div class="field"><label>EMAIL</label><input name="email" type="email" required autocomplete="username"></div>' +
@@ -228,7 +229,7 @@ function renderLoginForm(gateEl, onSuccess) {
     }
     const btn = pinForm.querySelector('button[type="submit"]');
     btn.disabled = true;
-    btn.textContent = "Signing in…";
+    btn.textContent = "Signing in...";
     try {
       const resp = await fetch(SUPABASE_URL + "/functions/v1/staff-pin-login", {
         method: "POST",
@@ -265,7 +266,7 @@ function renderLoginForm(gateEl, onSuccess) {
     banner.hidden = true;
     const btn = adminForm.querySelector('button[type="submit"]');
     btn.disabled = true;
-    btn.textContent = "Signing in…";
+    btn.textContent = "Signing in...";
     try {
       const user = await KridiyaAuth.login(adminForm.email.value, adminForm.password.value);
       const sb = await KridiyaAuth.client();
