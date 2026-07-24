@@ -202,8 +202,9 @@
 
   function renderCustomerPayments() {
     const rows = detail.payments || [];
+    const request = detail.can_edit_payments ? '<div class="payment-actions"><button class="btn btn-outline js-payment-request" type="button">Generate payment request</button></div>' : '';
     const form = detail.can_edit_payments ? '<form id="customer-payment-form" class="form-grid payment-mini-form" onsubmit="return false"><div class="field-row"><div class="field col-4"><label>AMOUNT</label><input name="amount" type="number" min="0" step="0.01" required></div><div class="field col-4"><label>METHOD</label><select name="method"><option value="bank_transfer">Bank transfer</option><option value="cash">Cash</option><option value="stripe">Stripe</option><option value="tabby">Tabby</option><option value="tamara">Tamara</option><option value="paypal">PayPal</option><option value="other">Other</option></select></div><div class="field col-4"><label>STATUS</label><select name="status"><option value="received">Received</option><option value="proof_received">Proof received</option><option value="pending">Pending</option></select></div><div class="field col-12"><label>NOTES</label><input name="notes" placeholder="Bank ref, payment link, receipt note"></div></div><button class="btn btn-primary" type="submit">Record customer payment</button></form>' : '<p class="form-note">Finance permission required to record payments.</p>';
-    document.getElementById("customer-payment-panel").innerHTML = form + renderPaymentRows(rows, true);
+    document.getElementById("customer-payment-panel").innerHTML = request + form + renderPaymentRows(rows, true);
     const f = document.getElementById("customer-payment-form");
     if (f) f.addEventListener("submit", recordCustomerPayment);
   }
@@ -240,6 +241,43 @@
     return new Date(v).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
   }
 
+  function paymentRequestHTML(doc) {
+    const payload = doc.payload || {};
+    const settings = businessSettings || {};
+    const legalName = settings.legal_name || "KRIDIYA Travel and Tourism FZ-LLC";
+    const bank = settings.bank_iban || settings.bank_name ? "<div class='box'><div class='label'>Bank transfer details</div><div class='kv'>" +
+      (settings.bank_account_name ? "<span class='k'>Account name</span><span class='v'>" + esc(settings.bank_account_name) + "</span>" : "") +
+      (settings.bank_name ? "<span class='k'>Bank</span><span class='v'>" + esc(settings.bank_name) + "</span>" : "") +
+      (settings.bank_iban ? "<span class='k'>IBAN</span><span class='v'>" + esc(settings.bank_iban) + "</span>" : "") +
+      (settings.bank_swift ? "<span class='k'>SWIFT/BIC</span><span class='v'>" + esc(settings.bank_swift) + "</span>" : "") +
+      "</div></div>" : "";
+    return "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Payment Request " + esc(doc.document_number) + "</title><style>" +
+      "body{font-family:Arial,sans-serif;color:#1a1a1a;margin:0;padding:42px;background:#fff}.head{display:flex;justify-content:space-between;gap:24px;border-bottom:3px solid #c9601c;padding-bottom:18px;margin-bottom:28px}.brand{display:flex;gap:14px}.brand img{width:56px;height:56px;object-fit:contain}.brand b{color:#a3480f;font-size:18px}.brand p{margin:5px 0 0;color:#555;font-size:12px;line-height:1.5}.meta{text-align:right}.label{font-size:12px;font-weight:800;letter-spacing:.08em;color:#a3480f;text-transform:uppercase}.num{font-size:22px;font-weight:800;margin-top:5px}.box{border:1px solid #eed6bd;background:#fff8f0;border-radius:10px;padding:18px;margin:18px 0}.kv{display:grid;grid-template-columns:180px 1fr;gap:8px 18px;font-size:14px}.k{color:#777}.v{font-weight:700}.amount{font-size:30px;color:#a3480f;font-weight:800}.foot{margin-top:36px;border-top:1px solid #eee;padding-top:16px;color:#777;font-size:12px;line-height:1.6}@media print{body{padding:.45in}}" +
+      "</style></head><body><div class='head'><div class='brand'><img src='https://kridiyatravel.com/assets/logo.png' alt=''><div><b>" + esc(legalName) + "</b><p>Ras Al Khaimah, United Arab Emirates<br>info@kridiyatravel.com &middot; kridiyatravel.com</p></div></div><div class='meta'><div class='label'>Payment Request</div><div class='num'>" + esc(doc.document_number) + "</div><p>" + esc(fmtDateTime(doc.created_at)) + "</p></div></div>" +
+      "<div class='box'><div class='kv'><span class='k'>Customer</span><span class='v'>" + esc(doc.customer_name || payload.customer_name || "Customer") + "</span><span class='k'>Booking reference</span><span class='v'>" + esc(payload.booking_reference || "") + "</span><span class='k'>Booking</span><span class='v'>" + esc(payload.booking_title || "") + "</span><span class='k'>Service</span><span class='v'>" + esc(label(payload.service_type)) + (payload.route_or_destination ? " / " + esc(payload.route_or_destination) : "") + "</span></div></div>" +
+      "<div class='box'><div class='label'>Amount due now</div><div class='amount'>" + esc(money(doc.amount_total, doc.currency)) + "</div></div>" +
+      "<div class='box'><div class='kv'><span class='k'>Total booking value</span><span class='v'>" + esc(money(payload.total_amount, doc.currency)) + "</span><span class='k'>Received so far</span><span class='v'>" + esc(money(payload.received_amount, doc.currency)) + "</span><span class='k'>Balance due</span><span class='v'>" + esc(money(payload.amount_due, doc.currency)) + "</span></div></div>" +
+      bank +
+      (payload.notes ? "<div class='box'><div class='label'>Notes</div><p>" + esc(payload.notes) + "</p></div>" : "") +
+      "<div class='foot'>Please confirm payment before ticketing/visa processing. Supplier, airline, hotel, visa authority, refund, cancellation, and fare-change rules may apply until payment and booking confirmation are completed.</div></body></html>";
+  }
+
+  function openPaymentRequest(doc) {
+    const win = window.open("", "_blank");
+    if (!win) { toast("Please allow pop-ups to print the payment request."); return; }
+    win.document.open();
+    win.document.write(paymentRequestHTML(doc));
+    win.document.close();
+    win.focus();
+  }
+
+  async function generatePaymentRequest() {
+    const result = await sb.rpc("generate_booking_payment_request_document", { p_booking_id: bookingId, p_amount_requested: null, p_notes: null });
+    if (result.error) { toast("Could not generate payment request: " + result.error.message); return; }
+    toast("Payment request ready: " + result.data.document_number);
+    openPaymentRequest(result.data);
+    await loadDetail();
+  }
   function receiptHTML(doc) {
     const payload = doc.payload || {};
     const settings = businessSettings || {};
@@ -308,9 +346,11 @@
     const passengerButton = event.target.closest(".js-delete-passenger");
     const documentButton = event.target.closest(".js-delete-document");
     const receiptButton = event.target.closest(".js-print-receipt");
+    const requestButton = event.target.closest(".js-payment-request");
     if (passengerButton) deletePassenger(passengerButton.dataset.id);
     if (documentButton) deleteDocument(documentButton.dataset.id);
     if (receiptButton) generateReceipt(receiptButton.dataset.id);
+    if (requestButton) generatePaymentRequest();
   });
   document.addEventListener("DOMContentLoaded", boot);
 })();
