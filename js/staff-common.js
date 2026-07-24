@@ -69,6 +69,7 @@ function renderStaffChrome() {
           '<a href="portals.html"' + (page === "portals" ? ' aria-current="page"' : "") + '>Portals</a>' +
           '<a href="staff.html"' + (page === "staff" ? ' aria-current="page"' : "") + '>Staff</a>' +
           '<a href="activity.html"' + (page === "activity" ? ' aria-current="page"' : "") + '>Activity</a>' +
+          '<a href="backups.html"' + (page === "backups" ? ' aria-current="page"' : "") + '>Backups</a>' +
         '</nav>' +
         '<div class="staff-actions">' +
           '<a class="btn btn-outline" href="https://kridiyatravel.com" target="_blank" rel="noopener">Main site</a>' +
@@ -287,5 +288,6 @@ function showStaffNav() {
 }
 
 document.addEventListener("DOMContentLoaded", renderStaffChrome);
+
 
 
