@@ -31,7 +31,7 @@
     document.getElementById("payments-stats").innerHTML = '<div class="stat-tile"><div class="num">' + rows.length + '</div><div class="label">Payment records</div></div><div class="stat-tile"><div class="num">' + money(total, "AED") + '</div><div class="label">Received total</div></div><div class="stat-tile"><div class="num">' + rows.filter(function (r) { return r.status === "pending"; }).length + '</div><div class="label">Pending</div></div><div class="stat-tile"><div class="num">' + rows.filter(function (r) { return r.status === "proof_received"; }).length + '</div><div class="label">Proof received</div></div>';
     document.getElementById("payments-count").textContent = rows.length + " payment(s)";
     document.getElementById("payments-list").innerHTML = rows.length ? '<div class="ops-list">' + rows.map(function (p) {
-      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(p.payment_reference || "Payment") + '</b><p>' + esc(label(p.method)) + ' - ' + esc(label(p.status)) + '</p></div><div class="ops-row-actions"><span class="finance-value">' + esc(money(p.amount, p.currency)) + '</span></div></div>';
+      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(p.payment_reference || "Payment") + '</b><p>' + esc(label(p.method)) + ' - ' + esc(label(p.status)) + '</p>' + (p.has_proof ? '<div class="ops-kv"><span class="ops-chip">Proof attached</span></div>' : '') + '</div><div class="ops-row-actions"><span class="finance-value">' + esc(money(p.amount, p.currency)) + '</span></div></div>';
     }).join("") + '</div>' : '<p class="form-note">No payment records yet. Payments can be connected to bookings as bookings start.</p>';
   }
   document.addEventListener("DOMContentLoaded", boot);

@@ -362,6 +362,30 @@
     window.open(result.data.signedUrl, "_blank", "noopener");
   }
 
+  async function uploadPaymentProof(paymentId, file) {
+    if (!file) return;
+    const path = bookingId + "/" + paymentId + "-" + Date.now() + "-" + safeFileName(file.name);
+    const upload = await sb.storage.from("booking-payment-proofs").upload(path, file, { upsert: false });
+    if (upload.error) { toast("Could not upload proof: " + upload.error.message); return; }
+    const result = await sb.rpc("attach_payment_proof", { p_payment_id: paymentId, p_storage_path: upload.data.path });
+    if (result.error) {
+      await sb.storage.from("booking-payment-proofs").remove([upload.data.path]);
+      toast("Could not attach proof: " + result.error.message);
+      return;
+    }
+    toast("Payment proof uploaded.");
+    await loadDetail();
+  }
+
+  async function viewPaymentProof(path) {
+    const result = await sb.storage.from("booking-payment-proofs").createSignedUrl(path, 180);
+    if (result.error || !result.data) {
+      toast("Could not open proof: " + (result.error ? result.error.message : "unknown error"));
+      return;
+    }
+    window.open(result.data.signedUrl, "_blank", "noopener");
+  }
+
   async function deleteDocument(id, path) {
     const result = await sb.rpc("delete_booking_document", { p_document_id: id });
     if (result.error) { toast("Could not remove document: " + result.error.message); return; }
@@ -403,7 +427,12 @@
         ? '<button class="btn btn-outline js-print-receipt" data-id="' + esc(r.id) + '" type="button">Receipt</button>'
         : '';
       const ref = customer && r.payment_link ? '<span class="ops-chip">Ref/link saved</span>' : '';
-      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(title) + '</b><p>' + esc(label(r.status)) + (r.notes ? ' - ' + esc(r.notes) : '') + '</p><div class="ops-kv">' + ref + (customer && r.status === "proof_received" ? '<span class="ops-chip">Proof only - no receipt yet</span>' : '') + '</div></div><div class="ops-row-actions"><span class="finance-value">' + esc(amount) + '</span>' + receiptBtn + '</div></div>';
+      const proofChip = customer && r.proof_storage_path ? '<span class="ops-chip">Proof attached</span>' : '';
+      const proofActions = customer
+        ? (r.proof_storage_path ? '<button class="btn btn-outline js-view-proof" data-path="' + esc(r.proof_storage_path) + '" type="button">View proof</button>' : '')
+          + (detail.can_edit_payments ? '<label class="btn btn-outline proof-upload-label">' + (r.proof_storage_path ? 'Replace proof' : 'Upload proof') + '<input type="file" class="js-proof-file" data-id="' + esc(r.id) + '" accept="image/*,application/pdf" hidden></label>' : '')
+        : '';
+      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(title) + '</b><p>' + esc(label(r.status)) + (r.notes ? ' - ' + esc(r.notes) : '') + '</p><div class="ops-kv">' + ref + proofChip + (customer && r.status === "proof_received" ? '<span class="ops-chip">Proof only - no receipt yet</span>' : '') + '</div></div><div class="ops-row-actions"><span class="finance-value">' + esc(amount) + '</span>' + receiptBtn + proofActions + '</div></div>';
     }).join("") + '</div>';
   }
 
@@ -530,12 +559,21 @@
     const receiptButton = event.target.closest(".js-print-receipt");
     const viewDocumentButton = event.target.closest(".js-view-booking-document");
     const requestButton = event.target.closest(".js-payment-request");
+    const viewProofButton = event.target.closest(".js-view-proof");
     if (taskButton) completeBookingTask(taskButton.dataset.id);
     if (passengerButton) deletePassenger(passengerButton.dataset.id);
     if (documentButton) deleteDocument(documentButton.dataset.id, documentButton.dataset.path);
     if (receiptButton) generateReceipt(receiptButton.dataset.id);
     if (viewDocumentButton) viewBookingDocument(viewDocumentButton.dataset.path);
     if (requestButton) generatePaymentRequest();
+    if (viewProofButton) viewPaymentProof(viewProofButton.dataset.path);
+  });
+  document.addEventListener("change", function (event) {
+    const proofInput = event.target.closest(".js-proof-file");
+    if (proofInput && proofInput.files && proofInput.files.length) {
+      uploadPaymentProof(proofInput.dataset.id, proofInput.files[0]);
+      proofInput.value = "";
+    }
   });
   document.addEventListener("DOMContentLoaded", boot);
 })();
