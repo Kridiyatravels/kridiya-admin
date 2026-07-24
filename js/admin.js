@@ -127,11 +127,17 @@
     list.forEach(function (q, i) {
       out.push("");
       out.push("*" + (q.title || ("Option " + (i + 1))) + "*");
-      if (q.airline) out.push("Airline: " + q.airline + (q.stops ? " (" + q.stops + ")" : ""));
-      else if (q.stops) out.push("Type: " + q.stops);
-      if (q.outbound) out.push("Onward: " + q.outbound);
-      if (q.inbound) out.push("Return: " + q.inbound);
-      if (q.baggage) out.push("Baggage: " + q.baggage);
+      const od = (q.option_data && typeof q.option_data === "object") ? q.option_data : {};
+      const odKeys = Object.keys(od);
+      if (odKeys.length) {
+        odKeys.forEach(function (k) { if (od[k]) out.push(k + ": " + od[k]); });
+      } else {
+        if (q.airline) out.push("Airline: " + q.airline + (q.stops ? " (" + q.stops + ")" : ""));
+        else if (q.stops) out.push("Type: " + q.stops);
+        if (q.outbound) out.push("Onward: " + q.outbound);
+        if (q.inbound) out.push("Return: " + q.inbound);
+        if (q.baggage) out.push("Baggage: " + q.baggage);
+      }
       out.push("Fare: " + fmtMoney(q.price_amount, q.currency) + " per person");
       const adds = Array.isArray(q.addons) ? q.addons : [];
       if (adds.length) {
@@ -148,6 +154,59 @@
     out.push("");
     out.push("To confirm, please reply and complete payment. Payment is required before booking. 🙏");
     return out.join("\n");
+  }
+
+  /* Service-specific fields for the quote form. Active services now:
+     flight (default) and visa. Others fall back to flight for now. */
+  function quoteServiceFields(enq) {
+    if ((enq.service_type || "") === "visa") {
+      return "" +
+        '<input class="qf qf-wide" name="v_country" type="text" placeholder="Country — e.g. United Arab Emirates">' +
+        '<input class="qf" name="v_type" type="text" placeholder="Visa type — e.g. Tourist 30 days">' +
+        '<select class="qf" name="v_entries"><option value="">Entries…</option><option value="Single entry">Single entry</option><option value="Multiple entry">Multiple entry</option></select>' +
+        '<input class="qf" name="v_validity" type="text" placeholder="Validity — e.g. 60 days">' +
+        '<input class="qf" name="v_processing" type="text" placeholder="Processing — e.g. 3–4 working days">';
+    }
+    return "" +
+      '<input class="qf" name="airline" type="text" placeholder="Airline — e.g. Air Arabia">' +
+      '<select class="qf" name="stops"><option value="">Stops…</option><option value="Direct">Direct</option><option value="1 stop">1 stop</option><option value="2 stops">2 stops</option></select>' +
+      '<span class="ac-wrap qf-wide"><input class="qf" name="from" type="text" placeholder="From — type city or airport (e.g. Dubai)" data-airport></span>' +
+      '<span class="ac-wrap qf-wide"><input class="qf" name="to" type="text" placeholder="To — type city or airport (e.g. Colombo)" data-airport></span>' +
+      '<input class="qf" name="depart_date" type="date">' +
+      '<input class="qf" name="return_date" type="date">' +
+      '<input class="qf" name="depart_time" type="text" placeholder="Onward time (optional)">' +
+      '<input class="qf" name="return_time" type="text" placeholder="Return time (optional)">' +
+      '<input class="qf qf-wide" name="baggage" type="text" placeholder="Baggage — e.g. 30kg + 7kg cabin">';
+  }
+
+  /* Reads the service-specific inputs into a flat {label: value} object
+     stored on the quote as option_data. */
+  function gatherOptionData(form) {
+    const st = form.dataset.service || "";
+    const d = {};
+    function put(k, v) { const t = String(v == null ? "" : v).trim(); if (t) d[k] = t; }
+    if (st === "visa") {
+      put("Country", form.v_country.value);
+      put("Visa type", form.v_type.value);
+      put("Entries", form.v_entries.value);
+      put("Validity", form.v_validity.value);
+      put("Processing", form.v_processing.value);
+      return d;
+    }
+    const airline = form.airline.value.trim();
+    const stops = form.stops.value;
+    if (airline) d["Airline"] = airline + (stops ? " (" + stops + ")" : "");
+    else if (stops) d["Type"] = stops;
+    const fromA = resolveAirport(form.from), toA = resolveAirport(form.to);
+    const routeFwd = (fromA && toA) ? fromA.city + " (" + fromA.iata + ") → " + toA.city + " (" + toA.iata + ")" : [form.from.value.trim(), form.to.value.trim()].filter(Boolean).join(" → ");
+    const routeRev = (fromA && toA) ? toA.city + " (" + toA.iata + ") → " + fromA.city + " (" + fromA.iata + ")" : [form.to.value.trim(), form.from.value.trim()].filter(Boolean).join(" → ");
+    const dTime = form.depart_time.value.trim(), rTime = form.return_time.value.trim();
+    const onward = [routeFwd, fmtQuoteDate(form.depart_date.value), dTime].filter(Boolean).join(" · ");
+    const ret = (form.return_date.value || rTime) ? [routeRev, fmtQuoteDate(form.return_date.value), rTime].filter(Boolean).join(" · ") : "";
+    if (onward) d["Onward"] = onward;
+    if (ret) d["Return"] = ret;
+    put("Baggage", form.baggage.value);
+    return d;
   }
 
   function matchesFilters(enq) {
@@ -277,37 +336,33 @@
               (quotes.length
                 ? quotes.slice().reverse().map(function (q, i) {
                     const adds = Array.isArray(q.addons) ? q.addons : [];
-                    return '<div class="admin-note quote-option">' +
-                      '<p><b>' + KridiyaAuth.escapeHTML(q.title || ("Option " + (i + 1))) + "</b> — " + fmtMoney(q.price_amount, q.currency) + '/person <span class="admin-badge">' + KridiyaAuth.statusLabel(q.status) + "</span></p>" +
-                      ((q.airline || q.stops) ? '<p class="quote-line">' + KridiyaAuth.escapeHTML([q.airline, q.stops].filter(Boolean).join(" · ")) + "</p>" : "") +
+                    const od = (q.option_data && typeof q.option_data === "object") ? q.option_data : {};
+                    const odLines = Object.keys(od).map(function (k) { return od[k] ? '<p class="quote-line">' + KridiyaAuth.escapeHTML(k) + ": " + KridiyaAuth.escapeHTML(String(od[k])) + "</p>" : ""; }).join("");
+                    const legacy = ((q.airline || q.stops) ? '<p class="quote-line">' + KridiyaAuth.escapeHTML([q.airline, q.stops].filter(Boolean).join(" · ")) + "</p>" : "") +
                       (q.outbound ? '<p class="quote-line">Onward: ' + KridiyaAuth.escapeHTML(q.outbound) + "</p>" : "") +
                       (q.inbound ? '<p class="quote-line">Return: ' + KridiyaAuth.escapeHTML(q.inbound) + "</p>" : "") +
-                      (q.baggage ? '<p class="quote-line">Baggage: ' + KridiyaAuth.escapeHTML(q.baggage) + "</p>" : "") +
+                      (q.baggage ? '<p class="quote-line">Baggage: ' + KridiyaAuth.escapeHTML(q.baggage) + "</p>" : "");
+                    return '<div class="admin-note quote-option">' +
+                      '<p class="quote-option-head"><b>' + KridiyaAuth.escapeHTML(q.title || ("Option " + (i + 1))) + "</b> — " + fmtMoney(q.price_amount, q.currency) + '/person <span class="admin-badge">' + KridiyaAuth.statusLabel(q.status) + "</span>" +
+                        '<button type="button" class="quote-remove js-remove-quote" data-id="' + q.id + '" data-enq="' + enq.id + '" title="Remove this option" aria-label="Remove option">×</button></p>' +
+                      (odLines || legacy) +
                       (adds.length ? '<div class="ops-kv">' + adds.map(function (a) { return '<span class="ops-chip">+ ' + KridiyaAuth.escapeHTML(a.name) + (a.price != null ? " " + fmtMoney(a.price, q.currency) : "") + "</span>"; }).join("") + "</div>" : "") +
                       (q.valid_until ? '<p class="form-note" style="margin:0.2rem 0 0">Valid until ' + fmtWhen(q.valid_until) + "</p>" : "") +
                       "</div>";
                   }).join("")
-                : '<p class="form-note">No options added yet. Build the quote below — add one option at a time.</p>') +
+                : '<p class="form-note">No options added yet. Build an option below and click “+ Add option”. Add as many as you like, then Copy for WhatsApp.</p>') +
             "</div>" +
-            '<form class="admin-quote-form pro-quote-form" data-id="' + enq.id + '">' +
+            '<form class="admin-quote-form pro-quote-form" data-id="' + enq.id + '" data-service="' + KridiyaAuth.escapeHTML(enq.service_type || "") + '">' +
               '<div class="qf-grid">' +
                 '<input class="qf qf-wide" name="title" type="text" placeholder="Option label — e.g. Option 1: Air Arabia" required>' +
-                '<input class="qf" name="airline" type="text" placeholder="Airline — e.g. Air Arabia">' +
-                '<select class="qf" name="stops"><option value="">Stops…</option><option value="Direct">Direct</option><option value="1 stop">1 stop</option><option value="2 stops">2 stops</option></select>' +
-                '<span class="ac-wrap qf-wide"><input class="qf" name="from" type="text" placeholder="From — type city or airport (e.g. Dubai)" data-airport></span>' +
-                '<span class="ac-wrap qf-wide"><input class="qf" name="to" type="text" placeholder="To — type city or airport (e.g. Colombo)" data-airport></span>' +
-                '<input class="qf" name="depart_date" type="date">' +
-                '<input class="qf" name="return_date" type="date">' +
-                '<input class="qf" name="depart_time" type="text" placeholder="Onward flight time (optional) — e.g. 09:15 → 15:20">' +
-                '<input class="qf" name="return_time" type="text" placeholder="Return flight time (optional) — e.g. 03:10 → 06:00">' +
-                '<input class="qf qf-wide" name="baggage" type="text" placeholder="Baggage — e.g. 30kg + 7kg cabin">' +
-                '<input class="qf" name="price_amount" type="number" min="0" step="0.01" placeholder="Fare / person" required>' +
+                quoteServiceFields(enq) +
+                '<input class="qf" name="price_amount" type="number" min="0" step="0.01" placeholder="' + ((enq.service_type === "visa") ? "Price / applicant" : "Fare / person") + '" required>' +
                 '<input class="qf" name="currency" type="text" value="AED" maxlength="3">' +
-                '<input class="qf" name="valid_until" type="datetime-local">' +
+                '<input class="qf qf-wide" name="valid_until" type="datetime-local" title="Quote valid until">' +
               "</div>" +
               '<textarea class="qf qf-area" name="addons" placeholder="Add-ons (optional) — one per line, e.g.  Extra 10kg = 120"></textarea>' +
               '<textarea class="qf qf-area" name="terms">' + KridiyaAuth.escapeHTML(DEFAULT_QUOTE_TERMS) + "</textarea>" +
-              '<button class="btn btn-primary" type="submit">Add this option</button>' +
+              '<button class="btn btn-primary" type="submit">+ Add option</button>' +
             "</form>" +
           "</div>" +
           (booking ? "" : convertPanel(enq)) +
@@ -602,6 +657,21 @@
         }
         return;
       }
+      const removeQuoteBtn = e.target.closest(".js-remove-quote");
+      if (removeQuoteBtn) {
+        if (!confirm("Remove this option from the quote?")) return;
+        const qid = removeQuoteBtn.dataset.id;
+        const eqid = removeQuoteBtn.dataset.enq;
+        removeQuoteBtn.disabled = true;
+        const del = await sb.from("quotes").delete().eq("id", qid);
+        if (del.error) { removeQuoteBtn.disabled = false; toast("Could not remove option: " + del.error.message); return; }
+        if (quotesByEnquiry[eqid]) quotesByEnquiry[eqid] = quotesByEnquiry[eqid].filter(function (q) { return q.id !== qid; });
+        renderList();
+        const panel = listEl.querySelector('.admin-notes[data-quotes-for="' + eqid + '"]');
+        if (panel) panel.hidden = false;
+        toast("Option removed.");
+        return;
+      }
       const convertBtn = e.target.closest(".convert-toggle");
       if (convertBtn) {
         const panel = listEl.querySelector('.admin-notes[data-convert-for="' + convertBtn.dataset.id + '"]');
@@ -695,20 +765,7 @@
       const currency = (form.currency.value || "AED").trim().toUpperCase();
       const validUntil = form.valid_until.value ? new Date(form.valid_until.value).toISOString() : null;
       const terms = form.terms.value.trim();
-      const fromA = resolveAirport(form.from);
-      const toA = resolveAirport(form.to);
-      const routeFwd = (fromA && toA)
-        ? fromA.city + " (" + fromA.iata + ") → " + toA.city + " (" + toA.iata + ")"
-        : [form.from.value.trim(), form.to.value.trim()].filter(Boolean).join(" → ");
-      const routeRev = (fromA && toA)
-        ? toA.city + " (" + toA.iata + ") → " + fromA.city + " (" + fromA.iata + ")"
-        : [form.to.value.trim(), form.from.value.trim()].filter(Boolean).join(" → ");
-      const dTime = form.depart_time.value.trim();
-      const rTime = form.return_time.value.trim();
-      const outboundStr = [routeFwd, fmtQuoteDate(form.depart_date.value), dTime].filter(Boolean).join(" · ") || null;
-      const inboundStr = (form.return_date.value || rTime)
-        ? ([routeRev, fmtQuoteDate(form.return_date.value), rTime].filter(Boolean).join(" · ") || null)
-        : null;
+      const optionData = gatherOptionData(form);
       const btn = form.querySelector('button[type="submit"]');
       btn.disabled = true;
       const result = await sb
@@ -716,11 +773,7 @@
         .insert({
           enquiry_id: id,
           title: title,
-          airline: form.airline.value.trim() || null,
-          stops: form.stops.value || null,
-          outbound: outboundStr,
-          inbound: inboundStr,
-          baggage: form.baggage.value.trim() || null,
+          option_data: optionData,
           addons: parseAddons(form.addons ? form.addons.value : ""),
           price_amount: price,
           currency: currency,

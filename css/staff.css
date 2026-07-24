@@ -387,6 +387,13 @@ body { background: var(--bg); }
 .quote-actions-bar { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; margin-bottom: 0.9rem; }
 .quote-option { border-left: 3px solid var(--brand); }
 .quote-line { margin: 0.15rem 0 0; font-size: 0.86rem; color: var(--ink-2); }
+.quote-option-head { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin: 0; }
+.quote-remove {
+  margin-left: auto; flex: none; width: 26px; height: 26px; border-radius: 50%;
+  border: 1px solid var(--line); background: var(--surface); color: var(--text-muted);
+  font-size: 1.05rem; line-height: 1; cursor: pointer; padding: 0;
+}
+.quote-remove:hover { color: #fff; background: var(--status-payment); border-color: transparent; }
 .pro-quote-form { display: flex; flex-direction: column; gap: 0.7rem; margin-top: 0.9rem; }
 .pro-quote-form .qf-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.7rem; align-items: start; }
 .pro-quote-form .qf {
