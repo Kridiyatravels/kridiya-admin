@@ -169,6 +169,7 @@
     }
 
     populateFilterOptions();
+    showStaffNav();
     gate.hidden = true;
     app.hidden = false;
     renderList();

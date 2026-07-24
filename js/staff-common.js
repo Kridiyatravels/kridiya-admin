@@ -59,11 +59,16 @@ function renderStaffChrome() {
           '<img src="https://kridiyatravel.com/assets/logo.png" alt="Kridiya Travel" width="36" height="36">' +
           "<span>Kridiya <b>Staff Tools</b></span>" +
         "</a>" +
-        '<nav class="staff-nav">' +
-          '<a href="admin.html"' + (page === "admin" ? ' aria-current="page"' : "") + ">Enquiries</a>" +
-          '<a href="documents.html"' + (page === "documents" ? ' aria-current="page"' : "") + ">Documents</a>" +
-          '<a href="activity.html"' + (page === "activity" ? ' aria-current="page"' : "") + ">Activity</a>" +
-        "</nav>" +
+        '<nav class="staff-nav" hidden>' +
+          '<a href="dashboard.html"' + (page === "dashboard" ? ' aria-current="page"' : "") + '>Dashboard</a>' +
+          '<a href="admin.html"' + (page === "admin" ? ' aria-current="page"' : "") + '>Enquiries</a>' +
+          '<a href="bookings.html"' + (page === "bookings" ? ' aria-current="page"' : "") + '>Bookings</a>' +
+          '<a href="payments.html"' + (page === "payments" ? ' aria-current="page"' : "") + '>Payments</a>' +
+          '<a href="documents.html"' + (page === "documents" ? ' aria-current="page"' : "") + '>Documents</a>' +
+          '<a href="portals.html"' + (page === "portals" ? ' aria-current="page"' : "") + '>Portals</a>' +
+          '<a href="staff.html"' + (page === "staff" ? ' aria-current="page"' : "") + '>Staff</a>' +
+          '<a href="activity.html"' + (page === "activity" ? ' aria-current="page"' : "") + '>Activity</a>' +
+        '</nav>' +
         '<div class="staff-actions">' +
           '<a class="btn btn-outline" href="https://kridiyatravel.com" target="_blank" rel="noopener">Main site ↗</a>' +
           '<button type="button" class="btn btn-outline" id="staff-logout">' + icon("logout") + " Log out</button>" +
@@ -132,7 +137,6 @@ function renderLoginForm(gateEl, onSuccess) {
   gateEl.innerHTML =
     '<div class="login-shell">' +
       '<div class="login-shell-header">' +
-        '<img src="https://kridiyatravel.com/assets/logo.png" alt="">' +
         "<h1>Staff Tools</h1>" +
         "<p>Sign in to Kridiya Travel and Tourism</p>" +
       "</div>" +
@@ -141,11 +145,18 @@ function renderLoginForm(gateEl, onSuccess) {
         '<button type="button" class="login-tab" data-tab="admin" role="tab" aria-selected="false">Admin</button>' +
       "</div>" +
       '<div id="login-tab-staff" class="login-tab-panel">' +
-        '<p class="form-note">Pick your name and enter your PIN.</p>' +
+        '<p class="form-note">Enter your 6-digit staff PIN.</p>' +
         '<form id="pin-login-form" class="form-grid" novalidate>' +
           '<div class="form-banner error" hidden role="alert"></div>' +
-          '<div class="field"><label>YOUR NAME</label><select name="staff_profile_id" required><option value="">Loading…</option></select></div>' +
-          '<div class="field"><label>PIN</label><input name="pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" required autocomplete="off"></div>' +
+          '<div class="field">' +
+            '<label>PIN</label>' +
+            '<div class="pin-boxes" role="group" aria-label="6-digit PIN">' +
+              new Array(6).fill(0).map(function (_, i) {
+                return (i === 3 ? '<span class="pin-sep" aria-hidden="true">&ndash;</span>' : "") +
+                  '<input class="pin-box" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" aria-label="PIN digit">';
+              }).join("") +
+            "</div>" +
+          "</div>" +
           '<button class="btn btn-primary btn-block" type="submit">Log in</button>' +
         "</form>" +
       "</div>" +
@@ -164,6 +175,8 @@ function renderLoginForm(gateEl, onSuccess) {
       "</div>" +
     "</div>";
 
+  const pinBoxes = Array.prototype.slice.call(gateEl.querySelectorAll(".pin-box"));
+
   gateEl.querySelectorAll(".login-tab").forEach(function (tab) {
     tab.addEventListener("click", function () {
       gateEl.querySelectorAll(".login-tab").forEach(function (t) {
@@ -173,24 +186,20 @@ function renderLoginForm(gateEl, onSuccess) {
       gateEl.querySelectorAll(".login-tab-panel").forEach(function (p) {
         p.hidden = p.id !== "login-tab-" + tab.dataset.tab;
       });
+      if (tab.dataset.tab === "staff" && pinBoxes[0]) pinBoxes[0].focus();
     });
   });
 
-  const staffSelect = gateEl.querySelector('select[name="staff_profile_id"]');
-  KridiyaAuth.client().then(function (sb) {
-    return sb.rpc("list_staff_for_login");
-  }).then(function (result) {
-    const rows = (result && result.data) || [];
-    if (!rows.length) {
-      staffSelect.innerHTML = '<option value="">No staff set up yet — use the Admin tab</option>';
-      return;
-    }
-    staffSelect.innerHTML = '<option value="">Choose your name…</option>' + rows.map(function (r) {
-      const label = r.department ? r.full_name + " — " + r.department : r.full_name;
-      return '<option value="' + r.id + '">' + label.replace(/</g, "&lt;") + "</option>";
-    }).join("");
-  }).catch(function () {
-    staffSelect.innerHTML = '<option value="">Could not load staff list</option>';
+  pinBoxes.forEach(function (box, idx) {
+    box.addEventListener("input", function () {
+      box.value = box.value.replace(/[^0-9]/g, "").slice(0, 1);
+      if (box.value && idx < pinBoxes.length - 1) pinBoxes[idx + 1].focus();
+    });
+    box.addEventListener("keydown", function (e) {
+      if (e.key === "Backspace" && !box.value && idx > 0) {
+        pinBoxes[idx - 1].focus();
+      }
+    });
   });
 
   const pinForm = gateEl.querySelector("#pin-login-form");
@@ -198,9 +207,10 @@ function renderLoginForm(gateEl, onSuccess) {
     e.preventDefault();
     const banner = pinForm.querySelector(".form-banner");
     banner.hidden = true;
-    if (!pinForm.staff_profile_id.value) {
+    const pin = pinBoxes.map(function (b) { return b.value; }).join("");
+    if (!/^\d{6}$/.test(pin)) {
       banner.hidden = false;
-      banner.textContent = "Choose your name first.";
+      banner.textContent = "Enter all 6 digits of your PIN.";
       return;
     }
     const btn = pinForm.querySelector('button[type="submit"]');
@@ -210,7 +220,7 @@ function renderLoginForm(gateEl, onSuccess) {
       const resp = await fetch(SUPABASE_URL + "/functions/v1/staff-pin-login", {
         method: "POST",
         headers: { "Content-Type": "application/json", apikey: SUPABASE_ANON_KEY },
-        body: JSON.stringify({ staff_profile_id: pinForm.staff_profile_id.value, pin: pinForm.pin.value })
+        body: JSON.stringify({ pin: pin })
       });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.error || "Could not sign in.");
@@ -221,6 +231,8 @@ function renderLoginForm(gateEl, onSuccess) {
     } catch (err) {
       banner.hidden = false;
       banner.textContent = err.message;
+      pinBoxes.forEach(function (b) { b.value = ""; });
+      if (pinBoxes[0]) pinBoxes[0].focus();
       btn.disabled = false;
       btn.textContent = "Log in";
     }
@@ -255,4 +267,11 @@ function renderLoginForm(gateEl, onSuccess) {
   });
 }
 
+function showStaffNav() {
+  const nav = document.querySelector(".staff-nav");
+  if (nav) nav.hidden = false;
+}
+
 document.addEventListener("DOMContentLoaded", renderStaffChrome);
+
+

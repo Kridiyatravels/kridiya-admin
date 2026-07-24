@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Great+Vibes&family=Playfair+Display:ital,wght@1,700;1,800&display=swap" rel="stylesheet">
+<link rel="icon" href="https://kridiyatravel.com/assets/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="https://kridiyatravel.com/assets/favicon-180.png">
+<link rel="stylesheet" href="https://kridiyatravel.com/css/styles.css">
+<link rel="stylesheet" href="css/staff.css"><title>B2B Portals - Kridiya Staff Tools</title>
+</head>
+<body data-page="portals">
+<header id="site-header" class="site-header"></header>
+<main><section class="section"><div class="container">
+  <div id="portals-gate"><div class="account-main empty-state"><p>Checking access...</p></div></div>
+  <div id="portals-app" hidden>
+    <div class="account-head"><div><h1>B2B Portals</h1><p>Supplier links and secure login notes. Passwords stay in a password manager, not this site.</p></div><button type="button" class="btn btn-primary" id="portal-new-toggle">Add portal</button></div>
+    <div class="account-main" id="portal-form-card" hidden>
+      <form id="portal-form" class="form-grid" onsubmit="return false">
+        <div class="field-row"><div class="field col-4"><label>PORTAL NAME</label><input name="portal_name" required></div><div class="field col-4"><label>WEBSITE URL</label><input name="website_url" required placeholder="https://"></div><div class="field col-4"><label>SERVICE SCOPE</label><input name="service_scope" value="all"></div><div class="field col-6"><label>USERNAME HINT</label><input name="username_hint" placeholder="Do not enter password"></div><div class="field col-6"><label>PASSWORD LOCATION</label><input name="password_location" value="Password manager"></div><div class="field col-12"><label>NOTES</label><textarea name="owner_notes"></textarea></div></div>
+        <button type="submit" class="btn btn-primary">Save portal</button>
+      </form>
+    </div>
+    <div class="account-main"><div class="account-section-head"><div><h2>Portal directory</h2><p>Active supplier systems for flights, visa, and future services.</p></div><span class="form-note" id="portals-count"></span></div><div id="portals-list"></div></div>
+  </div>
+</div></section></main>
+<footer id="site-footer" class="site-footer"></footer>
+<script src="https://kridiyatravel.com/js/auth.js" defer></script>
+<script src="js/staff-common.js" defer></script>
+<script src="js/portals.js" defer></script>
+</body></html>

@@ -805,6 +805,7 @@
       return;
     }
 
+    showStaffNav();
     gate.hidden = true;
     app.hidden = false;
     renderKindOptions();

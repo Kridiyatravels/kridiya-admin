@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Great+Vibes&family=Playfair+Display:ital,wght@1,700;1,800&display=swap" rel="stylesheet">
+<link rel="icon" href="https://kridiyatravel.com/assets/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="https://kridiyatravel.com/assets/favicon-180.png">
+<link rel="stylesheet" href="https://kridiyatravel.com/css/styles.css">
+<link rel="stylesheet" href="css/staff.css"><title>Bookings - Kridiya Staff Tools</title>
+</head>
+<body data-page="bookings">
+<header id="site-header" class="site-header"></header>
+<main><section class="section"><div class="container">
+  <div id="bookings-gate"><div class="account-main empty-state"><p>Checking access...</p></div></div>
+  <div id="bookings-app" hidden>
+    <div class="account-head"><div><h1>Bookings</h1><p>Flights, visas, and corporate bookings with payment-before-booking control.</p></div><button type="button" class="btn btn-primary" id="booking-new-toggle">New booking</button></div>
+    <div class="account-main" id="booking-form-card" hidden>
+      <div class="account-section-head"><div><h2>Create booking</h2><p>Use this for flights, visa, and corporate requests. References are generated automatically.</p></div></div>
+      <form id="booking-form" class="form-grid" onsubmit="return false">
+        <div class="field-row">
+          <div class="field col-6"><label>TITLE</label><input name="title" required placeholder="Dubai to Kochi flight"></div>
+          <div class="field col-3"><label>SERVICE</label><select name="service_type"><option value="flight">Flight</option><option value="visa">Visa</option><option value="corporate">Corporate</option><option value="hotel">Hotel</option><option value="holiday">Holiday</option><option value="umrah">Umrah</option><option value="cruise">Cruise</option><option value="insurance">Insurance</option><option value="transfer">Transfer</option><option value="other">Other</option></select></div>
+          <div class="field col-3"><label>TYPE</label><select name="booking_kind"><option value="individual">Individual</option><option value="corporate">Corporate</option></select></div>
+          <div class="field col-4"><label>CUSTOMER NAME</label><input name="customer_name" required></div>
+          <div class="field col-4"><label>EMAIL</label><input name="customer_email" type="email"></div>
+          <div class="field col-4"><label>PHONE / WHATSAPP</label><input name="customer_phone"></div>
+          <div class="field col-4"><label>ROUTE / DESTINATION</label><input name="route_or_destination" placeholder="DXB-COK or UAE visa"></div>
+          <div class="field col-4"><label>START DATE</label><input name="travel_start" type="date"></div>
+          <div class="field col-4"><label>END DATE</label><input name="travel_end" type="date"></div>
+          <div class="field col-4"><label>SELLING PRICE</label><input name="selling_price" type="number" min="0" step="0.01"></div>
+          <div class="field col-4 finance-field"><label>SUPPLIER COST</label><input name="supplier_cost" type="number" min="0" step="0.01"></div>
+          <div class="field col-4"><label>SUPPLIER</label><input name="supplier_name" placeholder="Akbar Travels"></div>
+          <div class="field col-12"><label>NOTES</label><textarea name="notes"></textarea></div>
+        </div>
+        <button type="submit" class="btn btn-primary">Create booking</button>
+      </form>
+    </div>
+    <div class="account-main"><div class="account-section-head"><div><h2>Booking list</h2><p>Finance values only show to allowed users.</p></div><span class="form-note" id="bookings-count"></span></div><div id="bookings-list"></div></div>
+  </div>
+</div></section></main>
+<footer id="site-footer" class="site-footer"></footer>
+<script src="https://kridiyatravel.com/js/auth.js" defer></script>
+<script src="js/staff-common.js" defer></script>
+<script src="js/bookings.js" defer></script>
+</body></html>
