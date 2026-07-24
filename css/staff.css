@@ -352,3 +352,33 @@ body { background: var(--bg); }
 .template-subject { margin: 0 0 0.7rem; color: var(--ink-2); font-size: 0.86rem; }
 .template-card pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font); color: var(--ink-2); background: var(--surface-tint); border: 1px solid var(--line); border-radius: 10px; padding: 0.85rem; font-size: 0.82rem; line-height: 1.55; max-height: 360px; overflow: auto; }
 @media (max-width: 900px) { .template-grid { grid-template-columns: 1fr; } .template-card-head { flex-direction: column; } .template-card .btn { width: 100%; justify-content: center; } }
+
+/* ---------- My profile panel (dashboard) ---------- */
+.profile-card { margin-bottom: 1.1rem; }
+.profile-id { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.profile-avatar {
+  width: 56px; height: 56px; border-radius: 50%; flex: none; display: grid; place-items: center;
+  font-family: var(--font); font-weight: 800; font-size: 1.3rem; letter-spacing: 0.02em; color: #fff;
+  background: linear-gradient(135deg, var(--gold-deep, oklch(0.6 0.15 82)), var(--brand, oklch(0.67 0.23 39)));
+  box-shadow: var(--staff-shadow-sm);
+}
+.profile-meta { flex: 1; min-width: 180px; }
+.profile-meta h2 { margin: 0; font-size: 1.25rem; }
+.profile-meta p { margin: 0.15rem 0 0; color: var(--text-muted); font-size: 0.9rem; overflow-wrap: anywhere; }
+.profile-role-badge {
+  padding: 0.32rem 0.8rem; border-radius: 999px; font-size: 0.72rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em; background: var(--brand-soft); color: var(--brand-deep); white-space: nowrap;
+}
+.profile-role-badge.is-admin { background: var(--status-payment-bg); color: var(--status-payment); }
+.profile-perms { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+.profile-perms h3 { margin: 0 0 0.6rem; font-size: 0.95rem; }
+.profile-perms .ops-chip { background: var(--brand-soft); color: var(--brand-deep); }
+.profile-note { margin: 0; color: var(--text-muted); font-size: 0.9rem; }
+
+/* ---------- Converted enquiry badge (enquiries list) ---------- */
+.admin-badge-converted {
+  display: inline-flex; align-items: center; gap: 0.28em;
+  background: var(--status-confirmed-bg); color: var(--status-confirmed);
+  font-weight: 700;
+}
+.admin-badge-converted svg { width: 0.9em; height: 0.9em; fill: currentColor; }

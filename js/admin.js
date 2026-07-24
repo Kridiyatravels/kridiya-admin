@@ -20,6 +20,7 @@
   let notesByEnquiry = {};
   let requestsByEnquiry = {};
   let quotesByEnquiry = {};
+  let bookingByEnquiry = {};
   let canCreateBookings = false;
   let canEditCorporates = false;
 
@@ -135,6 +136,7 @@
       const wa = waReplyLink(enq);
       const initial = (enq.full_name || "?").trim().charAt(0).toUpperCase();
       const corporate = isCorporateEnquiry(enq);
+      const booking = bookingByEnquiry[enq.id];
       return (
         '<div class="account-main admin-enq" data-id="' + enq.id + '">' +
           '<div class="enq-row-head">' +
@@ -143,6 +145,7 @@
               '<div class="top-line"><b>' + KridiyaAuth.escapeHTML(enq.full_name) + "</b>" +
                 '<span class="status-badge" style="' + statusStyle(enq.status) + '">' + KridiyaAuth.statusLabel(enq.status) + "</span>" +
                 '<span class="admin-badge">' + KridiyaAuth.escapeHTML(KridiyaAuth.statusLabel(enq.service_type)) + "</span>" +
+                (booking ? '<span class="admin-badge admin-badge-converted" title="' + KridiyaAuth.escapeHTML(booking.booking_reference || "") + '">' + icon("check") + ' Converted</span>' : "") +
               "</div>" +
               '<div class="sub-line">' + KridiyaAuth.escapeHTML(enq.reference) + " · " + KridiyaAuth.escapeHTML(enq.summary) + "</div>" +
             "</div>" +
@@ -165,7 +168,9 @@
             '<button type="button" class="btn btn-outline notes-toggle" data-id="' + enq.id + '">Notes (' + notes.length + ")</button>" +
             '<button type="button" class="btn btn-outline requests-toggle" data-id="' + enq.id + '">Requests (' + requests.length + ")</button>" +
             '<button type="button" class="btn btn-outline quotes-toggle" data-id="' + enq.id + '">Quote (' + quotes.length + ")</button>" +
-            (corporate ? '<button type="button" class="btn btn-outline convert-toggle" data-id="' + enq.id + '">Convert</button>' : "") +
+            (booking
+              ? '<a class="btn btn-primary" href="booking-detail.html?id=' + KridiyaAuth.escapeHTML(booking.id) + '">Open booking</a>'
+              : (corporate ? '<button type="button" class="btn btn-outline convert-toggle" data-id="' + enq.id + '">Convert</button>' : "")) +
             '<a class="btn btn-outline" href="documents.html?enquiry=' + enq.id + '">Document</a>' +
           "</div>" +
           '<div class="admin-notes" data-notes-for="' + enq.id + '" hidden>' +
@@ -224,7 +229,7 @@
               '<button class="btn btn-primary" type="submit">Send quote</button>' +
             "</form>" +
           "</div>" +
-          convertPanel(enq) +
+          (booking ? "" : convertPanel(enq)) +
           "</div>" +
         "</div>"
       );
@@ -264,6 +269,18 @@
     (result.data || []).forEach(function (q) {
       if (!quotesByEnquiry[q.enquiry_id]) quotesByEnquiry[q.enquiry_id] = [];
       quotesByEnquiry[q.enquiry_id].push(q);
+    });
+  }
+
+  /* Which enquiries already have a booking? Lets us show a "Converted"
+     badge + "Open booking" button up front, and hide the Convert action
+     so the same enquiry is never converted twice by mistake. */
+  async function loadBookingLinks() {
+    const result = await sb.from("bookings").select("id, booking_reference, enquiry_id").not("enquiry_id", "is", null);
+    if (result.error) throw result.error;
+    bookingByEnquiry = {};
+    (result.data || []).forEach(function (b) {
+      if (!bookingByEnquiry[b.enquiry_id]) bookingByEnquiry[b.enquiry_id] = b;
     });
   }
 
@@ -678,7 +695,7 @@
     }
 
     try {
-      await Promise.all([loadEnquiries(), loadNotes(), loadRequests(), loadQuotes()]);
+      await Promise.all([loadEnquiries(), loadNotes(), loadRequests(), loadQuotes(), loadBookingLinks()]);
       const perms = await Promise.all([
         sb.rpc("has_staff_permission", { permission_name: "create_bookings" }),
         sb.rpc("has_staff_permission", { permission_name: "edit_corporates" })

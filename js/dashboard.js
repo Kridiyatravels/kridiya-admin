@@ -21,8 +21,71 @@
     showStaffNav();
     gate.hidden = true;
     app.hidden = false;
+    await renderProfile(user);
     await loadDashboard();
     document.addEventListener("click", handleDashboardClick);
+  }
+
+  /* Friendly, staff-facing names for each permission flag. Only the
+     ones a person actually has are shown, as "what you can do". */
+  const PERM_LABELS = {
+    view_enquiries: "See enquiries", edit_enquiries: "Manage enquiries",
+    view_customers: "See customers", edit_customers: "Manage customers",
+    view_corporates: "See corporate accounts", edit_corporates: "Manage corporate accounts",
+    create_bookings: "Create bookings", edit_bookings: "Edit bookings",
+    view_payments: "See payments", edit_payments: "Record payments",
+    view_supplier_cost: "See supplier cost", view_profit: "See profit",
+    generate_documents: "Generate documents", manage_portals: "Manage B2B portals",
+    manage_templates: "Manage templates", view_reports: "See reports",
+    export_reports: "Export reports", approve_refunds: "Approve refunds",
+    approve_discounts: "Approve discounts", manage_staff: "Manage staff",
+    view_activity: "See activity log", manage_settings: "Manage settings"
+  };
+
+  function initials(name, email) {
+    const src = (name || email || "?").trim();
+    const parts = src.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return src.slice(0, 2).toUpperCase();
+  }
+
+  /* Reads the signed-in person's own profile + permissions. RLS allows
+     each staff member to read only their own rows (user_id = auth.uid()),
+     so this is safe and needs no admin rights. */
+  async function renderProfile(user) {
+    const box = document.getElementById("dashboard-profile");
+    if (!box) return;
+    const adminRes = await sb.rpc("is_admin");
+    const isAdmin = adminRes.data === true;
+    const profRes = await sb.from("staff_profiles").select("full_name, department, active").eq("user_id", user.id).maybeSingle();
+    const permRes = await sb.from("staff_permissions").select("*").eq("user_id", user.id).maybeSingle();
+    const prof = profRes.data || {};
+    const perms = permRes.data || {};
+    const name = prof.full_name || user.email || "Staff member";
+    const roleLabel = isAdmin ? "Owner / Admin" : "Staff";
+    const metaBits = [roleLabel];
+    if (prof.department) metaBits.push(prof.department);
+    if (user.email) metaBits.push(user.email);
+
+    let permsHtml;
+    if (isAdmin) {
+      permsHtml = '<p class="profile-note">Full access &mdash; you can see and manage everything, including staff permissions.</p>';
+    } else {
+      const allowed = Object.keys(PERM_LABELS).filter(function (k) { return perms[k]; });
+      permsHtml = allowed.length
+        ? '<div class="ops-kv">' + allowed.map(function (k) { return '<span class="ops-chip">' + esc(PERM_LABELS[k]) + '</span>'; }).join("") + '</div>'
+        : '<p class="profile-note">No features assigned yet. Ask your admin to set your access on the Staff page.</p>';
+    }
+
+    box.innerHTML =
+      '<div class="account-main profile-card">' +
+        '<div class="profile-id">' +
+          '<div class="profile-avatar" aria-hidden="true">' + esc(initials(prof.full_name, user.email)) + '</div>' +
+          '<div class="profile-meta"><h2>' + esc(name) + '</h2><p>' + esc(metaBits.join(" · ")) + '</p></div>' +
+          '<span class="profile-role-badge' + (isAdmin ? ' is-admin' : '') + '">' + esc(roleLabel) + '</span>' +
+        '</div>' +
+        '<div class="profile-perms"><h3>What you can do</h3>' + permsHtml + '</div>' +
+      '</div>';
   }
 
   async function loadDashboard() {
