@@ -33,6 +33,18 @@
   function dateText(v) { return v ? new Date(v + "T00:00:00").toLocaleDateString("en-GB") : "Not set"; }
   function dateTimeText(v) { return v ? new Date(v).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "Not set"; }
   function safeFileName(name) { return String(name || "document").replace(/[^A-Za-z0-9._-]/g, "-").replace(/-+/g, "-").slice(0, 90) || "document"; }
+  function amountNum(v) { return Number(v || 0); }
+  function paymentReceivedTotal() { return (detail.payments || []).filter(function (p) { return p.status === "received"; }).reduce(function (sum, p) { return sum + amountNum(p.amount); }, 0); }
+  function bookingBalance() { return Math.max(0, amountNum(detail.booking.selling_price) - paymentReceivedTotal()); }
+  function paymentIsCleared(status) { return ["paid", "received", "payment_received", "completed"].indexOf(String(status || "").toLowerCase()) !== -1; }
+  function bookingIsConfirmed(status) { return ["confirmed", "paid", "ticketed", "completed"].indexOf(String(status || "").toLowerCase()) !== -1; }
+  function paymentControlNote() {
+    const b = detail.booking;
+    if (paymentIsCleared(b.payment_status)) return { text: "Payment control OK. Money is marked as received/paid.", tone: "ok" };
+    if (b.booking_kind === "corporate" || detail.corporate) return { text: "Corporate control: collect payment approval/LPO before supplier confirmation.", tone: "warn" };
+    if (bookingIsConfirmed(b.status)) return { text: "Risk: booking is confirmed before payment is fully received.", tone: "risk" };
+    return { text: "Rule: collect payment before booking/supplier confirmation.", tone: "warn" };
+  }
 
   async function boot() {
     const gate = document.getElementById("booking-detail-gate");
@@ -360,13 +372,19 @@
 
   function renderCustomerPayments() {
     const rows = detail.payments || [];
-    const request = detail.can_edit_payments ? '<div class="payment-actions"><button class="btn btn-outline js-payment-request" type="button">Generate payment request</button></div>' : '';
-    const form = detail.can_edit_payments ? '<form id="customer-payment-form" class="form-grid payment-mini-form" onsubmit="return false"><div class="field-row"><div class="field col-4"><label>AMOUNT</label><input name="amount" type="number" min="0" step="0.01" required></div><div class="field col-4"><label>METHOD</label><select name="method"><option value="bank_transfer">Bank transfer</option><option value="cash">Cash</option><option value="stripe">Stripe</option><option value="tabby">Tabby</option><option value="tamara">Tamara</option><option value="paypal">PayPal</option><option value="other">Other</option></select></div><div class="field col-4"><label>STATUS</label><select name="status"><option value="received">Received</option><option value="proof_received">Proof received</option><option value="pending">Pending</option></select></div><div class="field col-12"><label>NOTES</label><input name="notes" placeholder="Bank ref, payment link, receipt note"></div></div><button class="btn btn-primary" type="submit">Record customer payment</button></form>' : '<p class="form-note">Finance permission required to record payments.</p>';
-    document.getElementById("customer-payment-panel").innerHTML = request + form + renderPaymentRows(rows, true);
+    const b = detail.booking;
+    const received = paymentReceivedTotal();
+    const balance = bookingBalance();
+    const control = paymentControlNote();
+    const controlHtml = '<div class="payment-control ' + esc(control.tone) + '"><div><b>' + esc(control.text) + '</b><p>Sale: ' + esc(money(b.selling_price, b.currency)) + ' / Received: ' + esc(money(received, b.currency)) + ' / Balance: ' + esc(money(balance, b.currency)) + '</p></div></div>';
+    const request = detail.can_edit_payments ? '<form id="payment-request-form" class="form-grid payment-mini-form payment-request-form" onsubmit="return false"><div class="field-row"><div class="field col-4"><label>REQUEST AMOUNT</label><input name="amount_requested" type="number" min="0" step="0.01" value="' + esc(balance || b.selling_price || "") + '"></div><div class="field col-8"><label>PAYMENT REQUEST NOTE</label><input name="request_notes" placeholder="Bank transfer, payment link, due date, approval note"></div></div><button class="btn btn-outline" type="submit">Generate payment request</button></form>' : '';
+    const form = detail.can_edit_payments ? '<form id="customer-payment-form" class="form-grid payment-mini-form" onsubmit="return false"><div class="field-row"><div class="field col-4"><label>AMOUNT</label><input name="amount" type="number" min="0" step="0.01" required></div><div class="field col-4"><label>METHOD</label><select name="method"><option value="bank_transfer">Bank transfer</option><option value="cash">Cash</option><option value="payment_link">Payment link</option><option value="stripe">Stripe</option><option value="tabby">Tabby</option><option value="tamara">Tamara</option><option value="paypal">PayPal</option><option value="other">Other</option></select></div><div class="field col-4"><label>STATUS</label><select name="status"><option value="received">Received</option><option value="proof_received">Proof received</option><option value="pending">Pending</option></select></div><div class="field col-6"><label>PAYMENT LINK / REF</label><input name="payment_link" placeholder="Stripe link, bank ref, receipt ref"></div><div class="field col-6"><label>NOTES</label><input name="notes" placeholder="Receipt note, transfer note, approval note"></div></div><button class="btn btn-primary" type="submit">Record customer payment</button></form>' : '<p class="form-note">Finance permission required to record payments.</p>';
+    document.getElementById("customer-payment-panel").innerHTML = controlHtml + request + form + renderPaymentRows(rows, true);
     const f = document.getElementById("customer-payment-form");
     if (f) f.addEventListener("submit", recordCustomerPayment);
+    const requestForm = document.getElementById("payment-request-form");
+    if (requestForm) requestForm.addEventListener("submit", generatePaymentRequest);
   }
-
   function renderSupplierPayments() {
     const rows = detail.supplier_payments || [];
     const b = detail.booking;
@@ -381,13 +399,13 @@
     return '<div class="ops-list payment-history">' + rows.map(function (r) {
       const title = customer ? (r.payment_reference || "Payment") : r.supplier_name;
       const amount = customer ? money(r.amount, r.currency) : money(r.amount_paid, r.currency) + ' / ' + money(r.amount_payable, r.currency);
-      const receiptBtn = customer && (r.status === "received" || r.status === "proof_received")
+      const receiptBtn = customer && r.status === "received"
         ? '<button class="btn btn-outline js-print-receipt" data-id="' + esc(r.id) + '" type="button">Receipt</button>'
         : '';
-      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(title) + '</b><p>' + esc(label(r.status)) + (r.notes ? ' - ' + esc(r.notes) : '') + '</p></div><div class="ops-row-actions"><span class="finance-value">' + esc(amount) + '</span>' + receiptBtn + '</div></div>';
+      const ref = customer && r.payment_link ? '<span class="ops-chip">Ref/link saved</span>' : '';
+      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(title) + '</b><p>' + esc(label(r.status)) + (r.notes ? ' - ' + esc(r.notes) : '') + '</p><div class="ops-kv">' + ref + (customer && r.status === "proof_received" ? '<span class="ops-chip">Proof only - no receipt yet</span>' : '') + '</div></div><div class="ops-row-actions"><span class="finance-value">' + esc(amount) + '</span>' + receiptBtn + '</div></div>';
     }).join("") + '</div>';
   }
-
 
   async function loadBusinessSettings() {
     const result = await sb.from("business_settings").select("*").eq("id", true).maybeSingle();
@@ -430,7 +448,11 @@
   }
 
   async function generatePaymentRequest() {
-    const result = await sb.rpc("generate_booking_payment_request_document", { p_booking_id: bookingId, p_amount_requested: null, p_notes: null });
+    const form = document.getElementById("payment-request-form");
+    const requested = form && form.amount_requested.value ? Number(form.amount_requested.value) : null;
+    const notes = form && form.request_notes.value ? form.request_notes.value : null;
+    if (requested != null && requested <= 0) { toast("Request amount must be more than zero."); return; }
+    const result = await sb.rpc("generate_booking_payment_request_document", { p_booking_id: bookingId, p_amount_requested: requested, p_notes: notes });
     if (result.error) { toast("Could not generate payment request: " + result.error.message); return; }
     toast("Payment request ready: " + result.data.document_number);
     openPaymentRequest(result.data);
@@ -475,6 +497,7 @@
       p_method: form.method.value,
       p_status: form.status.value,
       p_currency: "AED",
+      p_payment_link: form.payment_link.value || null,
       p_notes: form.notes.value || null
     });
     if (result.error) { toast("Could not record payment: " + result.error.message); return; }
