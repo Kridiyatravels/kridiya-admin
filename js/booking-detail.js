@@ -4,12 +4,15 @@
   let sb = null;
   let bookingId = null;
   let detail = null;
+  let workflow = { tasks: [], timeline: [], can_edit_tasks: false, can_view_activity: false };
   let businessSettings = null;
 
   const BOOKING_STATUS = ["enquiry", "quote_sent", "payment_pending", "confirmed", "paid", "ticketed", "completed", "cancelled", "refunded"];
   const PAYMENT_STATUS = ["not_requested", "request_sent", "proof_received", "partially_paid", "paid", "supplier_payment_pending", "supplier_paid", "refund_pending", "refunded", "failed", "cancelled"];
   const DOC_STATUS = ["not_started", "draft", "generated", "sent", "archived"];
   const PASSENGER_TYPES = ["adult", "child", "infant"];
+  const TASK_TYPES = ["follow_up", "customer_call", "supplier_check", "payment", "documents", "ticketing", "visa", "corporate_approval", "other"];
+  const TASK_PRIORITIES = ["low", "normal", "high", "urgent"];
   const DOCUMENT_TYPES = ["passport_copy", "photo", "visa_form", "ticket_or_pnr", "emirates_id", "trade_license", "trn_certificate", "lpo", "approval_email", "invoice", "insurance_policy", "voucher", "other"];
   const REQUIRED_DOCUMENTS = {
     flight: ["passport_copy", "ticket_or_pnr"],
@@ -28,6 +31,7 @@
   function money(v, c) { return v == null ? "Hidden" : (c || "AED") + " " + Number(v || 0).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
   function optionList(values, current) { return values.map(function (v) { return '<option value="' + esc(v) + '"' + (v === current ? ' selected' : '') + '>' + esc(label(v)) + '</option>'; }).join(""); }
   function dateText(v) { return v ? new Date(v + "T00:00:00").toLocaleDateString("en-GB") : "Not set"; }
+  function dateTimeText(v) { return v ? new Date(v).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "Not set"; }
   function safeFileName(name) { return String(name || "document").replace(/[^A-Za-z0-9._-]/g, "-").replace(/-+/g, "-").slice(0, 90) || "document"; }
 
   async function boot() {
@@ -59,6 +63,7 @@
       return;
     }
     detail = result.data;
+    await loadWorkflow();
     if (!businessSettings) await loadBusinessSettings();
     renderAll();
   }
@@ -76,6 +81,7 @@
     renderStatusForm();
     renderCustomer();
     renderCorporateControls();
+    renderWorkflow();
     renderPassengers();
     renderDocuments();
     renderCustomerPayments();
@@ -147,6 +153,84 @@
     });
     if (result.error) { toast("Could not save corporate controls: " + result.error.message); return; }
     toast("Corporate controls saved.");
+    await loadDetail();
+  }
+  async function loadWorkflow() {
+    const result = await sb.rpc("get_booking_workflow", { p_booking_id: bookingId });
+    if (result.error || !result.data) {
+      workflow = { tasks: [], timeline: [], can_edit_tasks: false, can_view_activity: false };
+      return;
+    }
+    workflow = result.data;
+  }
+
+  function renderWorkflow() {
+    renderTaskPanel();
+    renderTimelinePanel();
+  }
+
+  function renderTaskPanel() {
+    const panel = document.getElementById("booking-task-panel");
+    const rows = workflow.tasks || [];
+    const canEdit = workflow.can_edit_tasks;
+    const openTasks = rows.filter(function (t) { return t.status !== "completed"; });
+    const doneTasks = rows.filter(function (t) { return t.status === "completed"; });
+    const form = canEdit ? '<form id="booking-task-form" class="form-grid payment-mini-form" onsubmit="return false"><div class="field-row"><div class="field col-6"><label>TASK</label><input name="title" required placeholder="Call customer, check supplier, collect LPO"></div><div class="field col-3"><label>TYPE</label><select name="task_type">' + optionList(TASK_TYPES, "follow_up") + '</select></div><div class="field col-3"><label>PRIORITY</label><select name="priority">' + optionList(TASK_PRIORITIES, "normal") + '</select></div><div class="field col-6"><label>DUE DATE / TIME</label><input name="due_at" type="datetime-local"></div><div class="field col-6"><label>NOTES</label><input name="notes" placeholder="Short internal instruction"></div></div><button class="btn btn-primary" type="submit">Add task</button></form>' : '<p class="form-note">Booking permission required to add tasks.</p>';
+    panel.innerHTML = form + '<div class="ops-kv"><span class="ops-chip">Open: ' + esc(openTasks.length) + '</span><span class="ops-chip">Done: ' + esc(doneTasks.length) + '</span></div>' + renderTaskRows(rows, canEdit);
+    const f = document.getElementById("booking-task-form");
+    if (f) f.addEventListener("submit", createBookingTask);
+  }
+
+  function renderTaskRows(rows, canEdit) {
+    if (!rows.length) return '<p class="form-note">No tasks yet.</p>';
+    return '<div class="ops-list payment-history">' + rows.map(function (t) {
+      const done = t.status === "completed";
+      const meta = label(t.task_type) + ' / ' + label(t.priority) + ' / Due: ' + dateTimeText(t.due_at);
+      return '<div class="ops-row ' + (done ? 'is-muted' : '') + '"><div class="ops-row-main"><b>' + esc(t.title) + '</b><p>' + esc(meta) + (t.assigned_to_name ? ' / ' + esc(t.assigned_to_name) : '') + '</p><div class="ops-kv"><span class="ops-chip">' + esc(label(t.status)) + '</span>' + (t.notes ? '<span class="ops-chip">' + esc(t.notes) + '</span>' : '') + '</div></div><div class="ops-row-actions">' + (!done && canEdit ? '<button class="btn btn-outline js-complete-task" data-id="' + esc(t.id) + '" type="button">Done</button>' : '') + '</div></div>';
+    }).join("") + '</div>';
+  }
+
+  function renderTimelinePanel() {
+    const panel = document.getElementById("booking-timeline-panel");
+    if (!workflow.can_view_activity) {
+      panel.innerHTML = '<p class="form-note">Report or booking edit permission required to view activity.</p>';
+      return;
+    }
+    const rows = workflow.timeline || [];
+    if (!rows.length) {
+      panel.innerHTML = '<p class="form-note">No activity recorded yet.</p>';
+      return;
+    }
+    panel.innerHTML = '<div class="ops-list payment-history">' + rows.map(function (e) {
+      const meta = e.metadata || {};
+      const summary = meta.title || meta.reference || meta.document_number || meta.task_id || meta.payment_reference || "";
+      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(label(e.event_type)) + '</b><p>' + esc(dateTimeText(e.created_at)) + (e.actor_name ? ' / ' + esc(e.actor_name) : '') + '</p>' + (summary ? '<div class="ops-kv"><span class="ops-chip">' + esc(summary) + '</span></div>' : '') + '</div></div>';
+    }).join("") + '</div>';
+  }
+
+  async function createBookingTask() {
+    const form = document.getElementById("booking-task-form");
+    const button = form.querySelector('button[type="submit"]');
+    button.disabled = true;
+    const result = await sb.rpc("create_booking_task", {
+      p_booking_id: bookingId,
+      p_title: form.title.value,
+      p_task_type: form.task_type.value,
+      p_due_at: form.due_at.value ? new Date(form.due_at.value).toISOString() : null,
+      p_priority: form.priority.value,
+      p_notes: form.notes.value || null
+    });
+    button.disabled = false;
+    if (result.error) { toast("Could not add task: " + result.error.message); return; }
+    toast("Task added.");
+    form.reset();
+    await loadDetail();
+  }
+
+  async function completeBookingTask(id) {
+    const result = await sb.rpc("complete_booking_task", { p_task_id: id });
+    if (result.error) { toast("Could not complete task: " + result.error.message); return; }
+    toast("Task completed.");
     await loadDetail();
   }
   function renderPassengers() {
@@ -417,11 +501,13 @@
   }
 
   document.addEventListener("click", function (event) {
+    const taskButton = event.target.closest(".js-complete-task");
     const passengerButton = event.target.closest(".js-delete-passenger");
     const documentButton = event.target.closest(".js-delete-document");
     const receiptButton = event.target.closest(".js-print-receipt");
     const viewDocumentButton = event.target.closest(".js-view-booking-document");
     const requestButton = event.target.closest(".js-payment-request");
+    if (taskButton) completeBookingTask(taskButton.dataset.id);
     if (passengerButton) deletePassenger(passengerButton.dataset.id);
     if (documentButton) deleteDocument(documentButton.dataset.id, documentButton.dataset.path);
     if (receiptButton) generateReceipt(receiptButton.dataset.id);
