@@ -10,7 +10,7 @@
   const PAYMENT_STATUS = ["not_requested", "request_sent", "proof_received", "partially_paid", "paid", "supplier_payment_pending", "supplier_paid", "refund_pending", "refunded", "failed", "cancelled"];
   const DOC_STATUS = ["not_started", "draft", "generated", "sent", "archived"];
   const PASSENGER_TYPES = ["adult", "child", "infant"];
-  const DOCUMENT_TYPES = ["passport_copy", "photo", "visa_form", "ticket_or_pnr", "emirates_id", "trade_license", "lpo", "insurance_policy", "voucher", "other"];
+  const DOCUMENT_TYPES = ["passport_copy", "photo", "visa_form", "ticket_or_pnr", "emirates_id", "trade_license", "trn_certificate", "lpo", "approval_email", "invoice", "insurance_policy", "voucher", "other"];
   const REQUIRED_DOCUMENTS = {
     flight: ["passport_copy", "ticket_or_pnr"],
     visa: ["passport_copy", "photo", "visa_form"],
@@ -28,6 +28,7 @@
   function money(v, c) { return v == null ? "Hidden" : (c || "AED") + " " + Number(v || 0).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
   function optionList(values, current) { return values.map(function (v) { return '<option value="' + esc(v) + '"' + (v === current ? ' selected' : '') + '>' + esc(label(v)) + '</option>'; }).join(""); }
   function dateText(v) { return v ? new Date(v + "T00:00:00").toLocaleDateString("en-GB") : "Not set"; }
+  function safeFileName(name) { return String(name || "document").replace(/[^A-Za-z0-9._-]/g, "-").replace(/-+/g, "-").slice(0, 90) || "document"; }
 
   async function boot() {
     const gate = document.getElementById("booking-detail-gate");
@@ -168,12 +169,19 @@
   function renderDocuments() {
     const rows = detail.booking_documents || [];
     const canEdit = detail.can_edit_documents;
-    const required = REQUIRED_DOCUMENTS[detail.booking.service_type] || REQUIRED_DOCUMENTS.other;
+    let required = (REQUIRED_DOCUMENTS[detail.booking.service_type] || REQUIRED_DOCUMENTS.other).slice();
+    if (detail.booking.booking_kind === "corporate") {
+      required = required.concat(["trade_license"]);
+      if (detail.corporate && detail.corporate.trn) required = required.concat(["trn_certificate"]);
+      if (detail.corporate && detail.corporate.lpo_required) required = required.concat(["lpo"]);
+      required = required.concat(["approval_email"]);
+      required = required.filter(function (type, index, arr) { return arr.indexOf(type) === index; });
+    }
     const receivedTypes = rows.reduce(function (set, row) { set[row.document_type] = true; return set; }, {});
     const checklist = '<div class="doc-checklist">' + required.map(function (type) {
       return '<span class="doc-check ' + (receivedTypes[type] ? 'is-done' : '') + '">' + esc(receivedTypes[type] ? "Received: " : "Pending: ") + esc(label(type)) + '</span>';
     }).join("") + '</div>';
-    const form = canEdit ? '<form id="booking-document-form" class="form-grid payment-mini-form" onsubmit="return false"><div class="field-row"><div class="field col-6"><label>DOCUMENT TYPE</label><select name="document_type">' + optionList(DOCUMENT_TYPES, required[0]) + '</select></div><div class="field col-6"><label>DOCUMENT NAME</label><input name="file_name" required placeholder="Passport copy received"></div><div class="field col-12"><label>REFERENCE / NOTE</label><input name="external_reference" placeholder="WhatsApp, email, portal ref, file location"></div></div><button class="btn btn-primary" type="submit">Mark document received</button></form>' : '<p class="form-note">Document permission required to record documents.</p>';
+    const form = canEdit ? '<form id="booking-document-form" class="form-grid payment-mini-form" onsubmit="return false"><div class="field-row"><div class="field col-6"><label>DOCUMENT TYPE</label><select name="document_type">' + optionList(DOCUMENT_TYPES, required[0]) + '</select></div><div class="field col-6"><label>DOCUMENT NAME</label><input name="file_name" placeholder="Passport copy received"></div><div class="field col-8"><label>REFERENCE / NOTE</label><input name="external_reference" placeholder="WhatsApp, email, portal ref, file location"></div><div class="field col-4"><label>UPLOAD FILE</label><input name="document_file" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx"></div></div><button class="btn btn-primary" type="submit">Save document record</button></form>' : '<p class="form-note">Document permission required to record documents.</p>';
     document.getElementById("booking-document-panel").innerHTML = checklist + form + renderDocumentRows(rows, canEdit);
     const f = document.getElementById("booking-document-form");
     if (f) f.addEventListener("submit", recordDocument);
@@ -182,7 +190,7 @@
   function renderDocumentRows(rows, canEdit) {
     if (!rows.length) return '<p class="form-note">No document records yet.</p>';
     return '<div class="ops-list payment-history">' + rows.map(function (r) {
-      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(label(r.document_type)) + '</b><p>' + esc(r.file_name) + (r.external_reference ? ' - ' + esc(r.external_reference) : '') + '</p><div class="ops-kv"><span class="ops-chip">' + (r.visible_to_customer ? 'Customer visible' : 'Internal only') + '</span></div></div>' + (canEdit ? '<div class="ops-row-actions"><button class="btn btn-outline js-delete-document" data-id="' + esc(r.id) + '" type="button">Remove</button></div>' : '') + '</div>';
+      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(label(r.document_type)) + '</b><p>' + esc(r.file_name) + (r.external_reference ? ' - ' + esc(r.external_reference) : '') + '</p><div class="ops-kv"><span class="ops-chip">' + (r.visible_to_customer ? 'Customer visible' : 'Internal only') + '</span>' + (r.storage_path ? '<span class="ops-chip">File saved</span>' : '') + '</div></div><div class="ops-row-actions">' + (r.storage_path ? '<button class="btn btn-outline js-view-booking-document" data-path="' + esc(r.storage_path) + '" type="button">View</button>' : '') + (canEdit ? '<button class="btn btn-outline js-delete-document" data-id="' + esc(r.id) + '" data-path="' + esc(r.storage_path || "") + '" type="button">Remove</button>' : '') + '</div></div>';
     }).join("") + '</div>';
   }
 
@@ -206,16 +214,38 @@
 
   async function recordDocument() {
     const form = document.getElementById("booking-document-form");
+    const button = form.querySelector('button[type="submit"]');
+    const file = form.document_file && form.document_file.files.length ? form.document_file.files[0] : null;
+    let storagePath = null;
+    button.disabled = true;
+    button.textContent = file ? "Uploading..." : "Saving...";
+    if (file) {
+      const path = bookingId + "/" + Date.now() + "-" + safeFileName(file.name);
+      const upload = await sb.storage.from("booking-documents").upload(path, file, { upsert: false });
+      if (upload.error) {
+        button.disabled = false;
+        button.textContent = "Save document record";
+        toast("Could not upload file: " + upload.error.message);
+        return;
+      }
+      storagePath = upload.data.path;
+    }
     const result = await sb.rpc("record_booking_document", {
       p_booking_id: bookingId,
       p_document_type: form.document_type.value,
-      p_file_name: form.file_name.value,
+      p_file_name: form.file_name.value || (file ? file.name : "Document received"),
       p_external_reference: form.external_reference.value || null,
-      p_storage_path: null,
+      p_storage_path: storagePath,
       p_visible_to_customer: false
     });
-    if (result.error) { toast("Could not record document: " + result.error.message); return; }
-    toast("Document recorded.");
+    button.disabled = false;
+    button.textContent = "Save document record";
+    if (result.error) {
+      if (storagePath) await sb.storage.from("booking-documents").remove([storagePath]);
+      toast("Could not record document: " + result.error.message);
+      return;
+    }
+    toast(file ? "Document uploaded and recorded." : "Document recorded.");
     form.reset();
     await loadDetail();
   }
@@ -227,9 +257,19 @@
     await loadDetail();
   }
 
-  async function deleteDocument(id) {
+  async function viewBookingDocument(path) {
+    const result = await sb.storage.from("booking-documents").createSignedUrl(path, 180);
+    if (result.error || !result.data) {
+      toast("Could not open document: " + (result.error ? result.error.message : "unknown error"));
+      return;
+    }
+    window.open(result.data.signedUrl, "_blank", "noopener");
+  }
+
+  async function deleteDocument(id, path) {
     const result = await sb.rpc("delete_booking_document", { p_document_id: id });
     if (result.error) { toast("Could not remove document: " + result.error.message); return; }
+    if (path) await sb.storage.from("booking-documents").remove([path]);
     toast("Document removed.");
     await loadDetail();
   }
@@ -380,10 +420,12 @@
     const passengerButton = event.target.closest(".js-delete-passenger");
     const documentButton = event.target.closest(".js-delete-document");
     const receiptButton = event.target.closest(".js-print-receipt");
+    const viewDocumentButton = event.target.closest(".js-view-booking-document");
     const requestButton = event.target.closest(".js-payment-request");
     if (passengerButton) deletePassenger(passengerButton.dataset.id);
-    if (documentButton) deleteDocument(documentButton.dataset.id);
+    if (documentButton) deleteDocument(documentButton.dataset.id, documentButton.dataset.path);
     if (receiptButton) generateReceipt(receiptButton.dataset.id);
+    if (viewDocumentButton) viewBookingDocument(viewDocumentButton.dataset.path);
     if (requestButton) generatePaymentRequest();
   });
   document.addEventListener("DOMContentLoaded", boot);
