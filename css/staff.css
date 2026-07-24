@@ -260,3 +260,11 @@ body { background: var(--bg); }
 .blocked-note { padding: 1rem; border: 1px solid var(--line); border-radius: var(--staff-radius); background: var(--surface-tint); color: var(--text-muted); }
 @media (max-width: 900px) { .ops-grid-2 { grid-template-columns: 1fr; } .permission-grid { grid-template-columns: 1fr; } .ops-row { align-items: flex-start; flex-direction: column; } .ops-row-actions { justify-content: flex-start; } }
 
+
+/* ---------- BOOKING DETAIL PAGE ---------- */
+.stat-text { font-size: 1.15rem !important; line-height: 1.15 !important; overflow-wrap: anywhere; }
+.payment-mini-form { margin-bottom: 1rem; }
+.payment-history { margin-top: 0.8rem; }
+#booking-detail-gate { min-height: 72vh; display: flex; align-items: center; justify-content: center; }
+#booking-detail-gate[hidden] { display: none; }
+@media (max-width: 720px) { .stat-text { font-size: 0.96rem !important; } }

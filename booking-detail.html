@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Great+Vibes&family=Playfair+Display:ital,wght@1,700;1,800&display=swap" rel="stylesheet">
+<link rel="icon" href="https://kridiyatravel.com/assets/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="https://kridiyatravel.com/assets/favicon-180.png">
+<link rel="stylesheet" href="https://kridiyatravel.com/css/styles.css">
+<link rel="stylesheet" href="css/staff.css"><title>Booking Detail - Kridiya Staff Tools</title>
+</head>
+<body data-page="bookings">
+<header id="site-header" class="site-header"></header>
+<main><section class="section"><div class="container">
+  <div id="booking-detail-gate"><div class="account-main empty-state"><p>Checking access...</p></div></div>
+  <div id="booking-detail-app" hidden>
+    <div class="account-head"><div><h1 id="booking-title">Booking</h1><p id="booking-subtitle">Loading booking details...</p></div><a class="btn btn-outline" href="bookings.html">Back to bookings</a></div>
+    <div class="stat-row" id="booking-detail-stats"></div>
+    <div class="ops-grid ops-grid-2">
+      <div class="account-main"><div class="account-section-head"><div><h2>Booking control</h2><p>Status, supplier reference, and internal notes.</p></div></div><form id="booking-status-form" class="form-grid" onsubmit="return false"></form></div>
+      <div class="account-main"><div class="account-section-head"><div><h2>Customer</h2><p>Contact and corporate context.</p></div></div><div id="booking-customer-box"></div></div>
+    </div>
+    <div class="ops-grid ops-grid-2">
+      <div class="account-main"><div class="account-section-head"><div><h2>Customer payments</h2><p>Record bank, cash, payment links, and receipts.</p></div></div><div id="customer-payment-panel"></div></div>
+      <div class="account-main"><div class="account-section-head"><div><h2>Supplier payments</h2><p>Track B2B payable, paid amount, and supplier reference.</p></div></div><div id="supplier-payment-panel"></div></div>
+    </div>
+  </div>
+</div></section></main>
+<footer id="site-footer" class="site-footer"></footer>
+<script src="https://kridiyatravel.com/js/auth.js" defer></script>
+<script src="js/staff-common.js" defer></script>
+<script src="js/booking-detail.js" defer></script>
+</body></html>
