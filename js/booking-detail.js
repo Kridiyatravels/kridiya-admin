@@ -8,11 +8,25 @@
   const BOOKING_STATUS = ["enquiry", "quote_sent", "payment_pending", "confirmed", "paid", "ticketed", "completed", "cancelled", "refunded"];
   const PAYMENT_STATUS = ["not_requested", "request_sent", "proof_received", "partially_paid", "paid", "supplier_payment_pending", "supplier_paid", "refund_pending", "refunded", "failed", "cancelled"];
   const DOC_STATUS = ["not_started", "draft", "generated", "sent", "archived"];
+  const PASSENGER_TYPES = ["adult", "child", "infant"];
+  const DOCUMENT_TYPES = ["passport_copy", "photo", "visa_form", "ticket_or_pnr", "emirates_id", "trade_license", "lpo", "insurance_policy", "voucher", "other"];
+  const REQUIRED_DOCUMENTS = {
+    flight: ["passport_copy", "ticket_or_pnr"],
+    visa: ["passport_copy", "photo", "visa_form"],
+    hotel: ["passport_copy", "voucher"],
+    holiday: ["passport_copy", "ticket_or_pnr", "voucher"],
+    umrah: ["passport_copy", "photo", "visa_form"],
+    cruise: ["passport_copy", "visa_form"],
+    insurance: ["passport_copy", "insurance_policy"],
+    transfer: ["passport_copy", "voucher"],
+    other: ["passport_copy", "other"]
+  };
 
   function esc(v) { return KridiyaAuth.escapeHTML(String(v == null ? "" : v)); }
   function label(v) { return String(v || "").replace(/_/g, " ").replace(/\b\w/g, function (c) { return c.toUpperCase(); }); }
   function money(v, c) { return v == null ? "Hidden" : (c || "AED") + " " + Number(v || 0).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
   function optionList(values, current) { return values.map(function (v) { return '<option value="' + esc(v) + '"' + (v === current ? ' selected' : '') + '>' + esc(label(v)) + '</option>'; }).join(""); }
+  function dateText(v) { return v ? new Date(v + "T00:00:00").toLocaleDateString("en-GB") : "Not set"; }
 
   async function boot() {
     const gate = document.getElementById("booking-detail-gate");
@@ -58,6 +72,8 @@
     ].map(function (s) { return '<div class="stat-tile" style="--tile-accent:' + s[2] + '"><div class="num stat-text">' + esc(s[1]) + '</div><div class="label">' + esc(s[0]) + '</div></div>'; }).join("");
     renderStatusForm();
     renderCustomer();
+    renderPassengers();
+    renderDocuments();
     renderCustomerPayments();
     renderSupplierPayments();
   }
@@ -94,6 +110,92 @@
     const c = detail.customer;
     const corp = detail.corporate;
     document.getElementById("booking-customer-box").innerHTML = c ? '<div class="ops-list"><div class="ops-row"><div class="ops-row-main"><b>' + esc(c.full_name) + '</b><p>' + esc(c.email || "No email") + ' / ' + esc(c.phone || c.whatsapp || "No phone") + '</p><div class="ops-kv"><span class="ops-chip">Source: ' + esc(label(c.source)) + '</span>' + (corp ? '<span class="ops-chip">Corporate: ' + esc(corp.company_name) + '</span>' : '') + '</div></div></div></div>' : '<p class="form-note">No customer profile linked yet.</p>';
+  }
+
+  function renderPassengers() {
+    const rows = detail.passengers || [];
+    const canEdit = detail.can_edit_bookings;
+    const form = canEdit ? '<form id="booking-passenger-form" class="form-grid payment-mini-form" onsubmit="return false"><div class="field-row"><div class="field col-6"><label>PASSENGER NAME</label><input name="passenger_name" required placeholder="As per passport"></div><div class="field col-6"><label>TYPE</label><select name="passenger_type">' + optionList(PASSENGER_TYPES, "adult") + '</select></div><div class="field col-4"><label>NATIONALITY</label><input name="nationality" placeholder="Indian, UAE, etc."></div><div class="field col-4"><label>DATE OF BIRTH</label><input name="date_of_birth" type="date"></div><div class="field col-4"><label>PASSPORT EXPIRY</label><input name="passport_expiry" type="date"></div><div class="field col-6"><label>PASSPORT NUMBER</label><input name="passport_number"></div><div class="field col-6"><label>NOTES</label><input name="notes" placeholder="Seat, meal, visa note"></div></div><button class="btn btn-primary" type="submit">Add passenger</button></form>' : '<p class="form-note">Booking edit permission required to add passengers.</p>';
+    document.getElementById("booking-passenger-panel").innerHTML = form + renderPassengerRows(rows, canEdit);
+    const f = document.getElementById("booking-passenger-form");
+    if (f) f.addEventListener("submit", recordPassenger);
+  }
+
+  function renderPassengerRows(rows, canEdit) {
+    if (!rows.length) return '<p class="form-note">No passengers added yet.</p>';
+    return '<div class="ops-list payment-history">' + rows.map(function (r) {
+      const passport = r.passport_number ? 'Passport: ' + r.passport_number + ' / Exp: ' + dateText(r.passport_expiry) : 'Passport not added';
+      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(r.passenger_name) + '</b><p>' + esc(label(r.passenger_type)) + ' / ' + esc(r.nationality || "Nationality not set") + ' / DOB: ' + esc(dateText(r.date_of_birth)) + '</p><div class="ops-kv"><span class="ops-chip">' + esc(passport) + '</span>' + (r.notes ? '<span class="ops-chip">' + esc(r.notes) + '</span>' : '') + '</div></div>' + (canEdit ? '<div class="ops-row-actions"><button class="btn btn-outline js-delete-passenger" data-id="' + esc(r.id) + '" type="button">Remove</button></div>' : '') + '</div>';
+    }).join("") + '</div>';
+  }
+
+  function renderDocuments() {
+    const rows = detail.booking_documents || [];
+    const canEdit = detail.can_edit_documents;
+    const required = REQUIRED_DOCUMENTS[detail.booking.service_type] || REQUIRED_DOCUMENTS.other;
+    const receivedTypes = rows.reduce(function (set, row) { set[row.document_type] = true; return set; }, {});
+    const checklist = '<div class="doc-checklist">' + required.map(function (type) {
+      return '<span class="doc-check ' + (receivedTypes[type] ? 'is-done' : '') + '">' + esc(receivedTypes[type] ? "Received: " : "Pending: ") + esc(label(type)) + '</span>';
+    }).join("") + '</div>';
+    const form = canEdit ? '<form id="booking-document-form" class="form-grid payment-mini-form" onsubmit="return false"><div class="field-row"><div class="field col-6"><label>DOCUMENT TYPE</label><select name="document_type">' + optionList(DOCUMENT_TYPES, required[0]) + '</select></div><div class="field col-6"><label>DOCUMENT NAME</label><input name="file_name" required placeholder="Passport copy received"></div><div class="field col-12"><label>REFERENCE / NOTE</label><input name="external_reference" placeholder="WhatsApp, email, portal ref, file location"></div></div><button class="btn btn-primary" type="submit">Mark document received</button></form>' : '<p class="form-note">Document permission required to record documents.</p>';
+    document.getElementById("booking-document-panel").innerHTML = checklist + form + renderDocumentRows(rows, canEdit);
+    const f = document.getElementById("booking-document-form");
+    if (f) f.addEventListener("submit", recordDocument);
+  }
+
+  function renderDocumentRows(rows, canEdit) {
+    if (!rows.length) return '<p class="form-note">No document records yet.</p>';
+    return '<div class="ops-list payment-history">' + rows.map(function (r) {
+      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(label(r.document_type)) + '</b><p>' + esc(r.file_name) + (r.external_reference ? ' - ' + esc(r.external_reference) : '') + '</p><div class="ops-kv"><span class="ops-chip">' + (r.visible_to_customer ? 'Customer visible' : 'Internal only') + '</span></div></div>' + (canEdit ? '<div class="ops-row-actions"><button class="btn btn-outline js-delete-document" data-id="' + esc(r.id) + '" type="button">Remove</button></div>' : '') + '</div>';
+    }).join("") + '</div>';
+  }
+
+  async function recordPassenger() {
+    const form = document.getElementById("booking-passenger-form");
+    const result = await sb.rpc("record_booking_passenger", {
+      p_booking_id: bookingId,
+      p_passenger_name: form.passenger_name.value,
+      p_passenger_type: form.passenger_type.value,
+      p_nationality: form.nationality.value || null,
+      p_date_of_birth: form.date_of_birth.value || null,
+      p_passport_number: form.passport_number.value || null,
+      p_passport_expiry: form.passport_expiry.value || null,
+      p_notes: form.notes.value || null
+    });
+    if (result.error) { toast("Could not add passenger: " + result.error.message); return; }
+    toast("Passenger added.");
+    form.reset();
+    await loadDetail();
+  }
+
+  async function recordDocument() {
+    const form = document.getElementById("booking-document-form");
+    const result = await sb.rpc("record_booking_document", {
+      p_booking_id: bookingId,
+      p_document_type: form.document_type.value,
+      p_file_name: form.file_name.value,
+      p_external_reference: form.external_reference.value || null,
+      p_storage_path: null,
+      p_visible_to_customer: false
+    });
+    if (result.error) { toast("Could not record document: " + result.error.message); return; }
+    toast("Document recorded.");
+    form.reset();
+    await loadDetail();
+  }
+
+  async function deletePassenger(id) {
+    const result = await sb.rpc("delete_booking_passenger", { p_passenger_id: id });
+    if (result.error) { toast("Could not remove passenger: " + result.error.message); return; }
+    toast("Passenger removed.");
+    await loadDetail();
+  }
+
+  async function deleteDocument(id) {
+    const result = await sb.rpc("delete_booking_document", { p_document_id: id });
+    if (result.error) { toast("Could not remove document: " + result.error.message); return; }
+    toast("Document removed.");
+    await loadDetail();
   }
 
   function renderCustomerPayments() {
@@ -155,5 +257,11 @@
     await loadDetail();
   }
 
+  document.addEventListener("click", function (event) {
+    const passengerButton = event.target.closest(".js-delete-passenger");
+    const documentButton = event.target.closest(".js-delete-document");
+    if (passengerButton) deletePassenger(passengerButton.dataset.id);
+    if (documentButton) deleteDocument(documentButton.dataset.id);
+  });
   document.addEventListener("DOMContentLoaded", boot);
 })();
