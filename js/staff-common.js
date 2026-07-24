@@ -65,6 +65,7 @@ function renderStaffChrome() {
           '<a href="bookings.html"' + (page === "bookings" ? ' aria-current="page"' : "") + '>Bookings</a>' +
           '<a href="corporate.html"' + (page === "corporate" ? ' aria-current="page"' : "") + '>Corporate</a>' +
           '<a href="payments.html"' + (page === "payments" ? ' aria-current="page"' : "") + '>Payments</a>' +
+          '<a href="accounting.html"' + (page === "accounting" ? ' aria-current="page"' : "") + '>Accounting</a>' +
           '<a href="documents.html"' + (page === "documents" ? ' aria-current="page"' : "") + '>Documents</a>' +
           '<a href="portals.html"' + (page === "portals" ? ' aria-current="page"' : "") + '>Portals</a>' +
           '<a href="staff.html"' + (page === "staff" ? ' aria-current="page"' : "") + '>Staff</a>' +

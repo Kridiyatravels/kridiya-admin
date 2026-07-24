@@ -83,7 +83,7 @@ body { background: var(--bg); }
    panel. The gate containers (#admin-gate etc.) hold both the
    "Checking access..." loading state and this form, so centering them
    also centers that loading message for free. */
-#admin-gate, #doc-gate, #activity-gate, #dashboard-gate, #bookings-gate, #corporate-gate, #payments-gate, #portals-gate, #staff-gate, #backups-gate {
+#admin-gate, #doc-gate, #activity-gate, #dashboard-gate, #bookings-gate, #corporate-gate, #payments-gate, #portals-gate, #staff-gate, #backups-gate, #accounting-gate {
   min-height: 72vh;
   display: flex;
   align-items: center;
@@ -95,7 +95,7 @@ body { background: var(--bg); }
    gate.hidden = true. This restores "hidden means gone". */
 #admin-gate[hidden], #doc-gate[hidden], #activity-gate[hidden],
 #dashboard-gate[hidden], #bookings-gate[hidden], #corporate-gate[hidden], #payments-gate[hidden],
-#portals-gate[hidden], #staff-gate[hidden], #backups-gate[hidden] { display: none; }
+#portals-gate[hidden], #staff-gate[hidden], #backups-gate[hidden], #accounting-gate[hidden] { display: none; }
 .login-shell {
   width: 100%;
   max-width: 420px;
