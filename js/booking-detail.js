@@ -74,6 +74,7 @@
     ].map(function (s) { return '<div class="stat-tile" style="--tile-accent:' + s[2] + '"><div class="num stat-text">' + esc(s[1]) + '</div><div class="label">' + esc(s[0]) + '</div></div>'; }).join("");
     renderStatusForm();
     renderCustomer();
+    renderCorporateControls();
     renderPassengers();
     renderDocuments();
     renderCustomerPayments();
@@ -114,6 +115,39 @@
     document.getElementById("booking-customer-box").innerHTML = c ? '<div class="ops-list"><div class="ops-row"><div class="ops-row-main"><b>' + esc(c.full_name) + '</b><p>' + esc(c.email || "No email") + ' / ' + esc(c.phone || c.whatsapp || "No phone") + '</p><div class="ops-kv"><span class="ops-chip">Source: ' + esc(label(c.source)) + '</span>' + (corp ? '<span class="ops-chip">Corporate: ' + esc(corp.company_name) + '</span>' : '') + '</div></div></div></div>' : '<p class="form-note">No customer profile linked yet.</p>';
   }
 
+
+  function renderCorporateControls() {
+    const card = document.getElementById("booking-corporate-card");
+    const panel = document.getElementById("booking-corporate-panel");
+    const b = detail.booking;
+    const corp = detail.corporate;
+    const contact = detail.corporate_contact;
+    if (!corp && b.booking_kind !== "corporate") {
+      card.hidden = true;
+      panel.innerHTML = "";
+      return;
+    }
+    card.hidden = false;
+    const canEdit = detail.can_edit_corporates;
+    const contactLine = contact ? esc(contact.full_name) + (contact.job_title ? ' / ' + esc(contact.job_title) : '') + (contact.email ? ' / ' + esc(contact.email) : '') : 'No corporate contact linked';
+    const companyInfo = corp ? '<div class="ops-kv corporate-control-chips"><span class="ops-chip">Company: ' + esc(corp.company_name) + '</span><span class="ops-chip">Terms: ' + esc(label(corp.payment_terms)) + '</span><span class="ops-chip">LPO required: ' + esc(corp.lpo_required ? "Yes" : "No") + '</span><span class="ops-chip">Credit: ' + esc(corp.credit_allowed ? "Yes" : "No") + '</span><span class="ops-chip">Monthly billing: ' + esc(corp.monthly_billing ? "Yes" : "No") + '</span></div><p class="form-note">Billing: ' + esc(corp.billing_email || "No billing email") + ' / Accounts: ' + esc(corp.accounts_email || "No accounts email") + '</p><p class="form-note">Contact: ' + contactLine + '</p>' : '<p class="blocked-note">This is marked corporate, but no company is linked yet.</p>';
+    const form = canEdit ? '<form id="corporate-control-form" class="form-grid payment-mini-form" onsubmit="return false"><div class="field-row"><div class="field col-6"><label>LPO NUMBER</label><input name="lpo_number" value="' + esc(b.lpo_number || "") + '" placeholder="Required if company asks for LPO"></div><div class="field col-6"><label>APPROVAL PERSON</label><input name="approval_person" value="' + esc(b.approval_person || "") + '" placeholder="Who approved this booking?"></div></div><button class="btn btn-primary" type="submit">Save corporate controls</button></form>' : '<p class="form-note">You do not have permission to edit corporate controls.</p>';
+    panel.innerHTML = companyInfo + form;
+    const f = document.getElementById("corporate-control-form");
+    if (f) f.addEventListener("submit", saveCorporateControls);
+  }
+
+  async function saveCorporateControls() {
+    const form = document.getElementById("corporate-control-form");
+    const result = await sb.rpc("update_booking_corporate_controls", {
+      p_booking_id: bookingId,
+      p_lpo_number: form.lpo_number.value || null,
+      p_approval_person: form.approval_person.value || null
+    });
+    if (result.error) { toast("Could not save corporate controls: " + result.error.message); return; }
+    toast("Corporate controls saved.");
+    await loadDetail();
+  }
   function renderPassengers() {
     const rows = detail.passengers || [];
     const canEdit = detail.can_edit_bookings;
