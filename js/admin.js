@@ -95,6 +95,12 @@
     "- Passport must be valid for at least 6 months from the travel date.\n" +
     "- Visa (if required) is the traveller's responsibility unless arranged by Kridiya Travel.";
 
+  function fmtQuoteDate(iso) {
+    if (!iso) return "";
+    const d = new Date(iso + "T00:00:00");
+    return isNaN(d) ? iso : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  }
+
   /* "Extra 10kg = 120" lines -> [{name:'Extra 10kg', price:120}] */
   function parseAddons(text) {
     return String(text || "").split("\n").map(function (line) {
@@ -288,9 +294,13 @@
                 '<input class="qf qf-wide" name="title" type="text" placeholder="Option label — e.g. Option 1: Air Arabia" required>' +
                 '<input class="qf" name="airline" type="text" placeholder="Airline — e.g. Air Arabia">' +
                 '<select class="qf" name="stops"><option value="">Stops…</option><option value="Direct">Direct</option><option value="1 stop">1 stop</option><option value="2 stops">2 stops</option></select>' +
-                '<input class="qf qf-wide" name="outbound" type="text" placeholder="Onward — e.g. 15 Aug 09:15 DXB → 15:20 CMB">' +
-                '<input class="qf qf-wide" name="inbound" type="text" placeholder="Return — e.g. 05 Sep 03:10 CMB → 06:00 DXB">' +
-                '<input class="qf" name="baggage" type="text" placeholder="Baggage — e.g. 30kg + 7kg">' +
+                '<span class="ac-wrap qf-wide"><input class="qf" name="from" type="text" placeholder="From — type city or airport (e.g. Dubai)" data-airport></span>' +
+                '<span class="ac-wrap qf-wide"><input class="qf" name="to" type="text" placeholder="To — type city or airport (e.g. Colombo)" data-airport></span>' +
+                '<input class="qf" name="depart_date" type="date">' +
+                '<input class="qf" name="return_date" type="date">' +
+                '<input class="qf" name="depart_time" type="text" placeholder="Onward flight time (optional) — e.g. 09:15 → 15:20">' +
+                '<input class="qf" name="return_time" type="text" placeholder="Return flight time (optional) — e.g. 03:10 → 06:00">' +
+                '<input class="qf qf-wide" name="baggage" type="text" placeholder="Baggage — e.g. 30kg + 7kg cabin">' +
                 '<input class="qf" name="price_amount" type="number" min="0" step="0.01" placeholder="Fare / person" required>' +
                 '<input class="qf" name="currency" type="text" value="AED" maxlength="3">' +
                 '<input class="qf" name="valid_until" type="datetime-local">' +
@@ -305,6 +315,7 @@
         "</div>"
       );
     }).join("");
+    if (typeof initAirportAC === "function") initAirportAC(listEl);
   }
 
   async function loadEnquiries() {
@@ -684,6 +695,20 @@
       const currency = (form.currency.value || "AED").trim().toUpperCase();
       const validUntil = form.valid_until.value ? new Date(form.valid_until.value).toISOString() : null;
       const terms = form.terms.value.trim();
+      const fromA = resolveAirport(form.from);
+      const toA = resolveAirport(form.to);
+      const routeFwd = (fromA && toA)
+        ? fromA.city + " (" + fromA.iata + ") → " + toA.city + " (" + toA.iata + ")"
+        : [form.from.value.trim(), form.to.value.trim()].filter(Boolean).join(" → ");
+      const routeRev = (fromA && toA)
+        ? toA.city + " (" + toA.iata + ") → " + fromA.city + " (" + fromA.iata + ")"
+        : [form.to.value.trim(), form.from.value.trim()].filter(Boolean).join(" → ");
+      const dTime = form.depart_time.value.trim();
+      const rTime = form.return_time.value.trim();
+      const outboundStr = [routeFwd, fmtQuoteDate(form.depart_date.value), dTime].filter(Boolean).join(" · ") || null;
+      const inboundStr = (form.return_date.value || rTime)
+        ? ([routeRev, fmtQuoteDate(form.return_date.value), rTime].filter(Boolean).join(" · ") || null)
+        : null;
       const btn = form.querySelector('button[type="submit"]');
       btn.disabled = true;
       const result = await sb
@@ -693,8 +718,8 @@
           title: title,
           airline: form.airline.value.trim() || null,
           stops: form.stops.value || null,
-          outbound: form.outbound.value.trim() || null,
-          inbound: form.inbound.value.trim() || null,
+          outbound: outboundStr,
+          inbound: inboundStr,
           baggage: form.baggage.value.trim() || null,
           addons: parseAddons(form.addons ? form.addons.value : ""),
           price_amount: price,

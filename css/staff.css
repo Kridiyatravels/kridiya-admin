@@ -403,3 +403,25 @@ body { background: var(--bg); }
 .pro-quote-form .qf:focus { outline: 2px solid var(--brand); outline-offset: 1px; border-color: var(--brand); }
 .pro-quote-form > button[type="submit"] { align-self: flex-start; }
 @media (max-width: 520px) { .pro-quote-form .qf-grid { grid-template-columns: 1fr; } }
+
+/* ---------- Airport autocomplete dropdown ---------- */
+.ac-wrap { position: relative; display: block; }
+.ac-list {
+  position: absolute; z-index: 60; top: calc(100% + 4px); left: 0; right: 0;
+  margin: 0; padding: 4px; list-style: none; max-height: 264px; overflow-y: auto;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: var(--staff-shadow-md);
+}
+.ac-item {
+  display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0.55rem;
+  border-radius: 8px; cursor: pointer;
+}
+.ac-item.active, .ac-item:hover { background: var(--brand-soft); }
+.ac-code {
+  flex: none; font-weight: 800; font-size: 0.72rem; color: var(--brand-deep);
+  background: var(--surface-tint); border-radius: 6px; padding: 0.22rem 0.4rem;
+  min-width: 42px; text-align: center; letter-spacing: 0.03em;
+}
+.ac-main { display: flex; flex-direction: column; min-width: 0; }
+.ac-city { font-size: 0.86rem; color: var(--ink); font-weight: 600; }
+.ac-name { font-size: 0.74rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
