@@ -29,6 +29,12 @@
   function esc(v) { return KridiyaAuth.escapeHTML(String(v == null ? "" : v)); }
   function label(v) { return String(v || "").replace(/_/g, " ").replace(/\b\w/g, function (c) { return c.toUpperCase(); }); }
   function money(v, c) { return v == null ? "Hidden" : (c || "AED") + " " + Number(v || 0).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  /* Tile amount: "Restricted" only when the user truly can't see it,
+     "—" when it just hasn't been entered yet, otherwise the amount. */
+  function moneyTile(v, c, canView) {
+    if (canView === false) return "Restricted";
+    return v == null ? "—" : (c || "AED") + " " + Number(v).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
   function optionList(values, current) { return values.map(function (v) { return '<option value="' + esc(v) + '"' + (v === current ? ' selected' : '') + '>' + esc(label(v)) + '</option>'; }).join(""); }
   function dateText(v) { return v ? new Date(v + "T00:00:00").toLocaleDateString("en-GB") : "Not set"; }
   function dateTimeText(v) { return v ? new Date(v).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "Not set"; }
@@ -85,9 +91,9 @@
     document.getElementById("booking-title").textContent = b.booking_reference + " - " + b.title;
     document.getElementById("booking-subtitle").textContent = label(b.service_type) + " / " + label(b.booking_kind) + (b.route_or_destination ? " / " + b.route_or_destination : "");
     document.getElementById("booking-detail-stats").innerHTML = [
-      ["Selling price", money(b.selling_price, b.currency), "var(--status-quoted)"],
-      ["Supplier cost", money(b.supplier_cost, b.currency), "var(--status-payment)"],
-      ["Gross profit", money(b.gross_profit, b.currency), "var(--status-confirmed)"],
+      ["Selling price", moneyTile(b.selling_price, b.currency, detail.can_view_payments || detail.can_view_profit), "var(--status-quoted)"],
+      ["Supplier cost", moneyTile(b.supplier_cost, b.currency, detail.can_view_profit || detail.can_view_payments), "var(--status-payment)"],
+      ["Gross profit", moneyTile(b.gross_profit, b.currency, detail.can_view_profit), "var(--status-confirmed)"],
       ["Payment", label(b.payment_status), "var(--status-docs)"]
     ].map(function (s) { return '<div class="stat-tile" style="--tile-accent:' + s[2] + '"><div class="num stat-text">' + esc(s[1]) + '</div><div class="label">' + esc(s[0]) + '</div></div>'; }).join("");
     renderStatusForm();
