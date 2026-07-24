@@ -83,7 +83,7 @@ body { background: var(--bg); }
    panel. The gate containers (#admin-gate etc.) hold both the
    "Checking access..." loading state and this form, so centering them
    also centers that loading message for free. */
-#admin-gate, #doc-gate, #activity-gate, #dashboard-gate, #bookings-gate, #corporate-gate, #payments-gate, #portals-gate, #staff-gate, #backups-gate, #accounting-gate {
+#admin-gate, #doc-gate, #activity-gate, #dashboard-gate, #bookings-gate, #corporate-gate, #payments-gate, #portals-gate, #staff-gate, #backups-gate, #accounting-gate, #templates-gate {
   min-height: 72vh;
   display: flex;
   align-items: center;
@@ -95,7 +95,7 @@ body { background: var(--bg); }
    gate.hidden = true. This restores "hidden means gone". */
 #admin-gate[hidden], #doc-gate[hidden], #activity-gate[hidden],
 #dashboard-gate[hidden], #bookings-gate[hidden], #corporate-gate[hidden], #payments-gate[hidden],
-#portals-gate[hidden], #staff-gate[hidden], #backups-gate[hidden], #accounting-gate[hidden] { display: none; }
+#portals-gate[hidden], #staff-gate[hidden], #backups-gate[hidden], #accounting-gate[hidden], #templates-gate[hidden] { display: none; }
 .login-shell {
   width: 100%;
   max-width: 420px;
@@ -341,3 +341,12 @@ body { background: var(--bg); }
 .payment-control.warn { border-color: oklch(0.82 0.13 78); background: oklch(0.97 0.05 82); }
 .payment-control.risk { border-color: oklch(0.7 0.18 30); background: oklch(0.96 0.05 35); }
 .payment-request-form { border-bottom: 1px solid var(--line); padding-bottom: 1rem; }
+/* ---------- Template library ---------- */
+.template-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.template-card { border: 1px solid var(--line); border-radius: var(--staff-radius); background: var(--surface); padding: 1rem; box-shadow: var(--staff-shadow-sm); min-width: 0; }
+.template-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 0.8rem; }
+.template-card h2 { margin: 0; font-size: 1rem; }
+.template-card .btn { flex-shrink: 0; min-height: 38px; }
+.template-subject { margin: 0 0 0.7rem; color: var(--ink-2); font-size: 0.86rem; }
+.template-card pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font); color: var(--ink-2); background: var(--surface-tint); border: 1px solid var(--line); border-radius: 10px; padding: 0.85rem; font-size: 0.82rem; line-height: 1.55; max-height: 360px; overflow: auto; }
+@media (max-width: 900px) { .template-grid { grid-template-columns: 1fr; } .template-card-head { flex-direction: column; } .template-card .btn { width: 100%; justify-content: center; } }
