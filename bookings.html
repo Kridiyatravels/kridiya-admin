@@ -25,7 +25,9 @@
           <div class="field col-6"><label>TITLE</label><input name="title" required placeholder="Dubai to Kochi flight"></div>
           <div class="field col-3"><label>SERVICE</label><select name="service_type"><option value="flight">Flight</option><option value="visa">Visa</option><option value="corporate">Corporate</option><option value="hotel">Hotel</option><option value="holiday">Holiday</option><option value="umrah">Umrah</option><option value="cruise">Cruise</option><option value="insurance">Insurance</option><option value="transfer">Transfer</option><option value="other">Other</option></select></div>
           <div class="field col-3"><label>TYPE</label><select name="booking_kind"><option value="individual">Individual</option><option value="corporate">Corporate</option></select></div>
-          <div class="field col-4"><label>CUSTOMER NAME</label><input name="customer_name" required></div>
+          <div class="field col-6 corporate-booking-field" hidden><label>CORPORATE COMPANY</label><select name="corporate_account_id"><option value="">Choose company</option></select></div>
+          <div class="field col-6 corporate-booking-field" hidden><label>CORPORATE CONTACT</label><select name="corporate_contact_id"><option value="">Choose contact or type below</option></select></div>
+          <div class="field col-4"><label>CUSTOMER / REQUESTER NAME</label><input name="customer_name" required></div>
           <div class="field col-4"><label>EMAIL</label><input name="customer_email" type="email"></div>
           <div class="field col-4"><label>PHONE / WHATSAPP</label><input name="customer_phone"></div>
           <div class="field col-4"><label>ROUTE / DESTINATION</label><input name="route_or_destination" placeholder="DXB-COK or UAE visa"></div>
