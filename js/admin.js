@@ -88,6 +88,62 @@
     '</div>';
   }
 
+  const DEFAULT_QUOTE_TERMS =
+    "- Fares are subject to availability and may change until the ticket is issued.\n" +
+    "- Full payment is required before booking confirmation.\n" +
+    "- Date changes, cancellations and no-shows are subject to airline penalties plus service fees.\n" +
+    "- Passport must be valid for at least 6 months from the travel date.\n" +
+    "- Visa (if required) is the traveller's responsibility unless arranged by Kridiya Travel.";
+
+  /* "Extra 10kg = 120" lines -> [{name:'Extra 10kg', price:120}] */
+  function parseAddons(text) {
+    return String(text || "").split("\n").map(function (line) {
+      const t = line.trim();
+      if (!t) return null;
+      const parts = t.split("=");
+      const name = parts[0].trim();
+      if (!name) return null;
+      const price = parts.length > 1 ? parseFloat(parts[1].replace(/[^0-9.]/g, "")) : NaN;
+      return { name: name, price: (price >= 0 ? price : null) };
+    }).filter(Boolean);
+  }
+
+  /* Builds the professional customer message from every option added to
+     this enquiry, ready to paste into WhatsApp. */
+  function buildQuoteMessage(enq) {
+    const list = (quotesByEnquiry[enq.id] || []).slice().reverse();
+    if (!list.length) return "";
+    const name = enq.full_name ? enq.full_name.split(" ")[0] : "there";
+    const out = [];
+    out.push("Hello " + name + ", thank you for choosing Kridiya Travel and Tourism. ✈️");
+    out.push("");
+    out.push("Here " + (list.length > 1 ? "are your options" : "is your quote") + ":");
+    list.forEach(function (q, i) {
+      out.push("");
+      out.push("*" + (q.title || ("Option " + (i + 1))) + "*");
+      if (q.airline) out.push("Airline: " + q.airline + (q.stops ? " (" + q.stops + ")" : ""));
+      else if (q.stops) out.push("Type: " + q.stops);
+      if (q.outbound) out.push("Onward: " + q.outbound);
+      if (q.inbound) out.push("Return: " + q.inbound);
+      if (q.baggage) out.push("Baggage: " + q.baggage);
+      out.push("Fare: " + fmtMoney(q.price_amount, q.currency) + " per person");
+      const adds = Array.isArray(q.addons) ? q.addons : [];
+      if (adds.length) {
+        out.push("Optional add-ons:");
+        adds.forEach(function (a) { out.push("  + " + a.name + (a.price != null ? " (" + fmtMoney(a.price, q.currency) + ")" : "")); });
+      }
+    });
+    out.push("");
+    out.push("*Terms & Conditions:*");
+    ((list[0] && list[0].terms) ? list[0].terms : DEFAULT_QUOTE_TERMS).split("\n").forEach(function (t) {
+      if (t.trim()) out.push(t.trim());
+    });
+    if (list[0] && list[0].valid_until) { out.push(""); out.push("Prices valid until " + fmtWhen(list[0].valid_until) + "."); }
+    out.push("");
+    out.push("To confirm, please reply and complete payment. Payment is required before booking. 🙏");
+    return out.join("\n");
+  }
+
   function matchesFilters(enq) {
     const statusF = document.getElementById("flt-status").value;
     const serviceF = document.getElementById("flt-service").value;
@@ -210,23 +266,38 @@
             "</form>" +
           "</div>" +
           '<div class="admin-notes" data-quotes-for="' + enq.id + '" hidden>' +
+            (quotes.length ? '<div class="quote-actions-bar"><button type="button" class="btn btn-primary js-copy-quotes" data-id="' + enq.id + '">' + icon("mail") + ' Copy for WhatsApp</button><span class="form-note">' + quotes.length + ' option(s) in this quote</span></div>' : '') +
             '<div class="admin-notes-list">' +
               (quotes.length
-                ? quotes.map(function (q) {
-                    return '<div class="admin-note"><p><b>' + KridiyaAuth.escapeHTML(q.title) + "</b> — " + fmtMoney(q.price_amount, q.currency) +
-                      ' <span class="admin-badge">' + KridiyaAuth.statusLabel(q.status) + "</span></p>" +
+                ? quotes.slice().reverse().map(function (q, i) {
+                    const adds = Array.isArray(q.addons) ? q.addons : [];
+                    return '<div class="admin-note quote-option">' +
+                      '<p><b>' + KridiyaAuth.escapeHTML(q.title || ("Option " + (i + 1))) + "</b> — " + fmtMoney(q.price_amount, q.currency) + '/person <span class="admin-badge">' + KridiyaAuth.statusLabel(q.status) + "</span></p>" +
+                      ((q.airline || q.stops) ? '<p class="quote-line">' + KridiyaAuth.escapeHTML([q.airline, q.stops].filter(Boolean).join(" · ")) + "</p>" : "") +
+                      (q.outbound ? '<p class="quote-line">Onward: ' + KridiyaAuth.escapeHTML(q.outbound) + "</p>" : "") +
+                      (q.inbound ? '<p class="quote-line">Return: ' + KridiyaAuth.escapeHTML(q.inbound) + "</p>" : "") +
+                      (q.baggage ? '<p class="quote-line">Baggage: ' + KridiyaAuth.escapeHTML(q.baggage) + "</p>" : "") +
+                      (adds.length ? '<div class="ops-kv">' + adds.map(function (a) { return '<span class="ops-chip">+ ' + KridiyaAuth.escapeHTML(a.name) + (a.price != null ? " " + fmtMoney(a.price, q.currency) : "") + "</span>"; }).join("") + "</div>" : "") +
                       (q.valid_until ? '<p class="form-note" style="margin:0.2rem 0 0">Valid until ' + fmtWhen(q.valid_until) + "</p>" : "") +
                       "</div>";
                   }).join("")
-                : '<p class="form-note">No quote sent yet.</p>') +
+                : '<p class="form-note">No options added yet. Build the quote below — add one option at a time.</p>') +
             "</div>" +
-            '<form class="admin-quote-form" data-id="' + enq.id + '">' +
-              '<input name="title" type="text" placeholder="e.g. Air India Express, 20kg baggage" required style="flex:1 1 220px;min-height:44px;border:1px solid var(--line);border-radius:var(--r-sm);padding:0 0.7rem">' +
-              '<input name="price_amount" type="number" min="0" step="0.01" placeholder="Price" required style="width:120px;min-height:44px;border:1px solid var(--line);border-radius:var(--r-sm);padding:0 0.7rem">' +
-              '<input name="currency" type="text" value="AED" maxlength="3" style="width:70px;min-height:44px;border:1px solid var(--line);border-radius:var(--r-sm);padding:0 0.7rem;text-transform:uppercase">' +
-              '<input name="valid_until" type="datetime-local" style="min-height:44px;border:1px solid var(--line);border-radius:var(--r-sm);padding:0 0.5rem">' +
-              '<textarea name="terms" placeholder="Terms (optional) — e.g. subject to seat availability until ticketed"></textarea>' +
-              '<button class="btn btn-primary" type="submit">Send quote</button>' +
+            '<form class="admin-quote-form pro-quote-form" data-id="' + enq.id + '">' +
+              '<div class="qf-grid">' +
+                '<input class="qf qf-wide" name="title" type="text" placeholder="Option label — e.g. Option 1: Air Arabia" required>' +
+                '<input class="qf" name="airline" type="text" placeholder="Airline — e.g. Air Arabia">' +
+                '<select class="qf" name="stops"><option value="">Stops…</option><option value="Direct">Direct</option><option value="1 stop">1 stop</option><option value="2 stops">2 stops</option></select>' +
+                '<input class="qf qf-wide" name="outbound" type="text" placeholder="Onward — e.g. 15 Aug 09:15 DXB → 15:20 CMB">' +
+                '<input class="qf qf-wide" name="inbound" type="text" placeholder="Return — e.g. 05 Sep 03:10 CMB → 06:00 DXB">' +
+                '<input class="qf" name="baggage" type="text" placeholder="Baggage — e.g. 30kg + 7kg">' +
+                '<input class="qf" name="price_amount" type="number" min="0" step="0.01" placeholder="Fare / person" required>' +
+                '<input class="qf" name="currency" type="text" value="AED" maxlength="3">' +
+                '<input class="qf" name="valid_until" type="datetime-local">' +
+              "</div>" +
+              '<textarea class="qf qf-area" name="addons" placeholder="Add-ons (optional) — one per line, e.g.  Extra 10kg = 120"></textarea>' +
+              '<textarea class="qf qf-area" name="terms">' + KridiyaAuth.escapeHTML(DEFAULT_QUOTE_TERMS) + "</textarea>" +
+              '<button class="btn btn-primary" type="submit">Add this option</button>' +
             "</form>" +
           "</div>" +
           (booking ? "" : convertPanel(enq)) +
@@ -504,6 +575,22 @@
         if (panel) panel.hidden = !panel.hidden;
         return;
       }
+      const copyQuoteBtn = e.target.closest(".js-copy-quotes");
+      if (copyQuoteBtn) {
+        const cqEnq = allEnquiries.find(function (r) { return r.id === copyQuoteBtn.dataset.id; });
+        if (cqEnq) {
+          const text = buildQuoteMessage(cqEnq);
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(
+              function () { toast("Quote copied — paste into WhatsApp."); },
+              function () { toast("Could not copy automatically — select the text manually."); }
+            );
+          } else {
+            toast("Copy not supported on this browser.");
+          }
+        }
+        return;
+      }
       const convertBtn = e.target.closest(".convert-toggle");
       if (convertBtn) {
         const panel = listEl.querySelector('.admin-notes[data-convert-for="' + convertBtn.dataset.id + '"]');
@@ -604,6 +691,12 @@
         .insert({
           enquiry_id: id,
           title: title,
+          airline: form.airline.value.trim() || null,
+          stops: form.stops.value || null,
+          outbound: form.outbound.value.trim() || null,
+          inbound: form.inbound.value.trim() || null,
+          baggage: form.baggage.value.trim() || null,
+          addons: parseAddons(form.addons ? form.addons.value : ""),
           price_amount: price,
           currency: currency,
           valid_until: validUntil,
