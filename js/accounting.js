@@ -49,6 +49,23 @@
   function bookingDate(b) {
     return dateOnly(b.created_at || b.travel_start || b.updated_at);
   }
+  function bookingMonth(b) {
+    const d = bookingDate(b);
+    return d ? d.slice(0, 7) : "No date";
+  }
+  function paymentCleared(status) {
+    return ["received", "paid", "payment_received", "completed"].indexOf(String(status || "").toLowerCase()) !== -1;
+  }
+  function bookingConfirmed(status) {
+    return ["confirmed", "booked", "documents_sent", "closed"].indexOf(String(status || "").toLowerCase()) !== -1;
+  }
+  function collectionRule(b) {
+    if (paymentCleared(b.payment_status)) return "OK - payment received";
+    if (b.booking_kind === "corporate" || b.corporate_company_name) return "Corporate - collect LPO/payment approval";
+    if (bookingConfirmed(b.status)) return "Risk - booking confirmed before payment";
+    if (num(b.selling_price) > 0) return "Collect payment before booking";
+    return "Add selling price and payment status";
+  }
   function filteredBookings() {
     const from = document.getElementById("flt-accounting-from").value;
     const to = document.getElementById("flt-accounting-to").value;
@@ -68,7 +85,7 @@
     const cost = rows.reduce(function (s, b) { return s + num(b.supplier_cost); }, 0);
     const profit = rows.reduce(function (s, b) { return s + num(b.gross_profit != null ? b.gross_profit : num(b.selling_price) - num(b.supplier_cost)); }, 0);
     const received = payments.filter(function (p) { return p.status === "received"; }).reduce(function (s, p) { return s + num(p.amount); }, 0);
-    const pending = Math.max(0, sales - received);
+    const pending = rows.filter(function (b) { return !paymentCleared(b.payment_status); }).reduce(function (s, b) { return s + num(b.selling_price); }, 0);
     return { sales: sales, cost: cost, profit: profit, received: received, pending: pending };
   }
   function groupBy(rows, keyFn) {
@@ -84,6 +101,11 @@
       return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(r.title) + '</b><p>' + esc(r.subtitle || "") + '</p></div><div class="ops-row-actions"><span class="finance-value">' + esc(money(r.amount)) + '</span></div></div>';
     }).join("") + '</div>' : '<p class="form-note">' + esc(emptyText) + '</p>';
   }
+  function renderRuleRows(containerId, rows, emptyText) {
+    document.getElementById(containerId).innerHTML = rows.length ? '<div class="ops-list">' + rows.map(function (r) {
+      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(r.title) + '</b><p>' + esc(r.subtitle || "") + '</p></div><div class="ops-row-actions"><span class="ops-chip">' + esc(r.count) + '</span></div></div>';
+    }).join("") + '</div>' : '<p class="form-note">' + esc(emptyText) + '</p>';
+  }
   function render() {
     const rows = filteredBookings();
     const totals = summarize(rows);
@@ -91,7 +113,23 @@
       '<div class="stat-tile"><div class="num stat-text">' + esc(money(totals.sales)) + '</div><div class="label">Total sales</div></div>' +
       '<div class="stat-tile"><div class="num stat-text">' + esc(money(totals.cost)) + '</div><div class="label">Supplier cost</div></div>' +
       '<div class="stat-tile"><div class="num stat-text">' + esc(money(totals.profit)) + '</div><div class="label">Gross profit</div></div>' +
-      '<div class="stat-tile"><div class="num stat-text">' + esc(money(totals.pending)) + '</div><div class="label">Estimated pending</div></div>';
+      '<div class="stat-tile"><div class="num stat-text">' + esc(money(totals.pending)) + '</div><div class="label">Pending by status</div></div>';
+
+    const byMonth = groupBy(rows, bookingMonth);
+    const monthlyRows = Object.keys(byMonth).sort().reverse().map(function (month) {
+      const s = summarize(byMonth[month]);
+      return { title: month, subtitle: byMonth[month].length + " booking(s) / " + money(s.sales) + " sales / " + money(s.cost) + " cost", amount: s.profit };
+    });
+    renderMoneyRows("monthly-total-list", monthlyRows, "No monthly totals yet.");
+
+    const ruleGroups = groupBy(rows, collectionRule);
+    const ruleOrder = ["Risk - booking confirmed before payment", "Collect payment before booking", "Corporate - collect LPO/payment approval", "Add selling price and payment status", "OK - payment received"];
+    const ruleRows = ruleOrder.filter(function (rule) { return ruleGroups[rule]; }).map(function (rule) {
+      const group = ruleGroups[rule];
+      const value = group.reduce(function (s, b) { return s + num(b.selling_price); }, 0);
+      return { title: rule, subtitle: money(value) + " booking value", count: group.length };
+    });
+    renderRuleRows("collection-rules-list", ruleRows, "No collection rules to show.");
 
     const byService = groupBy(rows, function (b) { return b.service_type; });
     const serviceRows = Object.keys(byService).sort().map(function (service) {
@@ -107,9 +145,9 @@
     renderMoneyRows("method-list", methodRows, "No received payments yet.");
 
     const pendingRows = rows.filter(function (b) {
-      return ["received", "paid", "completed"].indexOf(String(b.payment_status || "").toLowerCase()) === -1 && num(b.selling_price) > 0;
+      return !paymentCleared(b.payment_status) && num(b.selling_price) > 0;
     }).slice(0, 12).map(function (b) {
-      return { title: (b.booking_reference || "Booking") + " - " + (b.title || b.customer_name || "Untitled"), subtitle: label(b.payment_status) + " / " + label(b.service_type), amount: num(b.selling_price) };
+      return { title: (b.booking_reference || "Booking") + " - " + (b.title || b.customer_name || "Untitled"), subtitle: collectionRule(b) + " / " + label(b.service_type), amount: num(b.selling_price) };
     });
     renderMoneyRows("pending-list", pendingRows, "No pending customer money in this view.");
 
@@ -123,12 +161,14 @@
     reportRows = rows.map(function (b) {
       return {
         date: bookingDate(b),
+        month: bookingMonth(b),
         reference: b.booking_reference,
         title: b.title,
         service: b.service_type,
         kind: b.booking_kind,
         customer: b.customer_name || b.corporate_company_name,
         payment_status: b.payment_status,
+        collection_rule: collectionRule(b),
         booking_status: b.status,
         selling_price: num(b.selling_price),
         supplier_cost: num(b.supplier_cost),
