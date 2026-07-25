@@ -51,6 +51,89 @@
     return "mailto:" + encodeURIComponent(enq.email) + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
   }
 
+  function firstName(enq) {
+    return enq.full_name ? enq.full_name.trim().split(/\s+/)[0] : "there";
+  }
+
+  function hoursSince(iso) {
+    const d = iso ? new Date(iso) : null;
+    if (!d || isNaN(d.getTime())) return null;
+    return (Date.now() - d.getTime()) / 36e5;
+  }
+
+  function ageLabel(hours) {
+    if (hours == null) return "No date";
+    if (hours < 1) return "Just now";
+    if (hours < 24) return Math.floor(hours) + "h";
+    return Math.floor(hours / 24) + "d";
+  }
+
+  function latestTouch(enq, notes, quotes) {
+    const dates = [enq.created_at].concat(
+      notes.map(function (n) { return n.created_at; }),
+      quotes.map(function (q) { return q.created_at; })
+    ).filter(Boolean).map(function (x) { return new Date(x).getTime(); }).filter(function (x) { return !isNaN(x); });
+    return dates.length ? new Date(Math.max.apply(null, dates)).toISOString() : enq.created_at;
+  }
+
+  function marketingSource(enq) {
+    const fields = [
+      detail(enq, "utm_source"),
+      detail(enq, "source"),
+      detail(enq, "Lead_source"),
+      detail(enq, "How_did_you_find_us"),
+      detail(enq, "Request_type")
+    ].filter(Boolean).join(" ");
+    if (/google|search/i.test(fields)) return "Google/Search";
+    if (/instagram|facebook|meta|social/i.test(fields)) return "Social";
+    if (/whatsapp|call/i.test(fields)) return "Direct";
+    if (/corporate|b2b/i.test(fields) || isCorporateEnquiry(enq)) return "Corporate";
+    return "Website";
+  }
+
+  function followUpStage(enq, notes, quotes, booking) {
+    if (booking) return { label: "Won", tone: "success", action: "Keep booking service tight and ask for referral after completion." };
+    if (enq.status === "closed") return { label: "Closed", tone: "neutral", action: "Check notes before reopening this lead." };
+    if (!quotes.length) return { label: "Pre-quote", tone: "warn", action: "Send quote or request missing details." };
+    if (needsFollowUp(enq)) return { label: "Quote follow-up", tone: "hot", action: "Follow up with urgency, validity, and payment next step." };
+    if (isStale(enq)) return { label: "Stale", tone: "hot", action: "Send a short revival message or mark outcome." };
+    return { label: "Active", tone: "info", action: "Keep lead warm and record the next customer signal." };
+  }
+
+  function followUpText(enq, quotes, type) {
+    const lead = firstName(enq);
+    const latestQuote = quotes && quotes.length ? quotes[0] : null;
+    const quoted = latestQuote ? " The latest option is " + fmtMoney(latestQuote.price_amount, latestQuote.currency || "AED") + "." : "";
+    if (type === "email") {
+      return "Hi " + lead + ",\n\nI am following up on your Kridiya Travel enquiry " + enq.reference + " for " + enq.summary + "." + quoted + "\n\nPlease let me know if you would like us to proceed, revise the option, or hold it for a later date.\n\nRegards,\nKridiya Travel";
+    }
+    return "Hello " + lead + ", this is Kridiya Travel following up on enquiry " + enq.reference + " (" + enq.summary + ")." + quoted + " Would you like us to proceed, revise the option, or keep it on hold?";
+  }
+
+  function marketingFollowUp(enq, notes, quotes, booking) {
+    const stage = followUpStage(enq, notes, quotes, booking);
+    const lastTouch = latestTouch(enq, notes, quotes);
+    const touchAge = hoursSince(lastTouch);
+    const leadAge = hoursSince(enq.created_at);
+    const hot = stage.tone === "hot" || (touchAge != null && touchAge >= 24 && !booking);
+    return '<div class="marketing-follow ' + (hot ? "is-hot" : "") + '">' +
+      '<div class="marketing-follow-main">' +
+        '<span class="marketing-chip marketing-' + KridiyaAuth.escapeHTML(stage.tone) + '">' + KridiyaAuth.escapeHTML(stage.label) + '</span>' +
+        '<span><b>Source</b> ' + KridiyaAuth.escapeHTML(marketingSource(enq)) + '</span>' +
+        '<span><b>Lead age</b> ' + KridiyaAuth.escapeHTML(ageLabel(leadAge)) + '</span>' +
+        '<span><b>Last touch</b> ' + KridiyaAuth.escapeHTML(ageLabel(touchAge)) + '</span>' +
+      '</div>' +
+      '<p>' + KridiyaAuth.escapeHTML(stage.action) + '</p>' +
+      '<div class="marketing-actions">' +
+        '<button type="button" class="btn btn-outline js-copy-followup" data-id="' + enq.id + '" data-kind="whatsapp">Copy WhatsApp follow-up</button>' +
+        '<button type="button" class="btn btn-outline js-copy-followup" data-id="' + enq.id + '" data-kind="email">Copy email follow-up</button>' +
+        '<button type="button" class="btn btn-outline js-quick-note" data-id="' + enq.id + '" data-note="Marketing follow-up: customer interested, next action required.">Interested</button>' +
+        '<button type="button" class="btn btn-outline js-quick-note" data-id="' + enq.id + '" data-note="Marketing follow-up: customer not ready now, keep warm for later.">Keep warm</button>' +
+        '<button type="button" class="btn btn-outline js-quick-note" data-id="' + enq.id + '" data-note="Marketing follow-up: lead lost or unresponsive.">Lost/unresponsive</button>' +
+      '</div>' +
+    '</div>';
+  }
+
   function detail(enq, key) {
     return enq && enq.details && enq.details[key] ? String(enq.details[key]).trim() : "";
   }
@@ -463,6 +546,7 @@
             (enq.phone ? '<a href="tel:' + KridiyaAuth.escapeHTML(enq.phone) + '">' + KridiyaAuth.escapeHTML(enq.phone) + "</a> · " : "") +
             '<a href="mailto:' + KridiyaAuth.escapeHTML(enq.email) + '">' + KridiyaAuth.escapeHTML(enq.email) + "</a></p>" +
           corporatePreview(enq) +
+          marketingFollowUp(enq, notes, quotes, booking) +
           '<div class="admin-enq-actions">' +
             '<select class="status-select status-pill-select" data-id="' + enq.id + '" style="' + statusStyle(enq.status) + '">' +
               STATUS_OPTIONS.map(function (s) {
@@ -732,6 +816,27 @@
         }
         return;
       }
+      const followBtn = e.target.closest(".js-copy-followup");
+      if (followBtn) {
+        const id = followBtn.dataset.id;
+        const enq = allEnquiries.find(function (r) { return r.id === id; });
+        if (!enq) return;
+        const text = followUpText(enq, quotesByEnquiry[id] || [], followBtn.dataset.kind);
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(
+            function () { toast("Follow-up copied."); },
+            function () { toast("Could not copy automatically."); }
+          );
+        } else {
+          toast("Copy not supported on this browser.");
+        }
+        return;
+      }
+      const quickNoteBtn = e.target.closest(".js-quick-note");
+      if (quickNoteBtn) {
+        await saveQuickMarketingNote(quickNoteBtn);
+        return;
+      }
       const removeQuoteBtn = e.target.closest(".js-remove-quote");
       if (removeQuoteBtn) {
         if (!confirm("Remove this option from the quote?")) return;
@@ -882,6 +987,29 @@
       logActivity(sb, currentStaffId, "enquiry.quote_sent", "enquiry", id, { reference: quoteEnq ? quoteEnq.reference : null, title: title, amount: price, currency: currency });
       toast("Quote sent to customer.");
     });
+  }
+
+  async function saveQuickMarketingNote(btn) {
+    const id = btn.dataset.id;
+    const note = btn.dataset.note || "";
+    if (!id || !note) return;
+    btn.disabled = true;
+    const result = await sb
+      .from("enquiry_notes")
+      .insert({ enquiry_id: id, note: note, created_by: currentStaffId })
+      .select("id, enquiry_id, note, created_at")
+      .single();
+    btn.disabled = false;
+    if (result.error) {
+      toast("Could not save outcome: " + result.error.message);
+      return;
+    }
+    if (!notesByEnquiry[id]) notesByEnquiry[id] = [];
+    notesByEnquiry[id].unshift(result.data);
+    renderList();
+    const enq = allEnquiries.find(function (r) { return r.id === id; });
+    logActivity(sb, currentStaffId, "enquiry.marketing_outcome_added", "enquiry", id, { reference: enq ? enq.reference : null, note: note });
+    toast("Marketing outcome saved.");
   }
 
   async function convertCorporateEnquiry(btn) {

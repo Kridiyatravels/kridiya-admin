@@ -1000,6 +1000,26 @@ body { background: var(--bg); }
   border: 1px solid color-mix(in oklab, var(--brand) 30%, var(--line));
   border-radius: 10px; background: var(--brand-soft, #fdf1e4);
 }
+.marketing-follow {
+  margin: 0.75rem 0; padding: 0.75rem 0.85rem; border: 1px solid var(--line);
+  border-radius: 10px; background: var(--surface-tint);
+}
+.marketing-follow.is-hot { border-color: color-mix(in oklab, var(--status-payment) 40%, var(--line)); }
+.marketing-follow-main { display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem 0.75rem; }
+.marketing-follow-main span { color: var(--ink-2); font-size: 0.8rem; }
+.marketing-follow-main b { color: var(--ink); font-weight: 800; }
+.marketing-follow p { margin: 0.45rem 0 0; color: var(--text-muted); font-size: 0.84rem; }
+.marketing-chip {
+  display: inline-flex; align-items: center; min-height: 24px; border-radius: 999px;
+  padding: 0.1rem 0.55rem; font-size: 0.74rem; font-weight: 800; border: 1px solid var(--line);
+}
+.marketing-hot { color: var(--status-payment); background: var(--status-payment-bg); border-color: color-mix(in oklab, var(--status-payment) 35%, var(--line)); }
+.marketing-warn { color: var(--status-checking); background: var(--status-checking-bg); border-color: color-mix(in oklab, var(--status-checking) 30%, var(--line)); }
+.marketing-success { color: var(--status-confirmed); background: var(--status-confirmed-bg); border-color: color-mix(in oklab, var(--status-confirmed) 30%, var(--line)); }
+.marketing-info { color: var(--brand-deep, #a3480f); background: var(--brand-soft, #fdf1e4); border-color: color-mix(in oklab, var(--brand) 30%, var(--line)); }
+.marketing-neutral { color: var(--ink-2); background: var(--surface); }
+.marketing-actions { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.65rem; }
+.marketing-actions .btn { min-height: 34px; padding-block: 0.35rem; font-size: 0.78rem; }
 
 @media (max-width: 640px) {
   .staff-tools-menu { grid-template-columns: 1fr; }
