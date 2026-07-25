@@ -300,6 +300,107 @@ body { background: var(--bg); }
 .blocked-note { padding: 1rem; border: 1px solid var(--line); border-radius: var(--staff-radius); background: var(--surface-tint); color: var(--text-muted); }
 @media (max-width: 900px) { .ops-grid-2 { grid-template-columns: 1fr; } .permission-grid { grid-template-columns: 1fr; } .ops-row { align-items: flex-start; flex-direction: column; } .ops-row-actions { justify-content: flex-start; } }
 
+/* ---------- Dashboard command center ---------- */
+.command-center {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.82fr) minmax(0, 1.18fr);
+  gap: 0.9rem;
+  margin-bottom: 1.2rem;
+}
+.command-health,
+.command-finance,
+.command-actions {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--staff-radius);
+  box-shadow: var(--staff-shadow-sm);
+}
+.command-health {
+  min-height: 190px;
+  padding: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.command-health span,
+.command-metric span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.command-health b {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--ink);
+  font-size: 2.4rem;
+  line-height: 1;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.command-health p,
+.command-metric p,
+.command-action span {
+  margin: 0.25rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+.command-ok { border-color: oklch(0.75 0.12 145); background: oklch(0.98 0.025 145); }
+.command-warn { border-color: oklch(0.82 0.13 78); background: oklch(0.985 0.035 82); }
+.command-risk { border-color: oklch(0.7 0.18 30); background: oklch(0.98 0.035 35); }
+.command-finance {
+  padding: 0.8rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+.command-metric {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-tint);
+  padding: 0.8rem;
+}
+.command-metric b {
+  color: var(--ink);
+  font-size: 1rem;
+  line-height: 1.2;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.command-actions {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  overflow: hidden;
+}
+.command-action {
+  display: block;
+  padding: 0.9rem 1rem;
+  color: var(--ink);
+  text-decoration: none;
+  border-right: 1px solid var(--line);
+  background: var(--surface);
+}
+.command-action:last-child { border-right: 0; }
+.command-action:hover { background: var(--surface-tint); }
+.command-action b { display: block; font-size: 0.9rem; }
+@media (max-width: 980px) {
+  .command-center { grid-template-columns: 1fr; }
+  .command-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .command-action:nth-child(2) { border-right: 0; }
+  .command-action:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+}
+@media (max-width: 560px) {
+  .command-finance,
+  .command-actions { grid-template-columns: 1fr; }
+  .command-action { border-right: 0; border-bottom: 1px solid var(--line); }
+  .command-action:last-child { border-bottom: 0; }
+}
+
 
 /* ---------- BOOKING DETAIL PAGE ---------- */
 .stat-text { font-size: 1.15rem !important; line-height: 1.15 !important; overflow-wrap: anywhere; }
