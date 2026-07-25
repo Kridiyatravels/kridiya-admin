@@ -205,6 +205,7 @@
         (e.summary ? '<span class="cust-line-sub">' + esc(e.summary) + "</span>" : "") +
       "</span>" +
       '<span class="cust-line-date">' + esc(fmtDate(e.created_at)) + "</span>" +
+      '<a class="btn btn-outline btn-sm" href="admin.html?focus=' + esc(e.id) + '">Open</a>' +
       '<a class="btn btn-outline btn-sm" href="documents.html?enquiry=' + esc(e.id) + '">Document</a>' +
       "</div>";
   }
@@ -244,6 +245,7 @@
           '<div class="cust-actions">' +
             (wa ? '<a class="btn btn-wa btn-sm" target="_blank" rel="noopener" href="' + wa + '">' + icon("whatsapp") + " WhatsApp</a>" : "") +
             '<a class="btn btn-outline btn-sm" href="mailto:' + esc(g.email) + '">' + icon("mail") + " Email</a>" +
+            (g.enquiries.length ? '<a class="btn btn-outline btn-sm" href="admin.html?email=' + encodeURIComponent(g.email) + '">View enquiries</a>' : "") +
           "</div>" +
           '<div class="cust-kv">' +
             '<span class="k">Email</span><span class="v">' + esc(g.email) + "</span>" +
@@ -348,6 +350,17 @@
     app.hidden = false;
     renderList();
     wireEvents();
+
+    // Deep-link from Enquiries ("Customer" button): open that person's card.
+    const wantEmail = normEmail(new URLSearchParams(location.search).get("email"));
+    if (wantEmail) {
+      const card = document.querySelector('.cust-card[data-key="' + (window.CSS && CSS.escape ? CSS.escape(wantEmail) : wantEmail) + '"]');
+      if (card) {
+        const body = card.querySelector(".cust-body");
+        if (body) { body.hidden = false; card.classList.add("open"); }
+        if (card.scrollIntoView) card.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
   }
 
   document.addEventListener("DOMContentLoaded", boot);

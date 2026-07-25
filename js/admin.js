@@ -17,6 +17,8 @@
   let sb = null;
   let currentStaffId = null;
   let allEnquiries = [];
+  let focusEmail = "";  // customers.html deep-link: show only this person's enquiries
+  let focusId = "";     // deep-link: expand + scroll to a specific enquiry
   let notesByEnquiry = {};
   let requestsByEnquiry = {};
   let quotesByEnquiry = {};
@@ -364,6 +366,7 @@
     if (statusF && enq.status !== statusF) return false;
     if (serviceF && enq.service_type !== serviceF) return false;
     if (todayOnly && new Date(enq.created_at).toDateString() !== new Date().toDateString()) return false;
+    if (focusEmail && String(enq.email || "").trim().toLowerCase() !== focusEmail) return false;
     return true;
   }
 
@@ -390,10 +393,17 @@
     renderStatTiles();
     const listEl = document.getElementById("admin-list");
     const visible = allEnquiries.filter(matchesFilters);
-    document.getElementById("admin-count").textContent = visible.length + " of " + allEnquiries.length + " enquiries";
+    const countEl = document.getElementById("admin-count");
+    if (focusEmail) {
+      countEl.innerHTML = "Showing <b>" + KridiyaAuth.escapeHTML(focusEmail) + "</b> · " + visible.length +
+        ' of ' + allEnquiries.length + ' — <a href="admin.html">show all</a>';
+    } else {
+      countEl.textContent = visible.length + " of " + allEnquiries.length + " enquiries";
+    }
 
     if (!visible.length) {
-      listEl.innerHTML = '<div class="account-main empty-state"><p>No enquiries match these filters.</p></div>';
+      listEl.innerHTML = '<div class="account-main empty-state"><p>No enquiries match' +
+        (focusEmail ? ' for <b>' + KridiyaAuth.escapeHTML(focusEmail) + '</b>. <a href="admin.html">Show all</a>' : ' these filters.') + "</p></div>";
       return;
     }
 
@@ -441,6 +451,7 @@
               ? '<a class="btn btn-primary" href="booking-detail.html?id=' + KridiyaAuth.escapeHTML(booking.id) + '">Open booking</a>'
               : (corporate ? '<button type="button" class="btn btn-outline convert-toggle" data-id="' + enq.id + '">Convert</button>' : "")) +
             '<a class="btn btn-outline" href="documents.html?enquiry=' + enq.id + '">Document</a>' +
+            '<a class="btn btn-outline" href="customers.html?email=' + encodeURIComponent(enq.email || "") + '">' + icon("user") + " Customer</a>" +
           "</div>" +
           '<div class="admin-notes" data-notes-for="' + enq.id + '" hidden>' +
             '<div class="admin-notes-list">' +
@@ -889,12 +900,25 @@
       return;
     }
 
+    const params = new URLSearchParams(location.search);
+    focusEmail = (params.get("email") || "").trim().toLowerCase();
+    focusId = (params.get("focus") || "").trim();
+
     populateFilterOptions();
     showStaffNav();
     gate.hidden = true;
     app.hidden = false;
     renderList();
     wireEvents();
+
+    // Deep-link from Customers: expand and scroll to a specific enquiry.
+    if (focusId) {
+      const row = document.querySelector('.admin-enq[data-id="' + (window.CSS && CSS.escape ? CSS.escape(focusId) : focusId) + '"]');
+      if (row) {
+        row.classList.add("expanded");
+        if (row.scrollIntoView) row.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
   }
 
   document.addEventListener("DOMContentLoaded", boot);

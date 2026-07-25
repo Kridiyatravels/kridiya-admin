@@ -961,7 +961,8 @@
       if (result.data) {
         linkedEnquiry = result.data;
         document.getElementById("linked-enquiry-box").innerHTML =
-          "Linked to <b>" + esc(linkedEnquiry.reference) + "</b> — " + esc(linkedEnquiry.full_name) + " (" + esc(linkedEnquiry.summary || linkedEnquiry.service_type) + ")";
+          "Linked to <b>" + esc(linkedEnquiry.reference) + "</b> — " + esc(linkedEnquiry.full_name) + " (" + esc(linkedEnquiry.summary || linkedEnquiry.service_type) + ")" +
+          (linkedEnquiry.email ? ' · <a href="customers.html?email=' + encodeURIComponent(linkedEnquiry.email) + '">Customer profile</a>' : "");
         document.getElementById("linked-enquiry-box").hidden = false;
       }
     }
@@ -996,7 +997,8 @@
         if (!result.data) return;
         linkedEnquiry = result.data;
         document.getElementById("linked-enquiry-box").innerHTML =
-          "Linked to <b>" + esc(linkedEnquiry.reference) + "</b> — " + esc(linkedEnquiry.full_name) + " (" + esc(linkedEnquiry.summary || linkedEnquiry.service_type) + ")";
+          "Linked to <b>" + esc(linkedEnquiry.reference) + "</b> — " + esc(linkedEnquiry.full_name) + " (" + esc(linkedEnquiry.summary || linkedEnquiry.service_type) + ")" +
+          (linkedEnquiry.email ? ' · <a href="customers.html?email=' + encodeURIComponent(linkedEnquiry.email) + '">Customer profile</a>' : "");
         document.getElementById("linked-enquiry-box").hidden = false;
         searchResults.innerHTML = "";
         searchInput.value = "";
