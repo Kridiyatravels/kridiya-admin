@@ -649,11 +649,14 @@ body { background: var(--bg); }
 .workflow-step input { margin-top: 0.2rem; width: 16px; height: 16px; accent-color: var(--brand); flex: 0 0 auto; }
 .workflow-step b { display: block; color: var(--ink); font-size: 0.88rem; font-weight: 800; }
 .workflow-step small { display: block; margin-top: 0.22rem; color: var(--text-muted); font-size: 0.76rem; line-height: 1.35; }
+.section-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: flex-end; }
 @media (max-width: 640px) {
   .workflow-test-summary,
   .workflow-step { align-items: flex-start; grid-template-columns: 1fr; flex-direction: column; }
   .workflow-test-summary .btn,
-  .workflow-step .btn { width: 100%; justify-content: center; }
+  .workflow-step .btn,
+  .section-actions,
+  .section-actions .btn { width: 100%; justify-content: center; }
 }
 
 

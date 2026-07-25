@@ -262,6 +262,22 @@
       }).join("") + '</div>';
   }
 
+  function workflowReportText() {
+    const progress = readWorkflowProgress();
+    const complete = WORKFLOW_TEST_STEPS.filter(function (s) { return progress[s.id]; }).length;
+    const percent = Math.round((complete / WORKFLOW_TEST_STEPS.length) * 100);
+    const lines = [
+      "KRIDIYA launch workflow test",
+      "Date: " + new Date().toLocaleString("en-GB"),
+      "Progress: " + complete + "/" + WORKFLOW_TEST_STEPS.length + " (" + percent + "%)",
+      ""
+    ];
+    WORKFLOW_TEST_STEPS.forEach(function (s, index) {
+      lines.push((progress[s.id] ? "[x] " : "[ ] ") + (index + 1) + ". " + s.title + " - " + s.text);
+    });
+    return lines.join("\n");
+  }
+
   function updateHubCounts(map) {
     Object.keys(map).forEach(function (href) {
       const slot = document.querySelector('.hub-count[data-count-for="' + href + '"]');
@@ -304,6 +320,17 @@
       writeWorkflowProgress({});
       renderWorkflowTest();
       toast("Workflow test reset.");
+      return;
+    }
+    const workflowCopy = event.target.closest("#workflow-test-copy");
+    if (workflowCopy) {
+      const text = workflowReportText();
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        toast("Workflow test report copied.");
+      } else {
+        window.prompt("Copy workflow test report", text);
+      }
       return;
     }
     const doneButton = event.target.closest(".js-dashboard-task-done");
