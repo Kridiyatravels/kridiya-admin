@@ -101,17 +101,40 @@
     return isNaN(d) ? iso : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
   }
 
-  /* "Extra 10kg = 120" lines -> [{name:'Extra 10kg', price:120}] */
-  function parseAddons(text) {
-    return String(text || "").split("\n").map(function (line) {
-      const t = line.trim();
-      if (!t) return null;
-      const parts = t.split("=");
-      const name = parts[0].trim();
-      if (!name) return null;
-      const price = parts.length > 1 ? parseFloat(parts[1].replace(/[^0-9.]/g, "")) : NaN;
-      return { name: name, price: (price >= 0 ? price : null) };
-    }).filter(Boolean);
+  /* Preset optional add-ons offered on every quote option. */
+  const QUOTE_ADDONS = [
+    { name: "Extra baggage", hint: "e.g. +10kg" },
+    { name: "Seat selection", hint: "e.g. window / extra legroom" },
+    { name: "Meal", hint: "e.g. special meal" },
+    { name: "Travel insurance", hint: "" }
+  ];
+
+  /* The tick-box add-on grid shown inside the quote form. */
+  function quoteAddonFields() {
+    return '<fieldset class="qf-addons">' +
+      '<legend>Optional add-ons</legend>' +
+      QUOTE_ADDONS.map(function (a) {
+        return '<label class="addon-item">' +
+          '<input type="checkbox" class="addon-check" value="' + KridiyaAuth.escapeHTML(a.name) + '">' +
+          '<span class="addon-name">' + KridiyaAuth.escapeHTML(a.name) + "</span>" +
+          '<input type="number" class="addon-price" min="0" step="0.01" placeholder="Price"' +
+            (a.hint ? ' title="' + KridiyaAuth.escapeHTML(a.hint) + '"' : "") + " disabled>" +
+        "</label>";
+      }).join("") +
+    "</fieldset>";
+  }
+
+  /* Reads the ticked add-ons into [{name, price}]. */
+  function gatherAddons(form) {
+    const out = [];
+    form.querySelectorAll(".addon-item").forEach(function (item) {
+      const cb = item.querySelector(".addon-check");
+      if (!cb || !cb.checked) return;
+      const priceEl = item.querySelector(".addon-price");
+      const price = priceEl ? parseFloat(priceEl.value) : NaN;
+      out.push({ name: cb.value, price: (price >= 0 ? price : null) });
+    });
+    return out;
   }
 
   /* Builds the professional customer message from every option added to
@@ -360,7 +383,7 @@
                 '<input class="qf" name="currency" type="text" value="AED" maxlength="3">' +
                 '<input class="qf qf-wide" name="valid_until" type="datetime-local" title="Quote valid until">' +
               "</div>" +
-              '<textarea class="qf qf-area" name="addons" placeholder="Add-ons (optional) — one per line, e.g.  Extra 10kg = 120"></textarea>' +
+              quoteAddonFields() +
               '<textarea class="qf qf-area" name="terms">' + KridiyaAuth.escapeHTML(DEFAULT_QUOTE_TERMS) + "</textarea>" +
               '<button class="btn btn-primary" type="submit">+ Add option</button>' +
             "</form>" +
@@ -607,6 +630,16 @@
       toast("Request sent to customer.");
     });
 
+    listEl.addEventListener("change", function (e) {
+      const cb = e.target.closest(".addon-check");
+      if (!cb) return;
+      const price = cb.closest(".addon-item").querySelector(".addon-price");
+      if (!price) return;
+      price.disabled = !cb.checked;
+      if (!cb.checked) price.value = "";
+      else price.focus();
+    });
+
     listEl.addEventListener("submit", async function (e) {
       const form = e.target.closest(".admin-quote-form");
       if (!form) return;
@@ -627,7 +660,7 @@
           enquiry_id: id,
           title: title,
           option_data: optionData,
-          addons: parseAddons(form.addons ? form.addons.value : ""),
+          addons: gatherAddons(form),
           price_amount: price,
           currency: currency,
           valid_until: validUntil,

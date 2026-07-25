@@ -456,6 +456,32 @@ body { background: var(--bg); }
 .pro-quote-form > button[type="submit"] { align-self: flex-start; }
 @media (max-width: 520px) { .pro-quote-form .qf-grid { grid-template-columns: 1fr; } }
 
+/* ---------- Preset add-on tick-boxes ---------- */
+.pro-quote-form .qf-addons {
+  margin: 0.7rem 0 0; border: 1px solid var(--line); border-radius: var(--r-sm, 10px);
+  padding: 0.7rem 0.85rem 0.85rem;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.55rem 0.9rem;
+}
+.pro-quote-form .qf-addons legend {
+  grid-column: 1 / -1; padding: 0; margin-bottom: 0.15rem;
+  font-size: 0.78rem; font-weight: 700; color: var(--ink-2);
+}
+.addon-item {
+  display: flex; align-items: center; gap: 0.5rem; min-height: 44px;
+  border: 1px solid var(--line); border-radius: var(--r-sm, 10px);
+  padding: 0 0.6rem; background: var(--surface); cursor: pointer;
+}
+.addon-item:focus-within { border-color: var(--brand); }
+.addon-item .addon-check { width: 18px; height: 18px; flex: 0 0 auto; accent-color: var(--brand); cursor: pointer; }
+.addon-item .addon-name { flex: 1 1 auto; font-size: 0.85rem; font-weight: 600; color: var(--ink); }
+.addon-item .addon-price {
+  width: 92px; flex: 0 0 auto; min-height: 34px; font: inherit; text-align: right;
+  border: 1px solid var(--line); border-radius: var(--r-sm, 8px);
+  padding: 0 0.5rem; background: var(--surface); color: var(--ink);
+}
+.addon-item .addon-price:disabled { background: var(--surface-tint); color: var(--text-muted); }
+@media (max-width: 520px) { .pro-quote-form .qf-addons { grid-template-columns: 1fr; } }
+
 /* ---------- Airport autocomplete dropdown ---------- */
 .ac-wrap { position: relative; display: block; }
 .ac-list {
