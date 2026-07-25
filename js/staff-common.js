@@ -194,6 +194,13 @@ function toast(msg) {
 }
 
 function renderStaffChrome() {
+  document.querySelectorAll('[id$="-gate"] .empty-state').forEach(function (state) {
+    if (/^\s*Checking access/i.test(state.textContent || "")) {
+      state.classList.add("loading-state");
+      state.setAttribute("aria-busy", "true");
+      state.setAttribute("aria-live", "polite");
+    }
+  });
   const page = document.body.dataset.page;
   const header = document.getElementById("site-header");
   if (header) {

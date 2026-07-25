@@ -283,8 +283,8 @@ body { background: var(--bg); }
 .ops-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.85rem 0; border-bottom: 1px solid var(--line); }
 .ops-row:last-child { border-bottom: none; }
 .ops-row.is-muted { opacity: 0.62; }
-.reminder-overdue { border-left: 3px solid var(--status-payment); padding-left: 0.75rem; }
-.reminder-today { border-left: 3px solid var(--status-quoted); padding-left: 0.75rem; }
+.reminder-overdue { color: var(--status-payment); }
+.reminder-today { color: var(--status-quoted); }
 .ops-row-main { min-width: 0; flex: 1; }
 .ops-row-main b { color: var(--ink); }
 .ops-row-main p { margin: 0.2rem 0 0; color: var(--text-muted); font-size: 0.84rem; }
@@ -1038,7 +1038,7 @@ body { background: var(--bg); }
 
 /* ---------- Professional quote builder ---------- */
 .quote-actions-bar { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; margin-bottom: 0.9rem; }
-.quote-option { border-left: 3px solid var(--brand); }
+.quote-option { border-color: color-mix(in oklab, var(--brand) 34%, var(--line)); }
 .quote-line { margin: 0.15rem 0 0; font-size: 0.86rem; color: var(--ink-2); }
 .quote-option-head { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin: 0; }
 .quote-remove {
@@ -2162,5 +2162,433 @@ main .container,
   .dashboard-system > summary {
     align-items: flex-start;
     flex-direction: column;
+  }
+}
+
+/* ============================================================
+   Production polish contract
+   Final shared behavior for all staff pages. These rules normalize
+   legacy page markup without changing data or business workflows.
+   ============================================================ */
+:root {
+  --sp-1: 0.25rem;
+  --sp-2: 0.5rem;
+  --sp-3: 0.75rem;
+  --sp-4: 1rem;
+  --sp-5: 1.25rem;
+  --sp-6: 1.5rem;
+  --sp-7: 2rem;
+  --sp-8: 2.5rem;
+  --control-sm: 36px;
+  --control-md: 42px;
+  --ease-ui: 160ms cubic-bezier(0.22, 1, 0.36, 1);
+  --z-dropdown: 40;
+  --z-sticky: 50;
+  --z-modal-backdrop: 80;
+  --z-modal: 90;
+  --z-toast: 100;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-variant-numeric: proportional-nums;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+a,
+button,
+input,
+select,
+textarea,
+[tabindex] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 3px solid color-mix(in oklab, var(--brand) 38%, transparent);
+  outline-offset: 2px;
+}
+
+:where(button, .btn, input, select, textarea):disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.btn {
+  gap: var(--sp-2);
+  min-height: var(--control-md);
+  padding-inline: var(--sp-4);
+  font-weight: 700;
+  line-height: 1.2;
+  transition:
+    color var(--ease-ui),
+    background-color var(--ease-ui),
+    border-color var(--ease-ui),
+    transform var(--ease-ui);
+}
+
+.btn:not(:disabled):active { transform: translateY(1px); }
+.btn-sm { min-height: var(--control-sm); }
+
+.staff-topbar {
+  z-index: var(--z-sticky);
+}
+
+.staff-tools-menu,
+.staff-profile-menu {
+  z-index: var(--z-dropdown);
+}
+
+.jump-overlay {
+  z-index: var(--z-modal-backdrop);
+}
+
+.jump-box {
+  border-radius: 10px;
+}
+
+.toast {
+  z-index: var(--z-toast);
+  max-width: min(420px, calc(100vw - 2rem));
+}
+
+.account-head > :first-child,
+.account-section-head > :first-child {
+  min-width: 0;
+}
+
+.account-head > :last-child:not(:first-child),
+.account-section-head > :last-child:not(:first-child) {
+  flex: none;
+}
+
+.account-head h1,
+.account-section-head h2,
+.account-section-head h3 {
+  text-wrap: balance;
+}
+
+.account-head p,
+.account-section-head p,
+.form-note,
+.ops-row-main p {
+  text-wrap: pretty;
+}
+
+.account-main {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.account-main > :first-child { margin-top: 0; }
+.account-main > :last-child { margin-bottom: 0; }
+
+.form-grid {
+  display: grid;
+  gap: var(--sp-4);
+}
+
+.form-grid > .btn,
+.form-grid > button[type="submit"] {
+  justify-self: start;
+}
+
+.field input::placeholder,
+.field textarea::placeholder,
+.admin-search::placeholder,
+.workspace-control::placeholder {
+  color: var(--ink-2);
+  opacity: 0.82;
+}
+
+.field input[type="number"],
+.field input[type="date"],
+.field input[type="time"],
+.field input[type="datetime-local"],
+.finance-value,
+.stat-tile .num {
+  font-variant-numeric: tabular-nums;
+}
+
+.workspace-control {
+  width: 100%;
+  min-height: var(--control-md);
+  box-sizing: border-box;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 var(--sp-3);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.workspace-control-strong { font-weight: 700; }
+
+.section-follow-action { margin-top: var(--sp-3); }
+.section-actions-primary { margin-top: var(--sp-5); }
+
+.signature-preview {
+  padding: var(--sp-4);
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.customer-search-field {
+  flex: 1 1 320px;
+}
+
+.staff-form-title {
+  margin: var(--sp-2) 0;
+  font-size: 1rem;
+}
+
+.staff-form-title-secondary {
+  margin-top: var(--sp-7);
+  padding-top: var(--sp-6);
+  border-top: 1px solid var(--line);
+}
+
+.staff-form-note {
+  max-width: 76ch;
+  margin: 0 0 var(--sp-3);
+}
+
+.staff-account-form {
+  display: grid;
+  align-items: end;
+  gap: var(--sp-3);
+}
+
+.staff-account-form-create {
+  grid-template-columns: minmax(160px, 1fr) minmax(150px, 0.8fr) minmax(220px, 1.2fr) 140px auto;
+}
+
+.staff-account-form-grant {
+  grid-template-columns: minmax(260px, 1fr) 150px auto;
+}
+
+.staff-account-form .field { margin: 0; }
+.staff-form-result { margin-top: var(--sp-3); }
+
+.loading-state {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: var(--sp-3);
+  text-align: center;
+}
+
+.loading-state::before {
+  content: "";
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--line);
+  border-top-color: var(--brand);
+  border-radius: 50%;
+  animation: staff-spin 700ms linear infinite;
+}
+
+.loading-state p {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 0.86rem;
+}
+
+@keyframes staff-spin {
+  to { transform: rotate(360deg); }
+}
+
+.empty-state:not(.loading-state) {
+  min-height: 150px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: var(--sp-4);
+  text-align: center;
+}
+
+.empty-state:not(.loading-state) p {
+  max-width: 58ch;
+  margin: 0 auto;
+  color: var(--ink-2);
+  line-height: 1.55;
+}
+
+.ops-list {
+  gap: 0;
+}
+
+.ops-row {
+  min-width: 0;
+  transition: background-color var(--ease-ui);
+}
+
+.ops-row:hover {
+  background: var(--surface-tint);
+}
+
+.ops-row-main {
+  padding-left: var(--sp-2);
+}
+
+.ops-row-actions {
+  padding-right: var(--sp-2);
+}
+
+.reminder-overdue,
+.reminder-today,
+.quote-option {
+  border-left: 0;
+  padding-left: 0;
+}
+
+.reminder-overdue .ops-row-main b { color: var(--status-payment); }
+.reminder-today .ops-row-main b { color: var(--status-quoted); }
+
+.admin-enq,
+.cust-card {
+  border-radius: 8px;
+}
+
+.enq-row-head,
+.cust-head {
+  min-height: 68px;
+  transition: background-color var(--ease-ui);
+}
+
+.enq-row-head:focus-visible,
+.cust-head:focus-visible {
+  outline: 3px solid color-mix(in oklab, var(--brand) 38%, transparent);
+  outline-offset: -3px;
+}
+
+.enq-row-body,
+.cust-body {
+  background: color-mix(in oklab, var(--surface-tint) 45%, var(--surface));
+}
+
+.table-wrap,
+.account-main:has(> table) {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-tint);
+  color: var(--ink-2);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-align: left;
+  white-space: nowrap;
+}
+
+table th,
+table td {
+  padding: 0.7rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+
+table tbody tr {
+  transition: background-color var(--ease-ui);
+}
+
+table tbody tr:hover {
+  background: var(--surface-tint);
+}
+
+.admin-filters-card .field-row {
+  align-items: end;
+}
+
+.admin-search,
+.admin-search-field {
+  min-width: min(220px, 100%);
+}
+
+@media (max-width: 1020px) {
+  .staff-account-form-create {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .staff-account-form-create .btn {
+    justify-self: start;
+  }
+}
+
+@media (max-width: 760px) {
+  .account-head > :last-child:not(:first-child),
+  .account-section-head > :last-child:not(:first-child) {
+    width: 100%;
+  }
+
+  .account-section-head .section-actions {
+    justify-content: flex-start;
+  }
+
+  .staff-account-form-create,
+  .staff-account-form-grant {
+    grid-template-columns: 1fr;
+  }
+
+  .staff-account-form .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .ops-row-main,
+  .ops-row-actions {
+    padding-inline: 0;
+  }
+
+  .admin-search,
+  .admin-search-field {
+    width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .stat-row {
+    grid-template-columns: 1fr;
+  }
+
+  .staff-profile-btn {
+    min-width: 42px;
+    justify-content: center;
+    padding-right: 0.25rem;
+  }
+
+  .staff-profile-caret { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
