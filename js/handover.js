@@ -50,7 +50,7 @@
       steps: [
         "Generate invoices, itineraries, tickets, vouchers, visa notes, cancellation/refund letters, and package documents from the booking/enquiry trail.",
         "Use Templates for consistent WhatsApp/email/supplier/customer wording.",
-        "If legal wording, TRN/VAT, or trade-license details are missing, note it in Workflow Test notes and ask the owner."
+        "Use no-VAT wording for now. If VAT registration changes later, update TRN/VAT settings before issuing final invoices."
       ]
     },
     {

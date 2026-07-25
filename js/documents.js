@@ -353,6 +353,7 @@
     const rows = data.items.map(function (it) {
       return "<tr><td>" + esc(it.description) + "</td><td>" + it.qty + "</td><td>" + money(it.unit_price, data.currency) + "</td><td>" + money(it.qty * it.unit_price, data.currency) + "</td></tr>";
     }).join("");
+    const vatNote = data.vat_applies ? "" : "<h2>VAT</h2><p class='note'>VAT is not applied. KRIDIYA Travel and Tourism FZ-LLC is not VAT registered at this time.</p>";
     return (
       letterheadHTML("Invoice", docNumber, data.invoice_date) +
       '<div class="kv"><span class="k">Bill to</span><span class="v">' + esc(data.customer_name) + "</span>" +
@@ -371,6 +372,7 @@
       "</table>" +
       (data.payment_link ? '<div class="box"><b style="font-family:Arial,sans-serif;font-size:0.8rem">Pay online</b><p class="note" style="margin:0.4rem 0 0">' + esc(data.payment_link) + "</p></div>" : "") +
       bankBoxHTML() +
+      vatNote +
       (data.notes ? "<h2>Notes</h2><p class='note'>" + nl2br(data.notes) + "</p>" : "")
     );
   }
