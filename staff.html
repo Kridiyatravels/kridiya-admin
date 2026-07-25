@@ -17,8 +17,36 @@
 <main><section class="section"><div class="container">
   <div id="staff-gate"><div class="account-main empty-state"><p>Checking access...</p></div></div>
   <div id="staff-app" hidden>
-    <div class="account-head"><div><h1>Staff & Permissions</h1><p>Admin control center for roles, permission switches, PIN resets, and monitoring.</p></div><a class="btn btn-outline" href="activity.html">Activity log</a></div>
-    <div class="account-main"><div class="account-section-head"><div><h2>Staff directory</h2><p>Owner controls what every employee can see and do.</p></div><a class="btn btn-outline" href="admin.html">Create staff account</a></div><div id="staff-control-list"></div></div>
+    <div class="account-head"><div><h1>Staff &amp; Permissions</h1><p>Admin control center for adding staff, roles, permission switches, PIN resets, and monitoring.</p></div><a class="btn btn-outline" href="activity.html">Activity log</a></div>
+
+    <div class="account-main">
+      <div class="account-section-head"><div><h2>Add a staff member</h2><p>Create a brand-new sign-in, or grant access to someone who already registered on the main site.</p></div></div>
+
+      <h3 style="margin:0.4rem 0 0.4rem">Create a new staff account (PIN login)</h3>
+      <p class="form-note" style="margin-bottom:0.6rem">Creates the account for them and generates a 6-digit PIN — give it to them yourself, it's only shown once here. Pick <b>Admin</b> as the role to make them an admin.</p>
+      <form id="create-staff-form" style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:flex-end" onsubmit="return false">
+        <div class="field" style="flex:1 1 180px;margin:0"><label>FULL NAME</label><input id="new-staff-name" required></div>
+        <div class="field" style="flex:1 1 160px;margin:0"><label>DEPARTMENT</label><input id="new-staff-dept" placeholder="e.g. Visa, Flights"></div>
+        <div class="field" style="flex:1 1 220px;margin:0"><label>EMAIL</label><input id="new-staff-email" type="email" required></div>
+        <div class="field" style="width:130px;margin:0"><label>ROLE</label>
+          <select id="new-staff-role"><option value="staff">Staff</option><option value="support">Support</option><option value="admin">Admin</option></select>
+        </div>
+        <button type="submit" class="btn btn-primary">Create account</button>
+      </form>
+      <div id="new-staff-result" hidden class="linked-box" style="margin-top:0.8rem"></div>
+
+      <h3 style="margin:1.6rem 0 0.4rem">Grant access to an existing account</h3>
+      <p class="form-note" style="margin-bottom:0.6rem">For someone who already registered on the main site with a password (e.g. another owner/admin) rather than a new PIN account.</p>
+      <form id="grant-staff-form" style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:flex-end" onsubmit="return false">
+        <div class="field" style="flex:1 1 260px;margin:0"><label>EMAIL (MUST HAVE AN ACCOUNT ALREADY)</label><input id="grant-email" type="email" placeholder="name@example.com" required></div>
+        <div class="field" style="width:150px;margin:0"><label>ROLE</label>
+          <select id="grant-role"><option value="staff">Staff</option><option value="admin">Admin</option><option value="support">Support</option><option value="owner">Owner</option></select>
+        </div>
+        <button type="submit" class="btn btn-primary">Grant access</button>
+      </form>
+    </div>
+
+    <div class="account-main"><div class="account-section-head"><div><h2>Staff directory</h2><p>Owner controls what every employee can see and do. Reset a PIN or remove access here.</p></div></div><div id="staff-control-list"></div></div>
     <div class="account-main"><div class="account-section-head"><div><h2>Staff monitoring</h2><p>30-day work summary for bookings, tasks, documents, payments, and activity.</p></div><a class="btn btn-outline" href="activity.html">Activity log</a></div><div id="staff-monitoring-list"></div></div>
   </div>
 </div></section></main>
