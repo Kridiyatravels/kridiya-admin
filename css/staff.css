@@ -409,6 +409,115 @@ body { background: var(--bg); }
 #booking-detail-gate { min-height: 72vh; display: flex; align-items: center; justify-content: center; }
 #booking-detail-gate[hidden] { display: none; }
 @media (max-width: 720px) { .stat-text { font-size: 0.96rem !important; } }
+.booking-command-card { padding-bottom: 1rem; }
+.booking-command-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--staff-radius);
+  background: var(--surface-tint);
+}
+.booking-command-summary b {
+  display: block;
+  color: var(--ink);
+  font-size: 1.8rem;
+  line-height: 1;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.booking-command-summary span,
+.booking-next-action b {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--ink);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+.booking-command-summary p,
+.booking-next-action span,
+.booking-step p,
+.booking-risk span {
+  margin: 0.22rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+.booking-next-action {
+  margin-top: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid color-mix(in oklab, var(--brand) 30%, var(--line));
+  border-radius: 10px;
+  background: var(--brand-soft, #fdf1e4);
+}
+.booking-step-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+}
+.booking-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  min-width: 0;
+  padding: 0.72rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.booking-step > span {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  background: var(--surface-tint);
+}
+.booking-step b,
+.booking-risk b {
+  display: block;
+  color: var(--ink);
+  font-size: 0.86rem;
+}
+.booking-step.done > span {
+  color: oklch(0.38 0.11 150);
+  background: oklch(0.94 0.05 150);
+}
+.booking-step.warn > span,
+.booking-step.todo > span {
+  color: var(--status-payment);
+  background: var(--status-payment-bg);
+}
+.booking-step.risk {
+  border-color: oklch(0.7 0.18 30);
+  background: oklch(0.98 0.035 35);
+}
+.booking-risk-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+}
+.booking-risk {
+  padding: 0.72rem 0.8rem;
+  border: 1px solid oklch(0.7 0.18 30);
+  border-radius: 10px;
+  background: oklch(0.98 0.035 35);
+}
+.booking-risk.ok {
+  border-color: oklch(0.75 0.12 145);
+  background: oklch(0.98 0.025 145);
+}
+@media (max-width: 640px) {
+  .booking-command-summary { align-items: flex-start; flex-direction: column; }
+  .booking-command-summary .btn { width: 100%; justify-content: center; }
+}
 /* ---------- STAFF UI POLISH ---------- */
 .staff-topbar .btn-outline { background: #fff; border-color: var(--line); box-shadow: var(--staff-shadow-sm); }
 #booking-detail-app .btn-primary,

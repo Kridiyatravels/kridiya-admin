@@ -51,6 +51,50 @@
     if (bookingIsConfirmed(b.status)) return { text: "Risk: booking is confirmed before payment is fully received.", tone: "risk" };
     return { text: "Rule: collect payment before booking/supplier confirmation.", tone: "warn" };
   }
+  function taskOpen(t) { return t.status !== "completed"; }
+  function hasSupplierInvoice() { return (detail.supplier_payments || []).some(function (p) { return !!p.supplier_invoice_path; }); }
+  function supplierPaidEnough() {
+    const rows = detail.supplier_payments || [];
+    return rows.length && rows.some(function (p) { return p.status === "paid" || amountNum(p.amount_paid) >= amountNum(p.amount_payable); });
+  }
+  function documentsReady() {
+    return ["generated", "sent", "archived"].indexOf(String(detail.booking.document_status || "")) !== -1 || (detail.documents || []).length > 0;
+  }
+  function bookingWorkflowSteps() {
+    const b = detail.booking;
+    const received = paymentReceivedTotal();
+    const sale = amountNum(b.selling_price);
+    const openTasks = (workflow.tasks || []).filter(taskOpen).length;
+    return [
+      { key: "customer", title: "Customer linked", done: !!detail.customer || !!detail.corporate, note: detail.customer ? detail.customer.full_name : (detail.corporate ? detail.corporate.company_name : "Add customer/company context") },
+      { key: "passengers", title: "Traveller details", done: (detail.passengers || []).length > 0, note: (detail.passengers || []).length + " passenger(s)" },
+      { key: "payment", title: "Payment controlled", done: paymentIsCleared(b.payment_status) || (sale > 0 && received >= sale), tone: bookingIsConfirmed(b.status) && !paymentIsCleared(b.payment_status) ? "risk" : "", note: "Received " + money(received, b.currency) + " / Balance " + money(bookingBalance(), b.currency) },
+      { key: "supplier", title: "Supplier controlled", done: !!b.supplier_reference || supplierPaidEnough(), note: b.supplier_reference || (supplierPaidEnough() ? "Supplier payment recorded" : "Add supplier reference/payment") },
+      { key: "invoice", title: "Supplier invoice", done: hasSupplierInvoice(), note: hasSupplierInvoice() ? "Invoice attached" : "Upload when received" },
+      { key: "documents", title: "Documents ready", done: documentsReady(), note: label(b.document_status) + " / " + (detail.documents || []).length + " record(s)" },
+      { key: "tasks", title: "Open tasks clear", done: openTasks === 0, tone: openTasks ? "warn" : "", note: openTasks + " open task(s)" }
+    ];
+  }
+  function bookingRisks() {
+    const b = detail.booking;
+    const risks = [];
+    if (bookingIsConfirmed(b.status) && !paymentIsCleared(b.payment_status)) risks.push(["Payment risk", "Booking is confirmed before payment is fully cleared.", "payments"]);
+    if ((b.booking_kind === "corporate" || detail.corporate) && detail.corporate && detail.corporate.lpo_required && !b.lpo_number) risks.push(["Corporate control", "LPO is required but not recorded.", "corporate"]);
+    if (b.payment_status === "refund_pending") risks.push(["Refund pending", "Refund is waiting for approval or completion.", "refund"]);
+    if (!b.supplier_reference) risks.push(["Supplier reference", "Supplier reference is not recorded yet.", "supplier"]);
+    if (!documentsReady()) risks.push(["Document risk", "Documents are not ready for customer handover.", "documents"]);
+    if ((workflow.tasks || []).some(function (t) { return taskOpen(t) && t.due_at && new Date(t.due_at) < new Date(); })) risks.push(["Overdue task", "One or more booking tasks are overdue.", "tasks"]);
+    return risks;
+  }
+  function nextBookingAction() {
+    const b = detail.booking;
+    if (bookingIsConfirmed(b.status) && !paymentIsCleared(b.payment_status)) return { title: "Verify or collect payment", href: "#customer-payment-panel", text: "Do this before further supplier/customer handover." };
+    if ((b.booking_kind === "corporate" || detail.corporate) && detail.corporate && detail.corporate.lpo_required && !b.lpo_number) return { title: "Record LPO or approval", href: "#booking-corporate-panel", text: "Corporate approval must be clear before closing control." };
+    if (!b.supplier_reference) return { title: "Add supplier reference", href: "#booking-status-form", text: "Connect the booking to supplier confirmation." };
+    if (!documentsReady()) return { title: "Prepare documents", href: "#booking-document-panel", text: "Upload or record required documents." };
+    if ((workflow.tasks || []).filter(taskOpen).length) return { title: "Close open tasks", href: "#booking-task-panel", text: "Finish pending staff follow-ups." };
+    return { title: "Ready for final review", href: "#booking-status-form", text: "Check details, then complete/close when appropriate." };
+  }
 
   async function boot() {
     const gate = document.getElementById("booking-detail-gate");
@@ -96,6 +140,7 @@
       ["Gross profit", moneyTile(b.gross_profit, b.currency, detail.can_view_profit), "var(--status-confirmed)"],
       ["Payment", label(b.payment_status), "var(--status-docs)"]
     ].map(function (s) { return '<div class="stat-tile" style="--tile-accent:' + s[2] + '"><div class="num stat-text">' + esc(s[1]) + '</div><div class="label">' + esc(s[0]) + '</div></div>'; }).join("");
+    renderBookingCommand();
     renderStatusForm();
     renderCustomer();
     renderCorporateControls();
@@ -104,6 +149,26 @@
     renderDocuments();
     renderCustomerPayments();
     renderSupplierPayments();
+  }
+
+  function renderBookingCommand() {
+    const panel = document.getElementById("booking-command-panel");
+    if (!panel) return;
+    const steps = bookingWorkflowSteps();
+    const done = steps.filter(function (s) { return s.done; }).length;
+    const percent = steps.length ? Math.round((done / steps.length) * 100) : 0;
+    const risks = bookingRisks();
+    const next = nextBookingAction();
+    panel.innerHTML =
+      '<div class="booking-command-summary"><div><b>' + esc(percent) + '%</b><span>Workflow complete</span><p>' + esc(done) + ' of ' + esc(steps.length) + ' controls are clear</p></div><a class="btn btn-primary" href="' + esc(next.href) + '">' + esc(next.title) + '</a></div>' +
+      '<div class="booking-next-action"><b>Next action</b><span>' + esc(next.text) + '</span></div>' +
+      '<div class="booking-step-grid">' + steps.map(function (s) {
+        const state = s.done ? "done" : (s.tone || "todo");
+        return '<div class="booking-step ' + esc(state) + '"><span>' + (s.done ? "OK" : "!") + '</span><div><b>' + esc(s.title) + '</b><p>' + esc(s.note) + '</p></div></div>';
+      }).join("") + '</div>' +
+      '<div class="booking-risk-strip">' + (risks.length ? risks.map(function (r) {
+        return '<div class="booking-risk"><b>' + esc(r[0]) + '</b><span>' + esc(r[1]) + '</span></div>';
+      }).join("") : '<div class="booking-risk ok"><b>No major risk flagged</b><span>Continue normal booking review.</span></div>') + '</div>';
   }
 
   function renderStatusForm() {
