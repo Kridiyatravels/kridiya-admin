@@ -57,6 +57,58 @@
     const rows = detail.supplier_payments || [];
     return rows.length && rows.some(function (p) { return p.status === "paid" || amountNum(p.amount_paid) >= amountNum(p.amount_payable); });
   }
+  function supplierTotals() {
+    const rows = detail.supplier_payments || [];
+    const payable = rows.reduce(function (sum, p) { return sum + amountNum(p.amount_payable); }, 0);
+    const paid = rows.reduce(function (sum, p) { return sum + amountNum(p.amount_paid); }, 0);
+    const disputed = rows.filter(function (p) { return p.status === "disputed"; }).length;
+    const invoices = rows.filter(function (p) { return !!p.supplier_invoice_path; }).length;
+    const sharepoint = rows.filter(function (p) { return !!p.sharepoint_invoice_url; }).length;
+    return { payable: payable, paid: paid, balance: Math.max(0, payable - paid), disputed: disputed, invoices: invoices, sharepoint: sharepoint };
+  }
+  function supplierControl() {
+    const b = detail.booking;
+    const t = supplierTotals();
+    const expected = amountNum(b.supplier_cost);
+    const sale = amountNum(b.selling_price);
+    const gross = sale - Math.max(expected, t.payable);
+    const invoiceMissing = (detail.supplier_payments || []).length > 0 && t.invoices === 0;
+    if (!b.supplier_reference && !t.payable) {
+      return { tone: "risk", title: "Supplier not controlled", action: "Record supplier name, reference, payable cost, and invoice trail before closing this booking.", totals: t, gross: gross };
+    }
+    if (t.disputed) {
+      return { tone: "risk", title: "Supplier dispute open", action: "Resolve the dispute and keep the supplier rule/invoice note attached.", totals: t, gross: gross };
+    }
+    if (invoiceMissing) {
+      return { tone: "warn", title: "Supplier invoice missing", action: "Upload the supplier invoice or add the SharePoint copy link.", totals: t, gross: gross };
+    }
+    if (t.balance > 0) {
+      return { tone: "warn", title: "Supplier payable open", action: "Track due amount and pay supplier only after customer payment/approval is controlled.", totals: t, gross: gross };
+    }
+    if (b.supplier_reference || t.payable) {
+      return { tone: "ok", title: "Supplier trail ready", action: "Supplier reference, payable, and payment trail are ready for finance review.", totals: t, gross: gross };
+    }
+    return { tone: "warn", title: "Supplier details pending", action: "Add supplier reference and expected net cost.", totals: t, gross: gross };
+  }
+  function renderSupplierControl() {
+    const b = detail.booking;
+    const c = supplierControl();
+    const invoiceText = c.totals.invoices ? c.totals.invoices + " attached" : "Missing";
+    const sharepointText = c.totals.sharepoint ? c.totals.sharepoint + " backed up" : "Not noted";
+    return '<div class="supplier-control supplier-' + esc(c.tone) + '">' +
+      '<div class="supplier-control-head"><div><b>' + esc(c.title) + '</b><p>' + esc(c.action) + '</p></div><span class="staff-risk ' + esc(c.tone === "ok" ? "ok" : c.tone === "risk" ? "risk" : "warn") + '">' + esc(label(c.tone)) + '</span></div>' +
+      '<div class="supplier-control-grid">' +
+        '<span><b>' + esc(money(c.totals.payable || amountNum(b.supplier_cost), b.currency)) + '</b><small>Payable / expected cost</small></span>' +
+        '<span><b>' + esc(money(c.totals.paid, b.currency)) + '</b><small>Paid to supplier</small></span>' +
+        '<span><b>' + esc(money(c.totals.balance, b.currency)) + '</b><small>Supplier balance</small></span>' +
+        '<span><b>' + esc(money(c.gross, b.currency)) + '</b><small>Gross margin view</small></span>' +
+        '<span><b>' + esc(b.supplier_reference || "Missing") + '</b><small>Supplier reference</small></span>' +
+        '<span><b>' + esc(invoiceText) + '</b><small>Invoice file</small></span>' +
+        '<span><b>' + esc(sharepointText) + '</b><small>SharePoint backup</small></span>' +
+        '<span><b>' + esc(c.totals.disputed) + '</b><small>Disputes</small></span>' +
+      '</div>' +
+    '</div>';
+  }
   function documentsReady() {
     return ["generated", "sent", "archived"].indexOf(String(detail.booking.document_status || "")) !== -1 || (detail.documents || []).length > 0;
   }
@@ -513,7 +565,7 @@
     const rows = detail.supplier_payments || [];
     const b = detail.booking;
     const form = detail.can_edit_payments ? '<form id="supplier-payment-form" class="form-grid payment-mini-form" onsubmit="return false"><div class="field-row"><div class="field col-6"><label>SUPPLIER</label><input name="supplier_name" required value="' + esc(b.supplier_name || "") + '"></div><div class="field col-6"><label>SUPPLIER REF</label><input name="supplier_reference" value="' + esc(b.supplier_reference || "") + '"></div><div class="field col-4"><label>PAYABLE</label><input name="amount_payable" type="number" min="0" step="0.01" required value="' + esc(b.supplier_cost || "") + '"></div><div class="field col-4"><label>PAID</label><input name="amount_paid" type="number" min="0" step="0.01" value="0"></div><div class="field col-4"><label>STATUS</label><select name="status"><option value="pending">Pending</option><option value="partial">Partial</option><option value="paid">Paid</option><option value="disputed">Disputed</option></select></div><div class="field col-12"><label>NOTES</label><input name="notes" placeholder="Supplier invoice or portal note"></div></div><button class="btn btn-primary" type="submit">Record supplier payment</button></form>' : '<p class="form-note">Finance permission required to record supplier payments.</p>';
-    document.getElementById("supplier-payment-panel").innerHTML = form + renderPaymentRows(rows, false);
+    document.getElementById("supplier-payment-panel").innerHTML = renderSupplierControl() + form + renderPaymentRows(rows, false);
     const f = document.getElementById("supplier-payment-form");
     if (f) f.addEventListener("submit", recordSupplierPayment);
   }
@@ -534,12 +586,15 @@
         : '';
       const invoiceChip = !customer && r.supplier_invoice_path ? '<span class="ops-chip">Invoice attached</span>' : '';
       const sharepointChip = !customer && r.sharepoint_invoice_url ? '<span class="ops-chip">SharePoint copy noted</span>' : '';
+      const supplierBalance = !customer ? Math.max(0, amountNum(r.amount_payable) - amountNum(r.amount_paid)) : 0;
+      const supplierBalanceChip = !customer && supplierBalance > 0 ? '<span class="ops-chip">Balance: ' + esc(money(supplierBalance, r.currency)) + '</span>' : '';
+      const supplierDisputeChip = !customer && r.status === "disputed" ? '<span class="ops-chip">Disputed</span>' : '';
       const invoiceActions = !customer
         ? (r.supplier_invoice_path ? '<button class="btn btn-outline js-view-supplier-invoice" data-path="' + esc(r.supplier_invoice_path) + '" type="button">View invoice</button>' : '')
           + (r.sharepoint_invoice_url ? '<a class="btn btn-outline" target="_blank" rel="noopener" href="' + esc(r.sharepoint_invoice_url) + '">SharePoint</a>' : '')
           + (detail.can_edit_payments ? '<label class="btn btn-outline proof-upload-label">' + (r.supplier_invoice_path ? 'Replace invoice' : 'Upload invoice') + '<input type="file" class="js-supplier-invoice-file" data-id="' + esc(r.id) + '" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx" hidden></label>' : '')
         : '';
-      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(title) + '</b><p>' + esc(label(r.status)) + (r.notes ? ' - ' + esc(r.notes) : '') + '</p><div class="ops-kv">' + ref + proofChip + invoiceChip + sharepointChip + (customer && r.status === "proof_received" ? '<span class="ops-chip">Proof only - no receipt yet</span>' : '') + '</div></div><div class="ops-row-actions"><span class="finance-value">' + esc(amount) + '</span>' + receiptBtn + proofActions + invoiceActions + '</div></div>';
+      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(title) + '</b><p>' + esc(label(r.status)) + (r.notes ? ' - ' + esc(r.notes) : '') + '</p><div class="ops-kv">' + ref + proofChip + invoiceChip + sharepointChip + supplierBalanceChip + supplierDisputeChip + (customer && r.status === "proof_received" ? '<span class="ops-chip">Proof only - no receipt yet</span>' : '') + '</div></div><div class="ops-row-actions"><span class="finance-value">' + esc(amount) + '</span>' + receiptBtn + proofActions + invoiceActions + '</div></div>';
     }).join("") + '</div>';
   }
 
