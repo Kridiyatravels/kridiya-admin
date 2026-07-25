@@ -43,9 +43,18 @@
               <label for="flt-service">SERVICE</label>
               <select id="flt-service"><option value="">All services</option></select>
             </div>
+            <div class="field">
+              <label for="flt-attention">ATTENTION</label>
+              <select id="flt-attention"><option value="">All</option><option value="needs_quote">Needs quote</option><option value="follow_up">Follow-up</option><option value="corporate">Corporate</option><option value="converted">Converted</option><option value="stale">Stale</option></select>
+            </div>
+            <div class="field admin-search-field">
+              <label for="flt-search">SEARCH</label>
+              <input id="flt-search" type="search" placeholder="Name, email, phone, reference">
+            </div>
             <label class="admin-filter-check"><input type="checkbox" id="flt-today"> Today only</label>
           </div>
         </div>
+        <div class="account-main crm-control-card"><div class="account-section-head"><div><h2>Sales follow-up control</h2><p>Pipeline health and next action for enquiries.</p></div></div><div id="crm-control-panel"></div></div>
 
         <div id="admin-list"></div>
       </div>

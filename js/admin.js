@@ -362,11 +362,37 @@
   function matchesFilters(enq) {
     const statusF = document.getElementById("flt-status").value;
     const serviceF = document.getElementById("flt-service").value;
+    const attentionF = document.getElementById("flt-attention").value;
+    const searchF = (document.getElementById("flt-search").value || "").trim().toLowerCase();
     const todayOnly = document.getElementById("flt-today").checked;
     if (statusF && enq.status !== statusF) return false;
     if (serviceF && enq.service_type !== serviceF) return false;
     if (todayOnly && new Date(enq.created_at).toDateString() !== new Date().toDateString()) return false;
     if (focusEmail && String(enq.email || "").trim().toLowerCase() !== focusEmail) return false;
+    if (attentionF && !attentionMatch(enq, attentionF)) return false;
+    if (searchF && searchable(enq).indexOf(searchF) === -1) return false;
+    return true;
+  }
+  function searchable(enq) {
+    return [enq.full_name, enq.email, enq.phone, enq.reference, enq.summary, enq.service_type].join(" ").toLowerCase();
+  }
+  function isStale(enq) {
+    if (["confirmed", "booked", "documents_sent", "closed"].indexOf(enq.status) !== -1) return false;
+    const ageHours = (Date.now() - new Date(enq.created_at).getTime()) / 36e5;
+    return ageHours >= 24 && !(quotesByEnquiry[enq.id] || []).length && !bookingByEnquiry[enq.id];
+  }
+  function needsQuote(enq) {
+    return ["received", "checking_availability"].indexOf(enq.status) !== -1 && !bookingByEnquiry[enq.id];
+  }
+  function needsFollowUp(enq) {
+    return ["quote_sent", "payment_pending"].indexOf(enq.status) !== -1 && !bookingByEnquiry[enq.id];
+  }
+  function attentionMatch(enq, type) {
+    if (type === "needs_quote") return needsQuote(enq);
+    if (type === "follow_up") return needsFollowUp(enq);
+    if (type === "corporate") return isCorporateEnquiry(enq);
+    if (type === "converted") return !!bookingByEnquiry[enq.id];
+    if (type === "stale") return isStale(enq);
     return true;
   }
 
@@ -393,6 +419,7 @@
     renderStatTiles();
     const listEl = document.getElementById("admin-list");
     const visible = allEnquiries.filter(matchesFilters);
+    renderCrmControl(visible);
     const countEl = document.getElementById("admin-count");
     if (focusEmail) {
       countEl.innerHTML = "Showing <b>" + KridiyaAuth.escapeHTML(focusEmail) + "</b> · " + visible.length +
@@ -532,6 +559,32 @@
     if (typeof initAirportAC === "function") initAirportAC(listEl);
   }
 
+  function renderCrmControl(visible) {
+    const panel = document.getElementById("crm-control-panel");
+    if (!panel) return;
+    const total = allEnquiries.length || 1;
+    const converted = allEnquiries.filter(function (e) { return !!bookingByEnquiry[e.id]; }).length;
+    const stale = visible.filter(isStale).length;
+    const quoteQueue = visible.filter(needsQuote).length;
+    const followUp = visible.filter(needsFollowUp).length;
+    const corporate = visible.filter(isCorporateEnquiry).length;
+    const conversion = Math.round((converted / total) * 100);
+    let next = "Review new enquiries and send quotes.";
+    let filter = "needs_quote";
+    if (stale) { next = "Follow up stale enquiries older than 24 hours."; filter = "stale"; }
+    else if (followUp) { next = "Follow up quotes and payment-pending enquiries."; filter = "follow_up"; }
+    else if (corporate) { next = "Review corporate leads and convert where ready."; filter = "corporate"; }
+    panel.innerHTML =
+      '<div class="crm-summary"><div><b>' + esc(conversion) + '%</b><span>Conversion visibility</span><p>' + esc(converted) + ' converted / ' + esc(allEnquiries.length) + ' total enquiries</p></div><button class="btn btn-primary js-crm-filter" data-filter="' + esc(filter) + '" type="button">Show next queue</button></div>' +
+      '<div class="crm-metric-grid">' +
+        '<div><b>' + esc(quoteQueue) + '</b><span>Needs quote</span></div>' +
+        '<div><b>' + esc(followUp) + '</b><span>Follow-up</span></div>' +
+        '<div><b>' + esc(corporate) + '</b><span>Corporate</span></div>' +
+        '<div><b>' + esc(stale) + '</b><span>Stale</span></div>' +
+      '</div>' +
+      '<div class="crm-next"><b>Next sales action</b><span>' + esc(next) + '</span></div>';
+  }
+
   async function loadEnquiries() {
     const result = await sb.from("enquiries").select("*").order("created_at", { ascending: false });
     if (result.error) throw result.error;
@@ -598,11 +651,21 @@
   }
 
   function wireEvents() {
-    ["flt-status", "flt-service", "flt-today"].forEach(function (id) {
+    ["flt-status", "flt-service", "flt-attention", "flt-today"].forEach(function (id) {
       document.getElementById(id).addEventListener("change", renderList);
     });
+    document.getElementById("flt-search").addEventListener("input", renderList);
 
     const listEl = document.getElementById("admin-list");
+    const crmPanel = document.getElementById("crm-control-panel");
+    if (crmPanel) {
+      crmPanel.addEventListener("click", function (e) {
+        const crmFilter = e.target.closest(".js-crm-filter");
+        if (!crmFilter) return;
+        document.getElementById("flt-attention").value = crmFilter.dataset.filter || "";
+        renderList();
+      });
+    }
 
     listEl.addEventListener("change", async function (e) {
       if (!e.target.classList.contains("status-select")) return;

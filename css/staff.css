@@ -965,7 +965,53 @@ body { background: var(--bg); }
 .hub-count { position: absolute; top: 0.5rem; right: 0.6rem; font-size: 0.7rem; font-weight: 800; color: var(--brand-deep, #a3480f); background: var(--brand-soft, #fdf1e4); border-radius: 999px; padding: 0.1rem 0.45rem; }
 .hub-count:empty { display: none; }
 
+.admin-search-field { min-width: 220px; }
+.crm-control-card { overflow: visible; }
+.crm-summary {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 0.9rem 1rem; border: 1px solid var(--line); border-radius: var(--staff-radius);
+  background: var(--surface-tint);
+}
+.crm-summary b {
+  display: block; color: var(--ink); font-size: 1.6rem; line-height: 1;
+  font-weight: 800; font-variant-numeric: tabular-nums;
+}
+.crm-summary span,
+.crm-next b {
+  display: block; margin-top: 0.2rem; color: var(--ink); font-size: 0.86rem; font-weight: 800;
+}
+.crm-summary p,
+.crm-next span { margin: 0.25rem 0 0; color: var(--text-muted); font-size: 0.82rem; }
+.crm-metric-grid {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.65rem; margin-top: 0.75rem;
+}
+.crm-metric-grid div {
+  border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 0.72rem 0.8rem;
+}
+.crm-metric-grid b {
+  display: block; color: var(--ink); font-size: 1.1rem; line-height: 1;
+  font-weight: 800; font-variant-numeric: tabular-nums;
+}
+.crm-metric-grid span {
+  display: block; margin-top: 0.25rem; color: var(--text-muted); font-size: 0.78rem; font-weight: 700;
+}
+.crm-next {
+  margin-top: 0.75rem; padding: 0.75rem 0.85rem;
+  border: 1px solid color-mix(in oklab, var(--brand) 30%, var(--line));
+  border-radius: 10px; background: var(--brand-soft, #fdf1e4);
+}
+
 @media (max-width: 640px) {
   .staff-tools-menu { grid-template-columns: 1fr; }
   .staff-jump-btn span { display: none; }
+}
+
+@media (max-width: 760px) {
+  .crm-summary { align-items: flex-start; flex-direction: column; }
+  .crm-summary .btn { width: 100%; justify-content: center; }
+  .crm-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 460px) {
+  .crm-metric-grid { grid-template-columns: 1fr; }
 }
