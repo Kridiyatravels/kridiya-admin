@@ -392,6 +392,35 @@
     window.open(result.data.signedUrl, "_blank", "noopener");
   }
 
+  async function uploadSupplierInvoice(supplierPaymentId, file) {
+    if (!file) return;
+    const sharepointUrl = window.prompt("Optional: paste the SharePoint invoice link if this file is already backed up there.", "") || "";
+    const path = bookingId + "/" + supplierPaymentId + "-" + Date.now() + "-" + safeFileName(file.name);
+    const upload = await sb.storage.from("supplier-invoices").upload(path, file, { upsert: false });
+    if (upload.error) { toast("Could not upload supplier invoice: " + upload.error.message); return; }
+    const result = await sb.rpc("attach_supplier_invoice", {
+      p_supplier_payment_id: supplierPaymentId,
+      p_storage_path: upload.data.path,
+      p_sharepoint_invoice_url: sharepointUrl.trim() || null
+    });
+    if (result.error) {
+      await sb.storage.from("supplier-invoices").remove([upload.data.path]);
+      toast("Could not attach supplier invoice: " + result.error.message);
+      return;
+    }
+    toast("Supplier invoice uploaded.");
+    await loadDetail();
+  }
+
+  async function viewSupplierInvoice(path) {
+    const result = await sb.storage.from("supplier-invoices").createSignedUrl(path, 180);
+    if (result.error || !result.data) {
+      toast("Could not open supplier invoice: " + (result.error ? result.error.message : "unknown error"));
+      return;
+    }
+    window.open(result.data.signedUrl, "_blank", "noopener");
+  }
+
   async function deleteDocument(id, path) {
     const result = await sb.rpc("delete_booking_document", { p_document_id: id });
     if (result.error) { toast("Could not remove document: " + result.error.message); return; }
@@ -438,7 +467,14 @@
         ? (r.proof_storage_path ? '<button class="btn btn-outline js-view-proof" data-path="' + esc(r.proof_storage_path) + '" type="button">View proof</button>' : '')
           + (detail.can_edit_payments ? '<label class="btn btn-outline proof-upload-label">' + (r.proof_storage_path ? 'Replace proof' : 'Upload proof') + '<input type="file" class="js-proof-file" data-id="' + esc(r.id) + '" accept="image/*,application/pdf" hidden></label>' : '')
         : '';
-      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(title) + '</b><p>' + esc(label(r.status)) + (r.notes ? ' - ' + esc(r.notes) : '') + '</p><div class="ops-kv">' + ref + proofChip + (customer && r.status === "proof_received" ? '<span class="ops-chip">Proof only - no receipt yet</span>' : '') + '</div></div><div class="ops-row-actions"><span class="finance-value">' + esc(amount) + '</span>' + receiptBtn + proofActions + '</div></div>';
+      const invoiceChip = !customer && r.supplier_invoice_path ? '<span class="ops-chip">Invoice attached</span>' : '';
+      const sharepointChip = !customer && r.sharepoint_invoice_url ? '<span class="ops-chip">SharePoint copy noted</span>' : '';
+      const invoiceActions = !customer
+        ? (r.supplier_invoice_path ? '<button class="btn btn-outline js-view-supplier-invoice" data-path="' + esc(r.supplier_invoice_path) + '" type="button">View invoice</button>' : '')
+          + (r.sharepoint_invoice_url ? '<a class="btn btn-outline" target="_blank" rel="noopener" href="' + esc(r.sharepoint_invoice_url) + '">SharePoint</a>' : '')
+          + (detail.can_edit_payments ? '<label class="btn btn-outline proof-upload-label">' + (r.supplier_invoice_path ? 'Replace invoice' : 'Upload invoice') + '<input type="file" class="js-supplier-invoice-file" data-id="' + esc(r.id) + '" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx" hidden></label>' : '')
+        : '';
+      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(title) + '</b><p>' + esc(label(r.status)) + (r.notes ? ' - ' + esc(r.notes) : '') + '</p><div class="ops-kv">' + ref + proofChip + invoiceChip + sharepointChip + (customer && r.status === "proof_received" ? '<span class="ops-chip">Proof only - no receipt yet</span>' : '') + '</div></div><div class="ops-row-actions"><span class="finance-value">' + esc(amount) + '</span>' + receiptBtn + proofActions + invoiceActions + '</div></div>';
     }).join("") + '</div>';
   }
 
@@ -566,6 +602,7 @@
     const viewDocumentButton = event.target.closest(".js-view-booking-document");
     const requestButton = event.target.closest(".js-payment-request");
     const viewProofButton = event.target.closest(".js-view-proof");
+    const viewSupplierInvoiceButton = event.target.closest(".js-view-supplier-invoice");
     if (taskButton) completeBookingTask(taskButton.dataset.id);
     if (passengerButton) deletePassenger(passengerButton.dataset.id);
     if (documentButton) deleteDocument(documentButton.dataset.id, documentButton.dataset.path);
@@ -573,12 +610,18 @@
     if (viewDocumentButton) viewBookingDocument(viewDocumentButton.dataset.path);
     if (requestButton) generatePaymentRequest();
     if (viewProofButton) viewPaymentProof(viewProofButton.dataset.path);
+    if (viewSupplierInvoiceButton) viewSupplierInvoice(viewSupplierInvoiceButton.dataset.path);
   });
   document.addEventListener("change", function (event) {
     const proofInput = event.target.closest(".js-proof-file");
     if (proofInput && proofInput.files && proofInput.files.length) {
       uploadPaymentProof(proofInput.dataset.id, proofInput.files[0]);
       proofInput.value = "";
+    }
+    const supplierInvoiceInput = event.target.closest(".js-supplier-invoice-file");
+    if (supplierInvoiceInput && supplierInvoiceInput.files && supplierInvoiceInput.files.length) {
+      uploadSupplierInvoice(supplierInvoiceInput.dataset.id, supplierInvoiceInput.files[0]);
+      supplierInvoiceInput.value = "";
     }
   });
   document.addEventListener("DOMContentLoaded", boot);

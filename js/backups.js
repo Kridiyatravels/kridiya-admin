@@ -57,6 +57,49 @@
   function dataset(title, file, rows, note) {
     return { title: title, file: file, rows: rows || [], note: note || "" };
   }
+  function num(v) { return Number(v || 0); }
+  function statusIs(v, status) { return String(v || "").toLowerCase() === status; }
+  function bookingMonth(b) {
+    const d = String(b.created_at || b.travel_start || b.updated_at || "").slice(0, 10);
+    return d ? d.slice(0, 7) : "no-date";
+  }
+  function moneyStatusSummary(bookings, payments) {
+    const sales = bookings.reduce(function (sum, b) { return sum + num(b.selling_price); }, 0);
+    const supplierCost = bookings.reduce(function (sum, b) { return sum + num(b.supplier_cost); }, 0);
+    const received = payments.filter(function (p) { return statusIs(p.status, "received"); }).reduce(function (sum, p) { return sum + num(p.amount); }, 0);
+    const refundPending = bookings.filter(function (b) { return statusIs(b.payment_status, "refund_pending"); }).reduce(function (sum, b) { return sum + num(b.selling_price); }, 0);
+    const refunded = bookings.filter(function (b) { return statusIs(b.payment_status, "refunded") || statusIs(b.status, "refunded"); }).reduce(function (sum, b) { return sum + num(b.selling_price); }, 0);
+    return [{
+      generated_at: new Date().toISOString(),
+      bookings: bookings.length,
+      payment_records: payments.length,
+      sales_aed: sales,
+      supplier_cost_aed: supplierCost,
+      gross_profit_aed: sales - supplierCost,
+      received_aed: received,
+      refund_pending_aed: refundPending,
+      refunded_aed: refunded,
+      net_collected_aed: received - refunded,
+      sharepoint_finance_folder: "Kridiya Travel/Finance/" + stamp().slice(0, 7).replace("-", "/")
+    }];
+  }
+  function sharepointMap(bookings) {
+    return bookings.map(function (b) {
+      const month = bookingMonth(b).replace("-", "/");
+      return {
+        booking_reference: b.booking_reference,
+        title: b.title,
+        customer: b.customer_name || b.corporate_company_name,
+        status: b.status,
+        payment_status: b.payment_status,
+        supplier: b.supplier_name,
+        supplier_reference: b.supplier_reference,
+        booking_folder: "Kridiya Travel/Operations/Bookings/" + month + "/" + (b.booking_reference || "No Reference"),
+        supplier_invoice_folder: "Kridiya Travel/Operations/Bookings/" + month + "/" + (b.booking_reference || "No Reference") + "/Supplier Invoices",
+        customer_document_folder: "Kridiya Travel/Operations/Bookings/" + month + "/" + (b.booking_reference || "No Reference") + "/Customer Documents"
+      };
+    });
+  }
 
   async function loadExports() {
     const bookings = await rpc("list_operations_bookings", { limit_count: 1000 });
@@ -72,10 +115,12 @@
     }
 
     exportsCache = [
+      dataset("Owner finance summary", "kridiya-owner-finance-summary-" + stamp() + ".csv", moneyStatusSummary(bookings, payments), "Sales, supplier cost, gross profit, refunds, and net collected."),
       dataset("Bookings", "kridiya-bookings-" + stamp() + ".csv", bookings, "All operation bookings and status fields."),
       dataset("Payments", "kridiya-payments-" + stamp() + ".csv", payments, "Customer payment records."),
       dataset("Corporate accounts", "kridiya-corporate-accounts-" + stamp() + ".csv", corporate, "Company accounts, billing settings, and contacts summary."),
       dataset("Documents", "kridiya-documents-" + stamp() + ".csv", documents, "Generated document register."),
+      dataset("SharePoint folder map", "kridiya-sharepoint-folder-map-" + stamp() + ".csv", sharepointMap(bookings), "Recommended document folders for each booking."),
       dataset("Staff", "kridiya-staff-" + stamp() + ".csv", staff, "Staff accounts and permission summary."),
       dataset("Activity", "kridiya-activity-" + stamp() + ".csv", activity, "Owner/admin activity audit log.")
     ];

@@ -56,10 +56,21 @@
   function paymentCleared(status) {
     return ["received", "paid", "payment_received", "completed"].indexOf(String(status || "").toLowerCase()) !== -1;
   }
+  function refundPending(status) {
+    return String(status || "").toLowerCase() === "refund_pending";
+  }
+  function refundCompleted(status) {
+    return String(status || "").toLowerCase() === "refunded";
+  }
+  function bookingRefundValue(b) {
+    return (refundPending(b.payment_status) || refundCompleted(b.payment_status) || refundCompleted(b.status)) ? num(b.selling_price) : 0;
+  }
   function bookingConfirmed(status) {
     return ["confirmed", "booked", "documents_sent", "closed"].indexOf(String(status || "").toLowerCase()) !== -1;
   }
   function collectionRule(b) {
+    if (refundPending(b.payment_status)) return "Refund pending - owner/finance approval required";
+    if (refundCompleted(b.payment_status) || refundCompleted(b.status)) return "Refund completed - close accounting trail";
     if (paymentCleared(b.payment_status)) return "OK - payment received";
     if (b.booking_kind === "corporate" || b.corporate_company_name) return "Corporate - collect LPO/payment approval";
     if (bookingConfirmed(b.status)) return "Risk - booking confirmed before payment";
@@ -85,8 +96,10 @@
     const cost = rows.reduce(function (s, b) { return s + num(b.supplier_cost); }, 0);
     const profit = rows.reduce(function (s, b) { return s + num(b.gross_profit != null ? b.gross_profit : num(b.selling_price) - num(b.supplier_cost)); }, 0);
     const received = payments.filter(function (p) { return p.status === "received"; }).reduce(function (s, p) { return s + num(p.amount); }, 0);
+    const refundPendingTotal = rows.filter(function (b) { return refundPending(b.payment_status); }).reduce(function (s, b) { return s + num(b.selling_price); }, 0);
+    const refundCompletedTotal = rows.filter(function (b) { return refundCompleted(b.payment_status) || refundCompleted(b.status); }).reduce(function (s, b) { return s + num(b.selling_price); }, 0);
     const pending = rows.filter(function (b) { return !paymentCleared(b.payment_status); }).reduce(function (s, b) { return s + num(b.selling_price); }, 0);
-    return { sales: sales, cost: cost, profit: profit, received: received, pending: pending };
+    return { sales: sales, cost: cost, profit: profit, received: received, pending: pending, refundPending: refundPendingTotal, refunded: refundCompletedTotal, netCollected: received - refundCompletedTotal };
   }
   function groupBy(rows, keyFn) {
     return rows.reduce(function (map, row) {
@@ -113,7 +126,10 @@
       '<div class="stat-tile"><div class="num stat-text">' + esc(money(totals.sales)) + '</div><div class="label">Total sales</div></div>' +
       '<div class="stat-tile"><div class="num stat-text">' + esc(money(totals.cost)) + '</div><div class="label">Supplier cost</div></div>' +
       '<div class="stat-tile"><div class="num stat-text">' + esc(money(totals.profit)) + '</div><div class="label">Gross profit</div></div>' +
-      '<div class="stat-tile"><div class="num stat-text">' + esc(money(totals.pending)) + '</div><div class="label">Pending by status</div></div>';
+      '<div class="stat-tile"><div class="num stat-text">' + esc(money(totals.pending)) + '</div><div class="label">Pending by status</div></div>' +
+      '<div class="stat-tile"><div class="num stat-text">' + esc(money(totals.refundPending)) + '</div><div class="label">Refund pending</div></div>' +
+      '<div class="stat-tile"><div class="num stat-text">' + esc(money(totals.refunded)) + '</div><div class="label">Refunded</div></div>' +
+      '<div class="stat-tile"><div class="num stat-text">' + esc(money(totals.netCollected)) + '</div><div class="label">Net collected</div></div>';
 
     const byMonth = groupBy(rows, bookingMonth);
     const monthlyRows = Object.keys(byMonth).sort().reverse().map(function (month) {
@@ -123,7 +139,7 @@
     renderMoneyRows("monthly-total-list", monthlyRows, "No monthly totals yet.");
 
     const ruleGroups = groupBy(rows, collectionRule);
-    const ruleOrder = ["Risk - booking confirmed before payment", "Collect payment before booking", "Corporate - collect LPO/payment approval", "Add selling price and payment status", "OK - payment received"];
+    const ruleOrder = ["Refund pending - owner/finance approval required", "Refund completed - close accounting trail", "Risk - booking confirmed before payment", "Collect payment before booking", "Corporate - collect LPO/payment approval", "Add selling price and payment status", "OK - payment received"];
     const ruleRows = ruleOrder.filter(function (rule) { return ruleGroups[rule]; }).map(function (rule) {
       const group = ruleGroups[rule];
       const value = group.reduce(function (s, b) { return s + num(b.selling_price); }, 0);
@@ -173,8 +189,11 @@
         selling_price: num(b.selling_price),
         supplier_cost: num(b.supplier_cost),
         gross_profit: num(b.gross_profit != null ? b.gross_profit : num(b.selling_price) - num(b.supplier_cost)),
+        refund_risk_amount: bookingRefundValue(b),
+        net_collected_estimate: paymentCleared(b.payment_status) ? num(b.selling_price) - bookingRefundValue(b) : 0,
         supplier: b.supplier_name,
-        supplier_reference: b.supplier_reference
+        supplier_reference: b.supplier_reference,
+        sharepoint_booking_folder: "Kridiya Travel/Operations/Bookings/" + bookingMonth(b).replace("-", "/") + "/" + (b.booking_reference || "No Reference")
       };
     });
   }
