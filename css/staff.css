@@ -454,6 +454,10 @@ body { background: var(--bg); }
 .pro-quote-form .qf::placeholder { color: var(--text-muted); }
 .pro-quote-form .qf:focus { outline: 2px solid var(--brand); outline-offset: 1px; border-color: var(--brand); }
 .pro-quote-form > button[type="submit"] { align-self: flex-start; }
+.pro-quote-form .qf-grid .qf-date { display: flex; flex-direction: column; gap: 0.25rem; }
+.pro-quote-form .qf-grid .qf-date.qf-wide { grid-column: 1 / -1; }
+.pro-quote-form .qf-date .qf-cap { font-size: 0.72rem; font-weight: 700; color: var(--ink-2); }
+.pro-quote-form .qf-date .qf { min-height: 40px; }
 @media (max-width: 520px) { .pro-quote-form .qf-grid { grid-template-columns: 1fr; } }
 
 /* ---------- Preset add-on tick-boxes ---------- */

@@ -12,7 +12,7 @@
     "received", "checking_availability", "quote_sent", "confirmed",
     "payment_pending", "booked", "documents_sent", "closed"
   ];
-  const SERVICE_OPTIONS = ["flight", "hotel", "holiday", "visa", "umrah", "cruise", "other"];
+  const SERVICE_OPTIONS = ["flight", "hotel", "holiday", "visa", "umrah", "cruise", "transfer", "insurance", "other"];
 
   let sb = null;
   let currentStaffId = null;
@@ -179,10 +179,104 @@
     return out.join("\n");
   }
 
-  /* Service-specific fields for the quote form. Active services now:
-     flight (default) and visa. Others fall back to flight for now. */
+  /* Config-driven fields for the non-flight/visa services. Each descriptor
+     drives the form input AND how it is read back into option_data, so the
+     review cards and the WhatsApp copy (both generic over option_data) stay
+     in sync automatically. t: "text" | "date" | "select". */
+  const QUOTE_SERVICE_FIELDS = {
+    hotel: [
+      { n: "h_hotel", label: "Hotel", t: "text", ph: "Hotel — e.g. Hilton Dubai", wide: true },
+      { n: "h_location", label: "Location", t: "text", ph: "City / area" },
+      { n: "h_checkin", label: "Check-in", t: "date" },
+      { n: "h_checkout", label: "Check-out", t: "date" },
+      { n: "h_room", label: "Room type", t: "text", ph: "Room type — e.g. Deluxe Double" },
+      { n: "h_meal", label: "Meal plan", t: "select", opts: ["Room only", "Breakfast included", "Half board", "Full board", "All inclusive"] },
+      { n: "h_guests", label: "Guests", t: "text", ph: "Guests — e.g. 2 adults", wide: true }
+    ],
+    holiday: [
+      { n: "ho_dest", label: "Destination", t: "text", ph: "Destination — e.g. Bali, Indonesia", wide: true },
+      { n: "ho_from", label: "Travel start", t: "date" },
+      { n: "ho_to", label: "Travel end", t: "date" },
+      { n: "ho_hotels", label: "Hotel(s)", t: "text", ph: "Hotel(s)", wide: true },
+      { n: "ho_incl", label: "Inclusions", t: "text", ph: "Inclusions — flights, transfers, tours…", wide: true },
+      { n: "ho_trav", label: "Travellers", t: "text", ph: "Travellers — e.g. 2 adults, 1 child", wide: true }
+    ],
+    umrah: [
+      { n: "um_from", label: "Departure city", t: "text", ph: "Departure city — e.g. Dubai" },
+      { n: "um_transport", label: "Transport", t: "select", opts: ["Flight", "Bus", "Flight + Bus"] },
+      { n: "um_start", label: "Travel start", t: "date" },
+      { n: "um_end", label: "Travel end", t: "date" },
+      { n: "um_makkah", label: "Hotel — Makkah", t: "text", ph: "Hotel — Makkah" },
+      { n: "um_madinah", label: "Hotel — Madinah", t: "text", ph: "Hotel — Madinah" },
+      { n: "um_room", label: "Room type", t: "select", opts: ["Quad sharing", "Triple sharing", "Double", "Single"] },
+      { n: "um_pax", label: "Pilgrims", t: "text", ph: "Pilgrims — e.g. 2 adults", wide: true }
+    ],
+    cruise: [
+      { n: "cr_line", label: "Cruise line", t: "text", ph: "Cruise line — e.g. MSC Cruises" },
+      { n: "cr_ship", label: "Ship", t: "text", ph: "Ship name" },
+      { n: "cr_sail", label: "Sailing date", t: "date" },
+      { n: "cr_nights", label: "Duration", t: "text", ph: "Duration — e.g. 5 nights" },
+      { n: "cr_cabin", label: "Cabin type", t: "select", opts: ["Interior", "Ocean view", "Balcony", "Suite"] },
+      { n: "cr_itin", label: "Itinerary", t: "text", ph: "Itinerary / ports", wide: true },
+      { n: "cr_guests", label: "Guests", t: "text", ph: "Guests — e.g. 2 adults", wide: true }
+    ],
+    transfer: [
+      { n: "tr_type", label: "Transfer type", t: "select", opts: ["Airport pickup", "Airport drop-off", "Round trip", "Point to point", "Hourly / disposal"] },
+      { n: "tr_from", label: "From", t: "text", ph: "From — pickup location", wide: true },
+      { n: "tr_to", label: "To", t: "text", ph: "To — drop-off location", wide: true },
+      { n: "tr_date", label: "Date", t: "date" },
+      { n: "tr_time", label: "Pickup time", t: "text", ph: "Pickup time (optional)" },
+      { n: "tr_vehicle", label: "Vehicle", t: "select", opts: ["Sedan", "SUV", "Van", "Minibus", "Luxury / limousine"] },
+      { n: "tr_pax", label: "Passengers", t: "text", ph: "Passengers — e.g. 3 + luggage" }
+    ],
+    insurance: [
+      { n: "in_plan", label: "Plan", t: "text", ph: "Plan — e.g. Schengen Travel Insurance", wide: true },
+      { n: "in_provider", label: "Insurer", t: "text", ph: "Insurer" },
+      { n: "in_coverage", label: "Coverage", t: "text", ph: "Coverage — e.g. €30,000 medical" },
+      { n: "in_area", label: "Area of cover", t: "text", ph: "Area — e.g. Worldwide / Schengen" },
+      { n: "in_from", label: "Cover start", t: "date" },
+      { n: "in_to", label: "Cover end", t: "date" },
+      { n: "in_pax", label: "Insured persons", t: "text", ph: "Insured — e.g. 2 adults", wide: true }
+    ]
+  };
+
+  /* Builds the inputs for one service config. Date fields get a visible
+     caption so it's clear which date is which. */
+  function buildServiceFields(fields) {
+    const esc = KridiyaAuth.escapeHTML;
+    return fields.map(function (f) {
+      const wide = f.wide ? " qf-wide" : "";
+      if (f.t === "select") {
+        return '<select class="qf' + wide + '" name="' + f.n + '"><option value="">' + esc(f.ph || (f.label + "…")) + "</option>" +
+          f.opts.map(function (o) { return '<option value="' + esc(o) + '">' + esc(o) + "</option>"; }).join("") + "</select>";
+      }
+      if (f.t === "date") {
+        return '<label class="qf-date' + wide + '"><span class="qf-cap">' + esc(f.label) + '</span>' +
+          '<input class="qf" name="' + f.n + '" type="date"></label>';
+      }
+      return '<input class="qf' + wide + '" name="' + f.n + '" type="text" placeholder="' + esc(f.ph || f.label) + '">';
+    }).join("");
+  }
+
+  /* Reads a service config back into a flat {label: value} option_data. */
+  function gatherServiceData(form, fields) {
+    const d = {};
+    fields.forEach(function (f) {
+      const el = form.elements[f.n];
+      if (!el) return;
+      let v = String(el.value == null ? "" : el.value).trim();
+      if (!v) return;
+      if (f.t === "date") v = fmtQuoteDate(v);
+      d[f.label] = v;
+    });
+    return d;
+  }
+
+  /* Service-specific fields for the quote form. Bespoke builders for flight
+     (default) and visa; the rest are config-driven from QUOTE_SERVICE_FIELDS. */
   function quoteServiceFields(enq) {
-    if ((enq.service_type || "") === "visa") {
+    const st = enq.service_type || "";
+    if (st === "visa") {
       return "" +
         '<input class="qf qf-wide" name="v_country" type="text" placeholder="Country — e.g. United Arab Emirates">' +
         '<input class="qf" name="v_type" type="text" placeholder="Visa type — e.g. Tourist 30 days">' +
@@ -190,6 +284,7 @@
         '<input class="qf" name="v_validity" type="text" placeholder="Validity — e.g. 60 days">' +
         '<input class="qf" name="v_processing" type="text" placeholder="Processing — e.g. 3–4 working days">';
     }
+    if (QUOTE_SERVICE_FIELDS[st]) return buildServiceFields(QUOTE_SERVICE_FIELDS[st]);
     return "" +
       '<input class="qf" name="airline" type="text" placeholder="Airline — e.g. Air Arabia">' +
       '<select class="qf" name="stops"><option value="">Stops…</option><option value="Direct">Direct</option><option value="1 stop">1 stop</option><option value="2 stops">2 stops</option></select>' +
@@ -216,6 +311,7 @@
       put("Processing", form.v_processing.value);
       return d;
     }
+    if (QUOTE_SERVICE_FIELDS[st]) return gatherServiceData(form, QUOTE_SERVICE_FIELDS[st]);
     const airline = form.airline.value.trim();
     const stops = form.stops.value;
     if (airline) d["Airline"] = airline + (stops ? " (" + stops + ")" : "");
