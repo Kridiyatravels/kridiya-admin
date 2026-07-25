@@ -792,6 +792,35 @@ body { background: var(--bg); }
 .template-card pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font); color: var(--ink-2); background: var(--surface-tint); border: 1px solid var(--line); border-radius: 10px; padding: 0.85rem; font-size: 0.82rem; line-height: 1.55; max-height: 360px; overflow: auto; }
 @media (max-width: 900px) { .template-grid { grid-template-columns: 1fr; } .template-card-head { flex-direction: column; } .template-card .btn { width: 100%; justify-content: center; } }
 
+/* ---------- Document control center ---------- */
+.doc-control-card { overflow: visible; }
+.doc-control-summary {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 0.9rem 1rem; border: 1px solid var(--line); border-radius: var(--staff-radius);
+  background: var(--surface-tint);
+}
+.doc-control-summary.doc-warn { border-color: color-mix(in oklab, var(--status-checking) 38%, var(--line)); background: var(--status-checking-bg); }
+.doc-control-summary.doc-ok { border-color: color-mix(in oklab, var(--status-confirmed) 28%, var(--line)); background: var(--status-confirmed-bg); }
+.doc-control-summary b { display: block; color: var(--ink); font-size: 1.15rem; line-height: 1.1; font-weight: 800; }
+.doc-control-summary span { display: block; margin-top: 0.25rem; color: var(--ink-2); font-size: 0.86rem; }
+.doc-control-grid {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.65rem; margin-top: 0.75rem;
+}
+.doc-control-grid div { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 0.72rem 0.8rem; }
+.doc-control-grid b { display: block; color: var(--ink); font-size: 1.05rem; line-height: 1; font-weight: 800; }
+.doc-control-grid span { display: block; margin-top: 0.25rem; color: var(--text-muted); font-size: 0.78rem; font-weight: 700; }
+.doc-control-next {
+  margin-top: 0.75rem; padding: 0.75rem 0.85rem; border: 1px solid color-mix(in oklab, var(--brand) 30%, var(--line));
+  border-radius: 10px; background: var(--brand-soft, #fdf1e4);
+}
+.doc-control-next b { display: block; color: var(--ink); font-size: 0.86rem; font-weight: 800; }
+.doc-control-next span { display: block; margin-top: 0.25rem; color: var(--text-muted); font-size: 0.82rem; }
+@media (max-width: 760px) {
+  .doc-control-summary { align-items: flex-start; flex-direction: column; }
+  .doc-control-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 460px) { .doc-control-grid { grid-template-columns: 1fr; } }
+
 /* ---------- My profile panel (dashboard) ---------- */
 .profile-card { margin-bottom: 1.1rem; }
 .profile-id { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }

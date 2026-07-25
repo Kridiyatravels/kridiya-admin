@@ -22,6 +22,32 @@
   function esc(v) { return KridiyaAuth.escapeHTML(String(v == null ? "" : v)); }
   function label(v) { return String(v || "").replace(/_/g, " ").replace(/\b\w/g, function (c) { return c.toUpperCase(); }); }
   function fullText(t) { return (t.subject ? "Subject: " + t.subject + "\n\n" : "") + t.body; }
+  function countBy(key) {
+    return TEMPLATES.reduce(function (acc, t) {
+      acc[t[key]] = (acc[t[key]] || 0) + 1;
+      return acc;
+    }, {});
+  }
+  function renderTemplateControl(rows) {
+    const panel = document.getElementById("template-control-panel");
+    if (!panel) return;
+    const byCategory = countBy("category");
+    const byChannel = countBy("channel");
+    const required = ["Enquiry", "Sales", "Payment", "Documents", "Booking", "Corporate", "Supplier", "Support", "Internal"];
+    const missing = required.filter(function (c) { return !byCategory[c]; });
+    const next = missing.length
+      ? "Add missing template categories: " + missing.join(", ") + "."
+      : "Template coverage is ready. Use filters to copy the next customer/staff message.";
+    panel.innerHTML =
+      '<div class="doc-control-summary doc-' + esc(missing.length ? "warn" : "ok") + '"><div><b>' + esc(missing.length ? missing.length + " gap(s)" : "Covered") + '</b><span>' + esc(next) + '</span></div><span class="staff-risk ' + esc(missing.length ? "warn" : "ok") + '">' + esc(rows.length) + ' visible</span></div>' +
+      '<div class="doc-control-grid">' +
+        '<div><b>' + esc(byChannel.email || 0) + '</b><span>Email templates</span></div>' +
+        '<div><b>' + esc(byChannel.whatsapp || 0) + '</b><span>WhatsApp templates</span></div>' +
+        '<div><b>' + esc(byChannel.internal || 0) + '</b><span>Internal templates</span></div>' +
+        '<div><b>' + esc(Object.keys(byCategory).length) + '</b><span>Categories</span></div>' +
+      '</div>' +
+      '<div class="doc-control-next"><b>Covered categories</b><span>' + esc(Object.keys(byCategory).sort().join(", ")) + '</span></div>';
+  }
 
   async function boot() {
     const gate = document.getElementById("templates-gate");
@@ -66,6 +92,7 @@
 
   function render() {
     const rows = filtered();
+    renderTemplateControl(rows);
     document.getElementById("template-stats").innerHTML =
       '<div class="stat-tile"><div class="num">' + rows.length + '</div><div class="label">Visible templates</div></div>' +
       '<div class="stat-tile"><div class="num">' + TEMPLATES.length + '</div><div class="label">Total templates</div></div>' +

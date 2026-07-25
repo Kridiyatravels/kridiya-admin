@@ -65,6 +65,42 @@
   function findKind(id) {
     return DOC_KINDS.find(function (k) { return k.id === id; });
   }
+  function settingReady(name) {
+    return !!(settings && String(settings[name] || "").trim());
+  }
+  function docReadiness() {
+    const kind = findKind(document.getElementById("doc-kind") ? document.getElementById("doc-kind").value : "invoice") || DOC_KINDS[0];
+    const missing = [];
+    if (!settingReady("legal_name")) missing.push("Legal name");
+    if (!settingReady("trade_license_no")) missing.push("Trade licence");
+    if (isVatRegistered() && !settingReady("trn")) missing.push("TRN");
+    if (kind.docType === "invoice" && (!settingReady("bank_iban") || !settingReady("bank_account_name"))) missing.push("Bank details");
+    if (!linkedEnquiry) missing.push("Linked enquiry optional");
+    const tone = missing.filter(function (x) { return x !== "Linked enquiry optional"; }).length ? "warn" : "ok";
+    const next = tone === "warn"
+      ? "Complete business settings before issuing final customer documents."
+      : linkedEnquiry
+        ? "Linked enquiry is ready. Preview first, then Save & Print."
+        : "Settings are ready. Link an enquiry when possible for a cleaner audit trail.";
+    return { kind: kind, missing: missing, tone: tone, next: next };
+  }
+  function renderDocControl() {
+    const panel = document.getElementById("doc-control-panel");
+    if (!panel || !settings) return;
+    const ready = docReadiness();
+    const invoiceKinds = DOC_KINDS.filter(function (k) { return k.docType === "invoice"; }).length;
+    const ticketKinds = DOC_KINDS.filter(function (k) { return k.docType === "eticket"; }).length;
+    const supportKinds = DOC_KINDS.length - invoiceKinds - ticketKinds;
+    panel.innerHTML =
+      '<div class="doc-control-summary doc-' + esc(ready.tone) + '"><div><b>' + esc(ready.kind.label) + '</b><span>' + esc(ready.next) + '</span></div><span class="staff-risk ' + esc(ready.tone === "ok" ? "ok" : "warn") + '">' + esc(ready.tone === "ok" ? "Ready" : "Review") + '</span></div>' +
+      '<div class="doc-control-grid">' +
+        '<div><b>' + esc(invoiceKinds) + '</b><span>Invoice types</span></div>' +
+        '<div><b>' + esc(ticketKinds) + '</b><span>Ticket/voucher types</span></div>' +
+        '<div><b>' + esc(supportKinds) + '</b><span>Support notices</span></div>' +
+        '<div><b>' + esc(linkedEnquiry ? "Yes" : "No") + '</b><span>Enquiry linked</span></div>' +
+      '</div>' +
+      '<div class="doc-control-next"><b>Readiness checks</b><span>' + esc(ready.missing.length ? ready.missing.join(", ") : "Business settings, document type, and audit trail are ready.") + '</span></div>';
+  }
 
   /* ---------- Print document shell (shared by every kind) ---------- */
   const PRINT_CSS =
@@ -763,6 +799,7 @@
     settings = result.data;
     logActivity(sb, currentUserId, "settings.updated", "business_settings", null, {});
     toast("Business settings saved.");
+    renderDocControl();
   }
 
   async function searchEnquiries(query) {
@@ -785,6 +822,7 @@
     handler.build(mount);
     document.getElementById("doc-preview").innerHTML = "";
     document.getElementById("save-print-btn").disabled = false;
+    renderDocControl();
   }
 
   async function handleGenerate() {
@@ -921,6 +959,7 @@
     gate.hidden = true;
     app.hidden = false;
     renderKindOptions();
+    renderDocControl();
 
     document.getElementById("settings-toggle").addEventListener("click", function () {
       const form = document.getElementById("settings-form");
@@ -964,6 +1003,7 @@
           "Linked to <b>" + esc(linkedEnquiry.reference) + "</b> — " + esc(linkedEnquiry.full_name) + " (" + esc(linkedEnquiry.summary || linkedEnquiry.service_type) + ")" +
           (linkedEnquiry.email ? ' · <a href="customers.html?email=' + encodeURIComponent(linkedEnquiry.email) + '">Customer profile</a>' : "");
         document.getElementById("linked-enquiry-box").hidden = false;
+        renderDocControl();
       }
     }
 
@@ -1003,12 +1043,14 @@
         searchResults.innerHTML = "";
         searchInput.value = "";
         rebuildForm();
+        renderDocControl();
       });
     });
     document.getElementById("unlink-enquiry").addEventListener("click", function () {
       linkedEnquiry = null;
       document.getElementById("linked-enquiry-box").hidden = true;
       rebuildForm();
+      renderDocControl();
     });
   }
 
