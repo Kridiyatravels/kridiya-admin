@@ -161,6 +161,54 @@
   function bookingValue(g) {
     return g.bookings.reduce(function (s, b) { return s + Number(b.amount || 0); }, 0);
   }
+  function openEnquiries(g) {
+    return g.enquiries.filter(function (e) {
+      return ["confirmed", "booked", "documents_sent", "closed"].indexOf(String(e.status || "").toLowerCase()) === -1;
+    }).length;
+  }
+  function needsCleanup(g) {
+    return !g.name || g.name === g.email || !g.phone || (g.bookings.length && !g.customerId);
+  }
+  function needsPortalInvite(g) {
+    return !g.hasAccount && (g.bookings.length > 0 || g.enquiries.length > 1);
+  }
+  function portalStage(g) {
+    if (g.hasAccount && g.bookings.length) return { label: "Portal ready", tone: "success", action: "Customer can use their account for bookings and profile history." };
+    if (g.hasAccount) return { label: "Account ready", tone: "info", action: "Account exists. Keep enquiries and future bookings linked by email." };
+    if (needsPortalInvite(g)) return { label: "Invite needed", tone: "warn", action: "Ask customer to create/login so old guest enquiries attach by email." };
+    if (needsCleanup(g)) return { label: "Clean profile", tone: "warn", action: "Complete name, phone, and customer link before handover." };
+    return { label: "Guest lead", tone: "neutral", action: "Keep as guest until they book or enquire again." };
+  }
+  function portalReady(g) {
+    return g.hasAccount && (!g.bookings.length || g.bookings.every(function (b) { return !!b.booking_reference; }));
+  }
+  function portalInviteText(g) {
+    return "Hi " + (g.name && g.name !== g.email ? g.name.split(/\s+/)[0] : "there") + ", you can create your Kridiya Travel account using this email (" + g.email + ") so your enquiries and future bookings stay in one place: https://kridiyatravel.com/login.html";
+  }
+  function renderCustomerControl(visible) {
+    const panel = document.getElementById("customer-control-panel");
+    if (!panel) return;
+    const total = allGroups.length || 1;
+    const account = allGroups.filter(function (g) { return g.hasAccount; }).length;
+    const invite = allGroups.filter(needsPortalInvite).length;
+    const cleanup = allGroups.filter(needsCleanup).length;
+    const bookedNoAccount = allGroups.filter(function (g) { return g.bookings.length && !g.hasAccount; }).length;
+    const percent = Math.round((account / total) * 100);
+    let filter = "portal_needed";
+    let next = "Invite customers with bookings or repeat enquiries to create their portal account.";
+    if (cleanup) { filter = "cleanup"; next = "Clean incomplete customer profiles before finance or document handover."; }
+    else if (!invite && bookedNoAccount) { filter = "portal_needed"; next = "Link booked guest customers to online accounts." }
+    else if (!invite && !cleanup) { filter = "portal_ready"; next = "Portal readiness looks good. Keep future bookings linked by email."; }
+    panel.innerHTML =
+      '<div class="customer-control-summary"><div><b>' + esc(percent) + '%</b><span>Account readiness</span><p>' + esc(account) + ' account customer(s) / ' + esc(allGroups.length) + ' total profiles</p></div><button class="btn btn-primary js-customer-filter" data-filter="' + esc(filter) + '" type="button">Show next queue</button></div>' +
+      '<div class="customer-control-grid">' +
+        '<div><b>' + esc(invite) + '</b><span>Needs portal invite</span></div>' +
+        '<div><b>' + esc(bookedNoAccount) + '</b><span>Booked guests</span></div>' +
+        '<div><b>' + esc(cleanup) + '</b><span>Needs cleanup</span></div>' +
+        '<div><b>' + esc(visible.length) + '</b><span>Current view</span></div>' +
+      '</div>' +
+      '<div class="customer-control-next"><b>Next customer action</b><span>' + esc(next) + '</span></div>';
+  }
   function accountBadge(g) {
     return g.hasAccount
       ? '<span class="cust-badge cust-badge-account">' + icon("user") + " Online account</span>"
@@ -195,6 +243,9 @@
     if (f === "account") return g.hasAccount;
     if (f === "guest") return !g.hasAccount;
     if (f === "booked") return g.bookings.length > 0;
+    if (f === "portal_ready") return portalReady(g);
+    if (f === "portal_needed") return needsPortalInvite(g);
+    if (f === "cleanup") return needsCleanup(g);
     return true;
   }
 
@@ -224,6 +275,7 @@
   function cardHTML(g) {
     const wa = waLink(g.whatsapp || g.phone);
     const totalValue = bookingValue(g);
+    const stage = portalStage(g);
     return (
       '<div class="account-main cust-card" data-key="' + esc(g.key) + '">' +
         '<div class="cust-head">' +
@@ -242,9 +294,18 @@
           icon("chevron", "cust-chevron") +
         "</div>" +
         '<div class="cust-body" hidden>' +
+          '<div class="customer-portal-strip customer-portal-' + esc(stage.tone) + '">' +
+            '<div><b>' + esc(stage.label) + '</b><p>' + esc(stage.action) + '</p></div>' +
+            '<div class="customer-portal-metrics">' +
+              '<span><b>' + esc(openEnquiries(g)) + '</b><small>Open enquiries</small></span>' +
+              '<span><b>' + esc(g.bookings.length) + '</b><small>Bookings</small></span>' +
+              '<span><b>' + esc(needsCleanup(g) ? "Yes" : "No") + '</b><small>Cleanup</small></span>' +
+            '</div>' +
+          '</div>' +
           '<div class="cust-actions">' +
             (wa ? '<a class="btn btn-wa btn-sm" target="_blank" rel="noopener" href="' + wa + '">' + icon("whatsapp") + " WhatsApp</a>" : "") +
             '<a class="btn btn-outline btn-sm" href="mailto:' + esc(g.email) + '">' + icon("mail") + " Email</a>" +
+            (!g.hasAccount ? '<button type="button" class="btn btn-outline btn-sm js-copy-portal-invite" data-key="' + esc(g.key) + '">Copy portal invite</button>' : "") +
             (g.enquiries.length ? '<a class="btn btn-outline btn-sm" href="admin.html?email=' + encodeURIComponent(g.email) + '">View enquiries</a>' : "") +
           "</div>" +
           '<div class="cust-kv">' +
@@ -273,6 +334,7 @@
     const q = (document.getElementById("cust-search").value || "").trim().toLowerCase();
     const f = document.getElementById("cust-filter").value;
     const visible = allGroups.filter(function (g) { return matchesFilter(g, f) && matchesQuery(g, q); });
+    renderCustomerControl(visible);
     document.getElementById("cust-count").textContent = visible.length + " of " + allGroups.length + " customers";
 
     let html = visible.length
@@ -291,6 +353,21 @@
   function wireEvents() {
     const listEl = document.getElementById("cust-list");
     listEl.addEventListener("click", function (e) {
+      const inviteBtn = e.target.closest(".js-copy-portal-invite");
+      if (inviteBtn) {
+        const group = allGroups.find(function (g) { return g.key === inviteBtn.dataset.key; });
+        if (!group) return;
+        const text = portalInviteText(group);
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(
+            function () { toast("Portal invite copied."); },
+            function () { toast("Could not copy automatically."); }
+          );
+        } else {
+          toast("Copy not supported on this browser.");
+        }
+        return;
+      }
       if (e.target.closest("a")) return; // let links work
       const head = e.target.closest(".cust-head");
       if (!head) return;
@@ -307,6 +384,15 @@
       searchTimer = setTimeout(renderList, 150);
     });
     document.getElementById("cust-filter").addEventListener("change", renderList);
+    const control = document.getElementById("customer-control-panel");
+    if (control) {
+      control.addEventListener("click", function (e) {
+        const btn = e.target.closest(".js-customer-filter");
+        if (!btn) return;
+        document.getElementById("cust-filter").value = btn.dataset.filter || "";
+        renderList();
+      });
+    }
   }
 
   async function boot() {

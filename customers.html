@@ -33,6 +33,14 @@
 
         <div class="stat-row" id="cust-stat-row"></div>
 
+        <div class="account-main customer-control-card">
+          <div class="account-section-head">
+            <div><h2>Customer portal control</h2><p>Account readiness, guest conversion, booking linkage, and profile cleanup.</p></div>
+            <a class="btn btn-outline" href="admin.html">Enquiries</a>
+          </div>
+          <div id="customer-control-panel"></div>
+        </div>
+
         <div class="account-main admin-filters-card">
           <div class="admin-filters">
             <div class="field" style="flex:1 1 320px">
@@ -46,6 +54,9 @@
                 <option value="account">Has online account</option>
                 <option value="guest">Guests only</option>
                 <option value="booked">Has a booking</option>
+                <option value="portal_ready">Portal ready</option>
+                <option value="portal_needed">Needs portal invite</option>
+                <option value="cleanup">Needs cleanup</option>
               </select>
             </div>
           </div>
