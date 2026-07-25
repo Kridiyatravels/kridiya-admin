@@ -272,6 +272,35 @@
     return d;
   }
 
+  /* Precise, service-aware example for the "Option label" placeholder. */
+  const QUOTE_TITLE_EG = {
+    flight: "Option 1: Air Arabia",
+    hotel: "Option 1: Hilton Dubai",
+    visa: "Option 1: 30-day tourist visa",
+    holiday: "Option 1: Bali, 5 nights",
+    umrah: "Option 1: 14-night Umrah",
+    cruise: "Option 1: MSC, 5 nights",
+    transfer: "Option 1: Airport pickup",
+    insurance: "Option 1: Schengen cover"
+  };
+  function quoteTitlePlaceholder(service) {
+    return "Option label — e.g. " + (QUOTE_TITLE_EG[service] || "Option 1");
+  }
+  /* Service-aware price hint. */
+  const QUOTE_PRICE_EG = {
+    flight: "Fare / person",
+    hotel: "Price / room",
+    visa: "Price / applicant",
+    holiday: "Price / person",
+    umrah: "Price / person",
+    cruise: "Price / person",
+    transfer: "Price / trip",
+    insurance: "Price / person"
+  };
+  function quotePricePlaceholder(service) {
+    return QUOTE_PRICE_EG[service] || "Price";
+  }
+
   /* Service-specific fields for the quote form. Bespoke builders for flight
      (default) and visa; the rest are config-driven from QUOTE_SERVICE_FIELDS. */
   function quoteServiceFields(enq) {
@@ -473,9 +502,9 @@
             "</div>" +
             '<form class="admin-quote-form pro-quote-form" data-id="' + enq.id + '" data-service="' + KridiyaAuth.escapeHTML(enq.service_type || "") + '">' +
               '<div class="qf-grid">' +
-                '<input class="qf qf-wide" name="title" type="text" placeholder="Option label — e.g. Option 1: Air Arabia" required>' +
+                '<input class="qf qf-wide" name="title" type="text" placeholder="' + KridiyaAuth.escapeHTML(quoteTitlePlaceholder(enq.service_type || "")) + '" required>' +
                 quoteServiceFields(enq) +
-                '<input class="qf" name="price_amount" type="number" min="0" step="0.01" placeholder="' + ((enq.service_type === "visa") ? "Price / applicant" : "Fare / person") + '" required>' +
+                '<input class="qf" name="price_amount" type="number" min="0" step="0.01" placeholder="' + KridiyaAuth.escapeHTML(quotePricePlaceholder(enq.service_type || "")) + '" required>' +
                 '<input class="qf" name="currency" type="text" value="AED" maxlength="3">' +
                 '<input class="qf qf-wide" name="valid_until" type="datetime-local" title="Quote valid until">' +
               "</div>" +

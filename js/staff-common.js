@@ -62,6 +62,7 @@ function renderStaffChrome() {
         '<nav class="staff-nav" hidden>' +
           '<a href="dashboard.html"' + (page === "dashboard" ? ' aria-current="page"' : "") + '>Dashboard</a>' +
           '<a href="admin.html"' + (page === "admin" ? ' aria-current="page"' : "") + '>Enquiries</a>' +
+          '<a href="customers.html"' + (page === "customers" ? ' aria-current="page"' : "") + '>Customers</a>' +
           '<a href="bookings.html"' + (page === "bookings" ? ' aria-current="page"' : "") + '>Bookings</a>' +
           '<a href="corporate.html"' + (page === "corporate" ? ' aria-current="page"' : "") + '>Corporate</a>' +
           '<a href="payments.html"' + (page === "payments" ? ' aria-current="page"' : "") + '>Payments</a>' +
