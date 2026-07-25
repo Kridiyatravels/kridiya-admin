@@ -18,7 +18,9 @@
       gate.innerHTML = '<div class="account-main empty-state"><p><b>You do not have access.</b><br>This dashboard is for Kridiya staff only.</p></div>';
       return;
     }
-    showStaffNav();
+    const hubEl = document.getElementById("dashboard-hub");
+    if (hubEl && typeof buildToolHubHTML === "function") hubEl.innerHTML = buildToolHubHTML("dashboard");
+    await showStaffNav(); // resolves permissions, prunes nav + hub before counts fill
     gate.hidden = true;
     app.hidden = false;
     await loadDashboard();
@@ -42,6 +44,13 @@
       return '<div class="stat-tile" style="--tile-accent:' + s[2] + '"><div class="num">' + s[1] + '</div><div class="label">' + esc(s[0]) + '</div></div>';
     }).join("");
 
+    updateHubCounts({
+      "admin.html": { n: d.enquiries_open || 0, tag: "open" },
+      "bookings.html": { n: d.bookings_open || 0, tag: "open" },
+      "payments.html": { n: d.payments_pending || 0, tag: "due" },
+      "documents.html": { n: d.documents_generated || 0, tag: "" }
+    });
+
     const priority = [
       ["Open enquiries", d.enquiries_open || 0, "admin.html"],
       ["Pending supplier payments", d.supplier_payments_pending || 0, "payments.html"],
@@ -57,6 +66,17 @@
     document.getElementById("dashboard-activity").innerHTML = activity.length ? '<div class="ops-list">' + activity.map(function (a) {
       return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(label(a.event_type)) + '</b><p>' + esc(a.entity_type || "system") + ' - ' + new Date(a.created_at).toLocaleString("en-GB") + '</p></div></div>';
     }).join("") + '</div>' : '<p class="form-note">No recent activity yet.</p>';
+  }
+
+  function updateHubCounts(map) {
+    Object.keys(map).forEach(function (href) {
+      const slot = document.querySelector('.hub-count[data-count-for="' + href + '"]');
+      if (!slot) return; // card may have been pruned by permission
+      const c = map[href];
+      if (!c || c.n == null || c.n === 0) { slot.textContent = ""; slot.classList.remove("has"); return; }
+      slot.textContent = c.tag ? (c.n + " " + c.tag) : String(c.n);
+      slot.classList.add("has");
+    });
   }
 
   function renderReminders() {
