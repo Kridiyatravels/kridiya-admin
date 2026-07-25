@@ -71,6 +71,7 @@ const STAFF_NAV_MODEL = [
     { href: "portals.html", page: "portals", label: "Portals", icon: "link", desc: "B2B supplier portals" }
   ] },
   { group: "Admin", items: [
+    { href: "handover.html", page: "handover", label: "SOP", icon: "note", desc: "Operating handover", access: { adminOnly: true } },
     { href: "staff.html", page: "staff", label: "Staff", icon: "users", desc: "Team & permissions", access: { adminOnly: true } },
     { href: "activity.html", page: "activity", label: "Activity", icon: "clock", desc: "Audit log", access: { adminOnly: true } },
     { href: "backups.html", page: "backups", label: "Backups", icon: "download", desc: "Data exports", access: { adminOnly: true } }
@@ -503,7 +504,8 @@ const NAV_ACCESS = {
   "accounting.html": { perm: "view_payments" },
   "staff.html": { adminOnly: true },
   "activity.html": { adminOnly: true },
-  "backups.html": { adminOnly: true }
+  "backups.html": { adminOnly: true },
+  "handover.html": { adminOnly: true }
 };
 
 /* Reveals the nav, first removing links the signed-in person isn't

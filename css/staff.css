@@ -114,7 +114,7 @@ body { background: var(--bg); }
    panel. The gate containers (#admin-gate etc.) hold both the
    "Checking access..." loading state and this form, so centering them
    also centers that loading message for free. */
-#admin-gate, #doc-gate, #activity-gate, #dashboard-gate, #bookings-gate, #corporate-gate, #payments-gate, #portals-gate, #staff-gate, #backups-gate, #accounting-gate, #templates-gate {
+#admin-gate, #doc-gate, #activity-gate, #dashboard-gate, #bookings-gate, #corporate-gate, #payments-gate, #portals-gate, #staff-gate, #backups-gate, #accounting-gate, #templates-gate, #handover-gate {
   min-height: 72vh;
   display: flex;
   align-items: center;
@@ -126,7 +126,7 @@ body { background: var(--bg); }
    gate.hidden = true. This restores "hidden means gone". */
 #admin-gate[hidden], #doc-gate[hidden], #activity-gate[hidden],
 #dashboard-gate[hidden], #bookings-gate[hidden], #corporate-gate[hidden], #payments-gate[hidden],
-#portals-gate[hidden], #staff-gate[hidden], #backups-gate[hidden], #accounting-gate[hidden], #templates-gate[hidden] { display: none; }
+#portals-gate[hidden], #staff-gate[hidden], #backups-gate[hidden], #accounting-gate[hidden], #templates-gate[hidden], #handover-gate[hidden] { display: none; }
 .login-shell {
   width: 100%;
   max-width: 420px;
@@ -673,6 +673,38 @@ body { background: var(--bg); }
   .workflow-step .btn,
   .section-actions,
   .section-actions .btn { width: 100%; justify-content: center; }
+}
+
+.handover-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid color-mix(in oklab, var(--brand) 28%, var(--line));
+  border-radius: var(--staff-radius);
+  background: var(--brand-soft, #fdf1e4);
+  padding: 0.9rem 1rem;
+}
+.handover-summary b { display: block; color: var(--ink); font-size: 1.2rem; font-weight: 800; line-height: 1; }
+.handover-summary span { display: block; margin-top: 0.25rem; color: var(--ink-2); font-size: 0.86rem; }
+.handover-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.8rem; margin-top: 1rem; }
+.handover-card {
+  border: 1px solid var(--line);
+  border-radius: var(--staff-radius);
+  background: var(--surface);
+  padding: 1rem;
+}
+.handover-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; }
+.handover-card h2 { margin: 0; color: var(--ink); font-size: 1rem; line-height: 1.2; }
+.handover-card p { margin: 0.25rem 0 0; color: var(--text-muted); font-size: 0.8rem; }
+.handover-card ol { margin: 0.8rem 0 0; padding-left: 1.25rem; color: var(--ink-2); font-size: 0.86rem; line-height: 1.45; }
+.handover-card li + li { margin-top: 0.45rem; }
+@media (max-width: 820px) {
+  .handover-grid { grid-template-columns: 1fr; }
+  .handover-summary,
+  .handover-card-head { align-items: flex-start; flex-direction: column; }
+  .handover-summary .btn,
+  .handover-card-head .btn { width: 100%; justify-content: center; }
 }
 
 
