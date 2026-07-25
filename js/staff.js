@@ -23,9 +23,31 @@
     "generate_documents", "manage_portals", "manage_templates", "view_reports", "export_reports", "approve_refunds",
     "approve_discounts", "manage_staff", "view_activity", "manage_settings"
   ];
+  const PERM_GROUPS = [
+    { title: "Sales & CRM", names: ["view_enquiries", "edit_enquiries", "view_customers", "edit_customers", "view_corporates", "edit_corporates"] },
+    { title: "Bookings & Documents", names: ["create_bookings", "edit_bookings", "generate_documents", "manage_templates"] },
+    { title: "Finance", names: ["view_payments", "edit_payments", "view_supplier_cost", "view_profit", "approve_refunds", "approve_discounts"] },
+    { title: "Admin & Security", names: ["manage_portals", "view_reports", "export_reports", "manage_staff", "view_activity", "manage_settings"] }
+  ];
   function esc(v) { return KridiyaAuth.escapeHTML(String(v == null ? "" : v)); }
   function label(v) { return String(v || "").replace(/_/g, " ").replace(/\b\w/g, function (c) { return c.toUpperCase(); }); }
   function whenText(v) { return v ? new Date(v).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "No activity"; }
+  function num(v) { return Number(v || 0); }
+  function permissionCount(p) { return PERMS.filter(function (name) { return !!p[name]; }).length; }
+  function riskLevel(staff, monitor, perms) {
+    if (!staff.active) return { label: "Inactive", tone: "muted" };
+    if (perms.manage_staff || perms.manage_settings || perms.export_reports) return { label: "High access", tone: "risk" };
+    if (perms.view_profit || perms.edit_payments || perms.approve_refunds) return { label: "Finance access", tone: "warn" };
+    if (monitor && !monitor.last_activity_at) return { label: "No activity", tone: "warn" };
+    return { label: "Standard", tone: "ok" };
+  }
+  function renderPermissionGroups(p) {
+    return PERM_GROUPS.map(function (group) {
+      return '<details class="perm-control-group"><summary><b>' + esc(group.title) + '</b><span>' + esc(group.names.filter(function (name) { return p[name]; }).length) + '/' + esc(group.names.length) + '</span></summary><div class="permission-grid">' + group.names.map(function (name) {
+        return '<label><input type="checkbox" data-perm="' + esc(name) + '" ' + (p[name] ? 'checked' : '') + '> ' + esc(label(name)) + '</label>';
+      }).join("") + '</div></details>';
+    }).join("");
+  }
 
   async function boot() {
     const gate = document.getElementById("staff-gate");
@@ -106,12 +128,28 @@
     const perms = {};
     (permResult.data || []).forEach(function (p) { perms[p.user_id] = p; });
     const rows = staffResult.data || [];
+    renderStaffStats(rows, [], perms);
     document.getElementById("staff-control-list").innerHTML = rows.map(function (s) {
       const p = perms[s.user_id] || {};
-      return '<div class="ops-row" data-user-id="' + esc(s.user_id) + '"><div class="ops-row-main"><b>' + esc(s.full_name || s.email) + '</b><p>' + esc(s.email) + ' - ' + esc(label(s.role)) + ' - ' + (s.active ? 'Active' : 'Inactive') + '</p><div class="permission-grid">' + PERMS.map(function (name) {
-        return '<label><input type="checkbox" data-perm="' + esc(name) + '" ' + (p[name] ? 'checked' : '') + '> ' + esc(label(name)) + '</label>';
-      }).join("") + '</div></div><div class="ops-row-actions"><button type="button" class="btn btn-primary save-perms">Save</button><button type="button" class="btn btn-outline reset-pin">Reset PIN</button>' + (s.user_id === myId ? '' : '<button type="button" class="btn btn-outline revoke-staff">Remove</button>') + '</div></div>';
+      const risk = riskLevel(s, null, p);
+      return '<div class="ops-row staff-control-row" data-user-id="' + esc(s.user_id) + '"><div class="ops-row-main"><div class="staff-person-head"><div><b>' + esc(s.full_name || s.email) + '</b><p>' + esc(s.email) + ' - ' + esc(label(s.role)) + ' - ' + esc(s.department || "No department") + '</p></div><span class="staff-risk ' + esc(risk.tone) + '">' + esc(risk.label) + '</span></div><div class="ops-kv"><span class="ops-chip">' + esc(s.active ? "Active" : "Inactive") + '</span><span class="ops-chip">' + esc(permissionCount(p)) + ' permission(s)</span><span class="ops-chip">PIN reset only - no stored visible PIN</span></div><div class="perm-control-stack">' + renderPermissionGroups(p) + '</div></div><div class="ops-row-actions"><button type="button" class="btn btn-primary save-perms">Save</button><button type="button" class="btn btn-outline reset-pin">Reset PIN</button>' + (s.user_id === myId ? '' : '<button type="button" class="btn btn-outline revoke-staff">Remove</button>') + '</div></div>';
     }).join("") || '<p class="form-note">No staff found.</p>';
+  }
+
+  function renderStaffStats(staffRows, monitoringRows, perms) {
+    const active = staffRows.filter(function (s) { return s.active; }).length;
+    const admins = staffRows.filter(function (s) { return String(s.role) === "admin" || String(s.role) === "owner"; }).length;
+    const highAccess = staffRows.filter(function (s) {
+      const p = perms[s.user_id] || {};
+      return p.manage_staff || p.manage_settings || p.export_reports || p.view_profit;
+    }).length;
+    const openTasks = (monitoringRows || []).reduce(function (sum, r) { return sum + num(r.tasks_open); }, 0);
+    document.getElementById("staff-stats").innerHTML =
+      '<div class="stat-tile"><div class="num">' + esc(staffRows.length) + '</div><div class="label">Total staff</div></div>' +
+      '<div class="stat-tile"><div class="num">' + esc(active) + '</div><div class="label">Active</div></div>' +
+      '<div class="stat-tile"><div class="num">' + esc(admins) + '</div><div class="label">Admin/owner</div></div>' +
+      '<div class="stat-tile"><div class="num">' + esc(highAccess) + '</div><div class="label">High access</div></div>' +
+      '<div class="stat-tile"><div class="num">' + esc(openTasks) + '</div><div class="label">Open staff tasks</div></div>';
   }
 
   async function loadMonitoring() {
@@ -122,12 +160,19 @@
       return;
     }
     const rows = result.data || [];
+    const staffResult = await sb.rpc("list_staff");
+    const permResult = await sb.from("staff_permissions").select("*");
+    const perms = {};
+    (permResult.data || []).forEach(function (p) { perms[p.user_id] = p; });
+    if (!staffResult.error && !permResult.error) renderStaffStats(staffResult.data || [], rows, perms);
     if (!rows.length) {
       box.innerHTML = '<p class="form-note">No staff activity found yet.</p>';
       return;
     }
     box.innerHTML = '<div class="ops-list">' + rows.map(function (r) {
-      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(r.full_name || r.email) + '</b><p>' + esc(r.email || "No email") + ' - ' + esc(label(r.role)) + ' - Last: ' + esc(whenText(r.last_activity_at)) + '</p><div class="ops-kv"><span class="ops-chip">Bookings: ' + esc(r.bookings_created) + '</span><span class="ops-chip">Open tasks: ' + esc(r.tasks_open) + '</span><span class="ops-chip">Done tasks: ' + esc(r.tasks_completed) + '</span><span class="ops-chip">Payments: ' + esc(r.payments_recorded) + '</span><span class="ops-chip">Documents: ' + esc(r.documents_recorded) + '</span><span class="ops-chip">Activity: ' + esc(r.activity_events) + '</span></div></div><div class="ops-row-actions"><span class="ops-chip">' + esc(r.active ? "Active" : "Inactive") + '</span></div></div>';
+      const p = perms[r.user_id] || {};
+      const risk = riskLevel(r, r, p);
+      return '<div class="ops-row staff-monitor-row"><div class="ops-row-main"><div class="staff-person-head"><div><b>' + esc(r.full_name || r.email) + '</b><p>' + esc(r.email || "No email") + ' - ' + esc(label(r.role)) + ' - Last: ' + esc(whenText(r.last_activity_at)) + '</p></div><span class="staff-risk ' + esc(risk.tone) + '">' + esc(risk.label) + '</span></div><div class="staff-work-grid"><span><b>' + esc(r.bookings_created) + '</b>Bookings</span><span><b>' + esc(r.tasks_open) + '</b>Open tasks</span><span><b>' + esc(r.tasks_completed) + '</b>Done tasks</span><span><b>' + esc(r.payments_recorded) + '</b>Payments</span><span><b>' + esc(r.documents_recorded) + '</b>Documents</span><span><b>' + esc(r.activity_events) + '</b>Activity</span></div></div><div class="ops-row-actions"><span class="ops-chip">' + esc(r.active ? "Active" : "Inactive") + '</span></div></div>';
     }).join("") + '</div>';
   }
   document.addEventListener("click", async function (e) {
