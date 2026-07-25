@@ -74,10 +74,36 @@ function renderStaffChrome() {
           '<a href="backups.html"' + (page === "backups" ? ' aria-current="page"' : "") + '>Backups</a>' +
         '</nav>' +
         '<div class="staff-actions">' +
-          '<a class="btn btn-outline" href="https://kridiyatravel.com" target="_blank" rel="noopener">Main site</a>' +
-          '<button type="button" class="btn btn-outline" id="staff-logout">' + icon("logout") + " Log out</button>" +
+          '<button type="button" class="staff-profile-btn" id="staff-profile-btn" aria-haspopup="true" aria-expanded="false">' +
+            '<span class="staff-profile-av" id="staff-profile-av">' + icon("user") + "</span>" +
+            '<span class="staff-profile-name" id="staff-profile-name">Account</span>' +
+            icon("chevron", "staff-profile-caret") +
+          "</button>" +
+          '<div class="staff-profile-menu" id="staff-profile-menu" hidden role="menu">' +
+            '<div class="staff-profile-head"><b id="staff-profile-fullname">Loading…</b><span id="staff-profile-role"></span></div>' +
+            '<a class="staff-profile-item" role="menuitem" href="dashboard.html#dashboard-profile">' + icon("user") + " My profile</a>" +
+            '<a class="staff-profile-item" role="menuitem" href="https://kridiyatravel.com" target="_blank" rel="noopener">' + icon("settings") + " Main site</a>" +
+            '<button type="button" class="staff-profile-item danger" role="menuitem" id="staff-logout">' + icon("logout") + " Log out</button>" +
+          "</div>" +
         "</div>" +
       "</div></div>";
+
+    const profBtn = document.getElementById("staff-profile-btn");
+    const profMenu = document.getElementById("staff-profile-menu");
+    if (profBtn && profMenu) {
+      profBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        const willOpen = profMenu.hidden;
+        profMenu.hidden = !willOpen;
+        profBtn.setAttribute("aria-expanded", String(willOpen));
+      });
+      document.addEventListener("click", function (e) {
+        if (!profMenu.hidden && !profMenu.contains(e.target) && !profBtn.contains(e.target)) {
+          profMenu.hidden = true;
+          profBtn.setAttribute("aria-expanded", "false");
+        }
+      });
+    }
     const logoutBtn = document.getElementById("staff-logout");
     if (logoutBtn) {
       logoutBtn.addEventListener("click", async function () {
@@ -303,6 +329,31 @@ const NAV_ACCESS = {
    allowed to use. Admins see everything. If anything fails, we fall
    back to showing the full nav (the pages still enforce access on
    their own, so this is convenience, not the security boundary). */
+/* Fills the header profile button/menu with the signed-in person's own
+   name, initials and role. Reads only their own row (self-read RLS). */
+async function fillStaffProfileMenu(sb, user, isAdmin) {
+  if (!user) return;
+  let prof = {};
+  try {
+    const res = await sb.from("staff_profiles").select("full_name, department").eq("user_id", user.id).maybeSingle();
+    prof = res.data || {};
+  } catch (e) { /* best-effort */ }
+  const name = prof.full_name || user.email || "Account";
+  const roleText = isAdmin ? "Owner / Admin" : (prof.department ? "Staff · " + prof.department : "Staff");
+  const parts = String(name).trim().split(/\s+/).filter(Boolean);
+  const initials = (parts.length >= 2 ? parts[0][0] + parts[1][0] : String(name).slice(0, 2)).toUpperCase();
+  const av = document.getElementById("staff-profile-av");
+  const shortName = document.getElementById("staff-profile-name");
+  const fullName = document.getElementById("staff-profile-fullname");
+  const roleEl = document.getElementById("staff-profile-role");
+  if (av) av.textContent = initials;
+  if (shortName) shortName.textContent = parts[0] || name;
+  if (fullName) fullName.textContent = name;
+  if (roleEl) roleEl.textContent = roleText + (user.email ? " · " + user.email : "");
+  const btn = document.getElementById("staff-profile-btn");
+  if (btn && isAdmin) btn.classList.add("is-admin");
+}
+
 async function showStaffNav() {
   const nav = document.querySelector(".staff-nav");
   if (!nav) return;
@@ -310,8 +361,10 @@ async function showStaffNav() {
     const sb = await KridiyaAuth.client();
     const adminRes = await sb.rpc("is_admin");
     const isAdmin = adminRes.data === true;
+    const navUser = await KridiyaAuth.currentUser();
+    fillStaffProfileMenu(sb, navUser, isAdmin);
     if (!isAdmin) {
-      const user = await KridiyaAuth.currentUser();
+      const user = navUser;
       let perms = {};
       if (user) {
         const permRes = await sb.from("staff_permissions").select("*").eq("user_id", user.id).maybeSingle();
