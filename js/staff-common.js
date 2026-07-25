@@ -81,7 +81,7 @@ function renderStaffChrome() {
           "</button>" +
           '<div class="staff-profile-menu" id="staff-profile-menu" hidden role="menu">' +
             '<div class="staff-profile-head"><b id="staff-profile-fullname">Loading…</b><span id="staff-profile-role"></span></div>' +
-            '<a class="staff-profile-item" role="menuitem" href="dashboard.html#dashboard-profile">' + icon("user") + " My profile</a>" +
+            '<a class="staff-profile-item" role="menuitem" href="profile.html">' + icon("user") + " My profile</a>" +
             '<a class="staff-profile-item" role="menuitem" href="https://kridiyatravel.com" target="_blank" rel="noopener">' + icon("settings") + " Main site</a>" +
             '<button type="button" class="staff-profile-item danger" role="menuitem" id="staff-logout">' + icon("logout") + " Log out</button>" +
           "</div>" +
