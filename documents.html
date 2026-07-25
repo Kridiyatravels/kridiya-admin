@@ -78,13 +78,17 @@
             <div><h2>3. Fill in the details</h2><p>Everything here appears exactly as written on the final document.</p></div>
           </div>
           <form id="doc-fields" class="form-grid" onsubmit="return false"></form>
-          <button type="button" id="save-print-btn" class="btn btn-primary btn-lg" style="margin-top:1.1rem">Save &amp; Print</button>
-          <p class="form-note">Saving assigns a permanent document number and logs it to this enquiry's history. A print-ready window opens automatically — use your browser's Print &rarr; Save as PDF.</p>
+          <div class="doc-action-row" style="margin-top:1.1rem">
+            <button type="button" id="preview-btn" class="btn btn-outline btn-lg">Preview (no save)</button>
+            <button type="button" id="save-print-btn" class="btn btn-primary btn-lg">Save &amp; Print</button>
+          </div>
+          <p class="form-note"><b>Preview</b> shows the document without saving — check it first. <b>Save &amp; Print</b> assigns a permanent number, logs it to the enquiry's history, and opens a print-ready window — use your browser's Print &rarr; Save as PDF.</p>
         </div>
 
         <div class="account-main" id="doc-preview-card">
           <div class="account-section-head">
             <div><h2>Last generated: <span id="doc-preview-number">—</span></h2><p>A copy of what was just created.</p></div>
+            <button type="button" id="reopen-print" class="btn btn-outline" hidden>Open print view</button>
           </div>
           <div id="doc-preview"></div>
         </div>
@@ -111,6 +115,8 @@
 <footer id="site-footer" class="site-footer"></footer>
 <script src="https://kridiyatravel.com/js/auth.js" defer></script>
 <script src="js/staff-common.js" defer></script>
+<script src="js/airports.js" defer></script>
+<script src="js/airport-ac.js" defer></script>
 <script src="js/documents.js" defer></script>
 </body>
 </html>

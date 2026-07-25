@@ -11,6 +11,12 @@
   if (document.body.dataset.page !== "documents") return;
 
   const LOGO_URL = "https://kridiyatravel.com/assets/logo.png";
+  const VAT_RATE = 0.05; // UAE standard rate
+
+  /* Preset add-ons — mirror the quote builder. Used as included-extras
+     tick-boxes on e-tickets and as quick-add chips on invoices. */
+  const PRESET_ADDONS = ["Extra baggage", "Seat selection", "Meal", "Travel insurance"];
+  const INVOICE_EXTRAS = ["Extra baggage", "Seat selection", "Meal", "Travel insurance", "Visa fee", "Service charge", "Airport transfer"];
 
   const DOC_KINDS = [
     { id: "invoice", label: "Invoice", docType: "invoice" },
@@ -35,6 +41,10 @@
   function money(amount, currency) {
     const n = Number(amount || 0);
     return (currency || "AED") + " " + n.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  /* VAT flag is tolerant of boolean true or the string "true". */
+  function isVatRegistered() {
+    return !!settings && (settings.vat_registered === true || settings.vat_registered === "true");
   }
   function todayISO() {
     const d = new Date();
@@ -136,7 +146,10 @@
     win.focus();
   }
 
+  let lastRender = null; // {title, body} of the most recent preview/generate
+
   function showInlinePreview(title, bodyHTML) {
+    lastRender = { title: title, body: bodyHTML };
     const mount = document.getElementById("doc-preview");
     mount.innerHTML = "";
     const iframe = document.createElement("iframe");
@@ -146,6 +159,8 @@
     doc.open();
     doc.write(standaloneDocHTML(title, bodyHTML));
     doc.close();
+    const reopen = document.getElementById("reopen-print");
+    if (reopen) reopen.hidden = false;
   }
 
   /* ---------- Repeatable rows widget ---------- */
@@ -179,6 +194,25 @@
     const el = row.querySelector('[name="' + name + '"]');
     return el ? el.value.trim() : "";
   }
+  /* Safe numeric read: never returns NaN. */
+  function num(v, fallback) {
+    const n = parseFloat(v);
+    return isFinite(n) ? n : (fallback || 0);
+  }
+
+  /* Preset add-on tick-boxes for e-ticket forms (included extras). */
+  function addonChecksHTML(nameAttr) {
+    return '<div class="field col-12"><label>OPTIONAL EXTRAS INCLUDED</label>' +
+      '<div class="doc-addon-checks">' +
+      PRESET_ADDONS.map(function (a) {
+        return '<label class="doc-addon-check"><input type="checkbox" name="' + nameAttr + '" value="' + esc(a) + '"> ' + esc(a) + "</label>";
+      }).join("") +
+      "</div></div>";
+  }
+  function gatherAddonChecks(form, nameAttr) {
+    if (!form) return [];
+    return Array.from(form.querySelectorAll('input[name="' + nameAttr + '"]:checked')).map(function (c) { return c.value; });
+  }
 
   /* ================= FORM BUILDERS + RENDERERS PER KIND ================= */
 
@@ -207,7 +241,15 @@
       '<h3 style="margin-top:1rem">Line items</h3>' +
       '<div id="rep-items"></div>' +
       '<button type="button" id="add-item" class="btn btn-outline" style="margin-top:0.5rem">+ Add line item</button>' +
-      '<div class="field" style="margin-top:1rem"><label>NOTES / TERMS</label><textarea name="notes">' + esc(settings.invoice_footer_note || "") + "</textarea></div>" +
+      '<div class="doc-addon-chips" id="inv-addons"><span class="doc-addon-chips-label">Quick add:</span>' +
+        INVOICE_EXTRAS.map(function (a) { return '<button type="button" class="chip-add" data-addon="' + esc(a) + '">+ ' + esc(a) + "</button>"; }).join("") +
+      "</div>" +
+      '<div class="field-row" style="margin-top:1rem">' +
+        '<div class="field col-4"><label>DISCOUNT (' + esc((settings && settings.default_currency) || "AED") + ')</label><input name="discount" type="number" min="0" step="0.01" placeholder="0.00"></div>' +
+        '<div class="field col-4"><label>AMOUNT PAID / ADVANCE</label><input name="amount_paid" type="number" min="0" step="0.01" placeholder="0.00"></div>' +
+        '<div class="field col-4"><label>VAT</label><input value="' + (isVatRegistered() ? "5% (VAT registered)" : "Not applied") + '" disabled></div>' +
+      "</div>" +
+      '<div class="field" style="margin-top:0.4rem"><label>NOTES / TERMS</label><textarea name="notes">' + esc((settings && settings.invoice_footer_note) || "") + "</textarea></div>" +
       '<div class="field"><label>STRIPE PAYMENT LINK (OPTIONAL)</label><input name="payment_link" placeholder="https://buy.stripe.com/..."></div>';
     renderRepeatable("rep-items", "add-item", function (i) {
       return (
@@ -218,6 +260,23 @@
         "</div>"
       );
     }, 1);
+    /* Quick-add chips append a pre-labelled line item, ready for its price. */
+    const chips = document.getElementById("inv-addons");
+    const addBtn = document.getElementById("add-item");
+    if (chips && addBtn) {
+      chips.addEventListener("click", function (e) {
+        const b = e.target.closest("[data-addon]");
+        if (!b) return;
+        addBtn.click();
+        const rows = rowsOf("rep-items");
+        const last = rows[rows.length - 1];
+        if (!last) return;
+        const descEl = last.querySelector('input[name^="desc_"]');
+        if (descEl) { descEl.value = b.dataset.addon; }
+        const priceEl = last.querySelector('input[name^="price_"]');
+        if (priceEl) { priceEl.focus(); priceEl.select(); }
+      });
+    }
   }
   function gatherInvoice(form) {
     const items = rowsOf("rep-items").map(function (row) {
@@ -229,14 +288,27 @@
       };
     }).filter(function (it) { return it.description; });
     const currency = (form.currency.value || "AED").toUpperCase();
-    const total = items.reduce(function (s, it) { return s + it.qty * it.unit_price; }, 0);
+    const subtotal = items.reduce(function (s, it) { return s + it.qty * it.unit_price; }, 0);
+    const discount = Math.min(Math.max(0, num(form.discount && form.discount.value)), subtotal);
+    const taxable = Math.max(0, subtotal - discount);
+    const vatApplies = isVatRegistered();
+    const vat = vatApplies ? Math.round(taxable * VAT_RATE * 100) / 100 : 0;
+    const total = Math.round((taxable + vat) * 100) / 100;
+    const paid = Math.max(0, num(form.amount_paid && form.amount_paid.value));
+    const balance = Math.round((total - paid) * 100) / 100;
     return {
       customer_name: form.customer_name.value.trim(),
       customer_email: form.customer_email.value.trim(),
       invoice_date: form.invoice_date.value || todayISO(),
       currency: currency,
       items: items,
+      subtotal: subtotal,
+      discount: discount,
+      vat_applies: vatApplies,
+      vat: vat,
       total: total,
+      paid: paid,
+      balance: balance,
       notes: form.notes.value.trim(),
       payment_link: form.payment_link.value.trim()
     };
@@ -254,7 +326,12 @@
       "<h2>Charges</h2>" +
       "<table><thead><tr><th>Description</th><th>Qty</th><th>Unit price</th><th>Amount</th></tr></thead><tbody>" + rows + "</tbody></table>" +
       '<table class="totals" style="max-width:340px;margin-left:auto;margin-top:0.4rem">' +
-        '<tr class="grand"><td class="label">Total due</td><td>' + money(data.total, data.currency) + "</td></tr>" +
+        '<tr><td class="label">Subtotal</td><td>' + money(data.subtotal, data.currency) + "</td></tr>" +
+        (data.discount > 0 ? '<tr><td class="label">Discount</td><td>&minus; ' + money(data.discount, data.currency) + "</td></tr>" : "") +
+        (data.vat_applies ? '<tr><td class="label">VAT (5%)</td><td>' + money(data.vat, data.currency) + "</td></tr>" : "") +
+        '<tr class="grand"><td class="label">Total' + (data.paid > 0 ? "" : " due") + '</td><td>' + money(data.total, data.currency) + "</td></tr>" +
+        (data.paid > 0 ? '<tr><td class="label">Amount paid</td><td>&minus; ' + money(data.paid, data.currency) + "</td></tr>" : "") +
+        (data.paid > 0 ? '<tr class="grand"><td class="label">Balance due</td><td>' + money(data.balance, data.currency) + "</td></tr>" : "") +
       "</table>" +
       (data.payment_link ? '<div class="box"><b style="font-family:Arial,sans-serif;font-size:0.8rem">Pay online</b><p class="note" style="margin:0.4rem 0 0">' + esc(data.payment_link) + "</p></div>" : "") +
       bankBoxHTML() +
@@ -272,6 +349,7 @@
         '<div class="field col-3"><label>CLASS</label><input name="cabin" value="Economy"></div>' +
         '<div class="field col-3"><label>BAGGAGE</label><input name="baggage" placeholder="e.g. 20kg checked + 7kg cabin"></div>' +
         '<div class="field col-6"><label>AIRLINE PNR / BOOKING REF</label><input name="pnr"></div>' +
+        addonChecksHTML("flight_addon") +
       "</div>";
     const initial = legCount === "round" ? 2 : 1;
     renderRepeatable("rep-legs", "add-item", function (i) {
@@ -279,14 +357,21 @@
         '<div class="field-row" style="flex:1">' +
         '<div class="field col-3"><label>AIRLINE</label><input name="airline_' + i + '"></div>' +
         '<div class="field col-3"><label>FLIGHT NO.</label><input name="flightno_' + i + '"></div>' +
-        '<div class="field col-3"><label>FROM</label><input name="from_' + i + '" placeholder="Dubai (DXB)"></div>' +
-        '<div class="field col-3"><label>TO</label><input name="to_' + i + '" placeholder="Kochi (COK)"></div>' +
+        '<div class="field col-3"><label>FROM</label><input name="from_' + i + '" data-airport placeholder="Dubai (DXB)"></div>' +
+        '<div class="field col-3"><label>TO</label><input name="to_' + i + '" data-airport placeholder="Kochi (COK)"></div>' +
         '<div class="field col-4"><label>DATE</label><input name="date_' + i + '" type="date"></div>' +
         '<div class="field col-4"><label>DEPART</label><input name="deptime_' + i + '" type="time"></div>' +
         '<div class="field col-4"><label>ARRIVE</label><input name="arrtime_' + i + '" type="time"></div>' +
         "</div>"
       );
     }, legCount === "multi" ? 2 : initial);
+    /* Attach airport autocomplete now, and again after each new leg is added.
+       Guarded so it's a no-op if airport-ac.js failed to load. */
+    if (typeof initAirportAC === "function") {
+      initAirportAC(mount);
+      const legAddBtn = document.getElementById("add-item");
+      if (legAddBtn) legAddBtn.addEventListener("click", function () { setTimeout(function () { initAirportAC(mount); }, 0); });
+    }
   }
   function gatherFlight(form) {
     const legs = rowsOf("rep-legs").map(function (row) {
@@ -306,7 +391,8 @@
       passengers: form.passengers.value.trim(),
       cabin: form.cabin.value.trim(),
       baggage: form.baggage.value.trim(),
-      pnr: form.pnr.value.trim()
+      pnr: form.pnr.value.trim(),
+      extras: gatherAddonChecks(form, "flight_addon")
     };
   }
   function renderFlight(data, docNumber, tripLabel) {
@@ -321,6 +407,7 @@
       '<div class="kv"><span class="k">Passenger(s)</span><span class="v">' + nl2br(data.passengers) + "</span>" +
         '<span class="k">Class</span><span class="v">' + esc(data.cabin) + "</span>" +
         (data.baggage ? '<span class="k">Baggage</span><span class="v">' + esc(data.baggage) + "</span>" : "") +
+        (data.extras && data.extras.length ? '<span class="k">Extras included</span><span class="v">' + esc(data.extras.join(", ")) + "</span>" : "") +
         (data.pnr ? '<span class="k">Airline PNR</span><span class="v">' + esc(data.pnr) + "</span>" : "") +
         (linkedEnquiry ? '<span class="k">Kridiya reference</span><span class="v">' + esc(linkedEnquiry.reference) + "</span>" : "") +
       "</div>" +
@@ -748,6 +835,31 @@
     btn.textContent = "Save & Print";
   }
 
+  /* Draft preview — renders exactly what will print, WITHOUT saving or
+     consuming a document number. Safe to click any number of times. */
+  function handlePreview() {
+    const kindId = document.getElementById("doc-kind").value;
+    const kind = findKind(kindId);
+    const handler = HANDLERS[kindId];
+    if (!kind || !handler) { toast("Pick a document type first."); return; }
+    const form = document.getElementById("doc-fields");
+    let data, bodyHTML;
+    try {
+      data = handler.gather(form);
+      bodyHTML = handler.render(data, ""); // empty number -> shows DRAFT watermark
+    } catch (err) {
+      toast("Could not build preview: " + err.message);
+      return;
+    }
+    const title = kind.label + " (draft preview)";
+    showInlinePreview(title, bodyHTML);
+    const numEl = document.getElementById("doc-preview-number");
+    if (numEl) numEl.textContent = "DRAFT — not saved";
+    const card = document.getElementById("doc-preview-card");
+    if (card && card.scrollIntoView) card.scrollIntoView({ behavior: "smooth", block: "start" });
+    toast("Draft preview only — nothing saved. Use Save & Print to issue it.");
+  }
+
   function buildSignatureHTML(name, title) {
     return (
       '<table cellpadding="0" cellspacing="0" border="0" style="font-family:Arial,Helvetica,sans-serif;color:#2b2b2b;border-collapse:collapse">' +
@@ -857,6 +969,12 @@
     rebuildForm();
     document.getElementById("doc-kind").addEventListener("change", rebuildForm);
     document.getElementById("save-print-btn").addEventListener("click", handleGenerate);
+    const previewBtn = document.getElementById("preview-btn");
+    if (previewBtn) previewBtn.addEventListener("click", handlePreview);
+    const reopenBtn = document.getElementById("reopen-print");
+    if (reopenBtn) reopenBtn.addEventListener("click", function () {
+      if (lastRender) openPrintWindow(lastRender.title, lastRender.body);
+    });
 
     const searchInput = document.getElementById("enquiry-search");
     const searchResults = document.getElementById("enquiry-search-results");
