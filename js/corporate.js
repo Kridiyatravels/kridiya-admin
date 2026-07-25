@@ -9,6 +9,56 @@
   function label(v) { return String(v || "").replace(/_/g, " ").replace(/\b\w/g, function (c) { return c.toUpperCase(); }); }
   function money(v, c) { return (c || "AED") + " " + Number(v || 0).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
   function bool(v) { return v ? "Yes" : "No"; }
+  function num(v) { return Number(v || 0); }
+  function hasBillingEmail(c) { return !!(c.billing_email || c.accounts_email); }
+  function hasAuthorizedContact(c) {
+    return (c.contacts || []).some(function (x) { return x.is_authorized_contact; });
+  }
+  function hasAccountsContact(c) {
+    return (c.contacts || []).some(function (x) { return x.is_accounts_contact; });
+  }
+  function accountIssues(c) {
+    const issues = [];
+    if (!hasBillingEmail(c)) issues.push("Billing email missing");
+    if (!hasAuthorizedContact(c)) issues.push("Authorized contact missing");
+    if (!hasAccountsContact(c)) issues.push("Accounts contact missing");
+    if (c.lpo_required && !hasAuthorizedContact(c)) issues.push("LPO approver not identified");
+    if ((c.credit_allowed || c.monthly_billing) && !c.trn) issues.push("TRN missing for credit/monthly billing");
+    if (String(c.status) === "on_hold" || String(c.status) === "inactive") issues.push("Account not active");
+    return issues;
+  }
+  function accountHealth(c) {
+    const issues = accountIssues(c);
+    const value = num(c.booking_value);
+    if (String(c.status) === "on_hold" || String(c.status) === "inactive") return { label: "On hold", tone: "risk", issues: issues, action: "Review before accepting new corporate bookings." };
+    if (issues.length >= 3) return { label: "High risk", tone: "risk", issues: issues, action: "Complete billing and authorized contacts before more credit/LPO work." };
+    if (issues.length) return { label: "Review", tone: "warn", issues: issues, action: "Clean missing controls before account handover." };
+    if (value > 0) return { label: "Operational", tone: "ok", issues: issues, action: "Account is ready for repeat corporate handling." };
+    return { label: "Ready", tone: "info", issues: issues, action: "Controls are ready. Wait for first booking or lead." };
+  }
+  function renderCorporateControl() {
+    const panel = document.getElementById("corporate-control-panel");
+    if (!panel) return;
+    const active = rows.filter(function (r) { return r.status === "active"; }).length;
+    const risk = rows.filter(function (r) { return accountHealth(r).tone === "risk"; }).length;
+    const review = rows.filter(function (r) { return accountHealth(r).tone === "warn"; }).length;
+    const credit = rows.filter(function (r) { return r.credit_allowed || r.monthly_billing; }).length;
+    const missingContacts = rows.filter(function (r) { return !hasAuthorizedContact(r) || !hasAccountsContact(r); }).length;
+    const value = rows.reduce(function (sum, r) { return sum + num(r.booking_value); }, 0);
+    const next = risk
+      ? "Resolve high-risk corporate accounts before new supplier/customer commitments."
+      : review
+        ? "Complete missing billing and contact controls."
+        : "Corporate account controls look ready for repeat handling.";
+    panel.innerHTML =
+      '<div class="corporate-control-summary corporate-' + esc(risk ? "risk" : review ? "warn" : "ok") + '"><div><b>' + esc(risk ? risk + " high risk" : review ? review + " review" : "Ready") + '</b><span>' + esc(next) + '</span></div><span class="finance-value">' + esc(money(value, "AED")) + '</span></div>' +
+      '<div class="corporate-control-grid">' +
+        '<div><b>' + esc(active) + '</b><span>Active accounts</span></div>' +
+        '<div><b>' + esc(credit) + '</b><span>Credit/monthly billing</span></div>' +
+        '<div><b>' + esc(missingContacts) + '</b><span>Missing contacts</span></div>' +
+        '<div><b>' + esc(rows.filter(function (r) { return r.lpo_required; }).length) + '</b><span>LPO required</span></div>' +
+      '</div>';
+  }
 
   async function boot() {
     const gate = document.getElementById("corporate-gate");
@@ -91,6 +141,7 @@
     if (result.error) { toast("Could not load companies: " + result.error.message); return; }
     rows = result.data || [];
     renderStats();
+    renderCorporateControl();
     renderRows();
   }
 
@@ -114,11 +165,13 @@
 
   function renderCompany(c) {
     const contacts = c.contacts || [];
+    const health = accountHealth(c);
+    const issueChips = health.issues.length ? health.issues.slice(0, 4).map(function (x) { return '<span class="ops-chip">' + esc(x) + '</span>'; }).join("") : '<span class="ops-chip">Controls complete</span>';
     const contactRows = contacts.length ? contacts.map(function (x) {
       return '<div class="ops-row compact-row"><div class="ops-row-main"><b>' + esc(x.full_name) + '</b><p>' + esc(x.job_title || "Contact") + ' / ' + esc(x.email || "No email") + ' / ' + esc(x.phone || x.whatsapp || "No phone") + '</p><div class="ops-kv">' + (x.is_authorized_contact ? '<span class="ops-chip">Authorized</span>' : '') + (x.is_accounts_contact ? '<span class="ops-chip">Accounts</span>' : '') + '</div></div></div>';
     }).join("") : '<p class="form-note">No contacts saved yet.</p>';
     const form = canEdit ? '<form class="form-grid payment-mini-form corporate-contact-form" data-account-id="' + esc(c.id) + '" onsubmit="return false"><div class="field-row"><div class="field col-4"><label>CONTACT NAME</label><input name="full_name" required></div><div class="field col-4"><label>JOB TITLE</label><input name="job_title"></div><div class="field col-4"><label>EMAIL</label><input name="email" type="email"></div><div class="field col-4"><label>PHONE</label><input name="phone"></div><div class="field col-4"><label>WHATSAPP</label><input name="whatsapp"></div><div class="field col-2"><label>AUTHORIZED?</label><select name="is_authorized_contact"><option value="false">No</option><option value="true">Yes</option></select></div><div class="field col-2"><label>ACCOUNTS?</label><select name="is_accounts_contact"><option value="false">No</option><option value="true">Yes</option></select></div><div class="field col-12"><label>NOTES</label><input name="notes"></div></div><button class="btn btn-primary" type="submit">Add contact</button></form>' : '';
-    return '<details class="corporate-card"><summary><div class="ops-row-main"><b>' + esc(c.company_name) + '</b><p>' + esc(c.billing_email || c.accounts_email || "No billing email") + ' / ' + esc(c.phone || "No phone") + '</p><div class="ops-kv"><span class="ops-chip">' + esc(label(c.status)) + '</span><span class="ops-chip">Terms: ' + esc(label(c.payment_terms)) + '</span><span class="ops-chip">LPO: ' + esc(bool(c.lpo_required)) + '</span><span class="ops-chip">Bookings: ' + esc(c.booking_count || 0) + '</span></div></div><span class="finance-value">' + esc(money(c.booking_value, "AED")) + '</span></summary><div class="corporate-card-body"><div class="ops-grid ops-grid-2"><div><h3>Account controls</h3><div class="ops-kv"><span class="ops-chip">Credit: ' + esc(bool(c.credit_allowed)) + '</span><span class="ops-chip">Monthly billing: ' + esc(bool(c.monthly_billing)) + '</span>' + (c.trade_license_no ? '<span class="ops-chip">TL: ' + esc(c.trade_license_no) + '</span>' : '') + (c.trn ? '<span class="ops-chip">TRN: ' + esc(c.trn) + '</span>' : '') + '</div><p class="form-note">' + esc(c.notes || "No account notes.") + '</p></div><div><h3>Contacts</h3>' + contactRows + '</div></div>' + form + '</div></details>';
+    return '<details class="corporate-card corporate-' + esc(health.tone) + '"><summary><div class="ops-row-main"><b>' + esc(c.company_name) + '</b><p>' + esc(c.billing_email || c.accounts_email || "No billing email") + ' / ' + esc(c.phone || "No phone") + '</p><div class="ops-kv"><span class="staff-risk ' + esc(health.tone === "ok" ? "ok" : health.tone === "risk" ? "risk" : "warn") + '">' + esc(health.label) + '</span><span class="ops-chip">' + esc(label(c.status)) + '</span><span class="ops-chip">Terms: ' + esc(label(c.payment_terms)) + '</span><span class="ops-chip">LPO: ' + esc(bool(c.lpo_required)) + '</span><span class="ops-chip">Bookings: ' + esc(c.booking_count || 0) + '</span></div></div><span class="finance-value">' + esc(money(c.booking_value, "AED")) + '</span></summary><div class="corporate-card-body"><div class="corporate-health-strip corporate-health-' + esc(health.tone) + '"><div><b>' + esc(health.label) + '</b><p>' + esc(health.action) + '</p></div><div class="ops-kv">' + issueChips + '</div></div><div class="ops-grid ops-grid-2"><div><h3>Account controls</h3><div class="ops-kv"><span class="ops-chip">Credit: ' + esc(bool(c.credit_allowed)) + '</span><span class="ops-chip">Monthly billing: ' + esc(bool(c.monthly_billing)) + '</span><span class="ops-chip">Billing email: ' + esc(bool(hasBillingEmail(c))) + '</span><span class="ops-chip">Authorized contact: ' + esc(bool(hasAuthorizedContact(c))) + '</span><span class="ops-chip">Accounts contact: ' + esc(bool(hasAccountsContact(c))) + '</span>' + (c.trade_license_no ? '<span class="ops-chip">TL: ' + esc(c.trade_license_no) + '</span>' : '') + (c.trn ? '<span class="ops-chip">TRN: ' + esc(c.trn) + '</span>' : '') + '</div><p class="form-note">' + esc(c.notes || "No account notes.") + '</p></div><div><h3>Contacts</h3>' + contactRows + '</div></div>' + form + '</div></details>';
   }
 
   document.addEventListener("DOMContentLoaded", boot);
