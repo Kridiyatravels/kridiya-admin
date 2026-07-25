@@ -10,7 +10,8 @@
 <link rel="icon" href="https://kridiyatravel.com/assets/favicon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="https://kridiyatravel.com/assets/favicon-180.png">
 <link rel="stylesheet" href="https://kridiyatravel.com/css/styles.css">
-<link rel="stylesheet" href="css/staff.css?v=20260726"><title>Dashboard - Kridiya Staff Tools</title>
+<link rel="stylesheet" href="css/staff.css?v=20260726b">
+<title>Dashboard - Kridiya Staff Tools</title>
 </head>
 <body data-page="dashboard">
 <header id="site-header" class="site-header"></header>
@@ -20,31 +21,40 @@
     <div class="account-head"><div><h1>Dashboard</h1><p>Daily control center for enquiries, bookings, payments, documents, and staff activity.</p></div></div>
     <div id="dashboard-command" class="command-center"></div>
     <div class="stat-row" id="dashboard-stats"></div>
-    <div class="account-main ops-qa-card">
-      <div class="account-section-head"><div><h2>Operations QA</h2><p>System alignment, module coverage, and end-to-end workflow readiness.</p></div></div>
-      <div id="dashboard-qa"></div>
-    </div>
-    <div class="account-main">
-      <div class="account-section-head"><div><h2>All tools</h2><p>Everything in one place — pick a section. Press <b>/</b> or <b>Ctrl</b>+<b>K</b> to jump anywhere.</p></div></div>
-      <div id="dashboard-hub" class="hub"></div>
-    </div>
-    <div class="account-main launch-readiness-card">
-      <div class="account-section-head"><div><h2>Launch readiness</h2><p>Owner-level go-live checklist for operating the full system professionally.</p></div><a class="btn btn-outline" href="backups.html">Backup pack</a></div>
-      <div id="dashboard-launch-readiness"></div>
-    </div>
-    <div class="account-main workflow-test-card">
-      <div class="account-section-head"><div><h2>Workflow test</h2><p>Run this before major changes, staff onboarding, or live launch.</p></div><div class="section-actions"><button class="btn btn-outline" id="workflow-test-copy" type="button">Copy report</button><button class="btn btn-outline" id="workflow-test-reset" type="button">Reset</button></div></div>
-      <div id="dashboard-workflow-test"></div>
-    </div>
     <div class="ops-grid ops-grid-2">
       <div class="account-main"><div class="account-section-head"><div><h2>Priority work</h2><p>What needs attention first.</p></div></div><div id="dashboard-priority"></div></div>
       <div class="account-main"><div class="account-section-head"><div><h2>Booking reminders</h2><p>Open follow-ups across all bookings.</p></div><a class="btn btn-outline" href="bookings.html">Bookings</a></div><div id="dashboard-reminders"></div></div>
     </div>
-    <div class="account-main"><div class="account-section-head"><div><h2>Recent activity</h2><p>Latest staff/system actions.</p></div><a class="btn btn-outline" href="activity.html">View all</a></div><div id="dashboard-activity"></div></div>
+    <div class="account-main"><div class="account-section-head"><div><h2>Recent activity</h2><p>Latest staff and system actions.</p></div><a class="btn btn-outline" href="activity.html">View all</a></div><div id="dashboard-activity"></div></div>
+    <details class="dashboard-system">
+      <summary>
+        <span><b>System setup &amp; tools</b><small>Modules, readiness checks, workflow testing, and owner controls</small></span>
+        <span class="dashboard-system-action">Open workspace</span>
+      </summary>
+      <div class="dashboard-system-body">
+        <section class="system-panel ops-qa-card">
+          <div class="account-section-head"><div><h2>Operations QA</h2><p>Module coverage and end-to-end workflow readiness.</p></div></div>
+          <div id="dashboard-qa"></div>
+        </section>
+        <section class="system-panel">
+          <div class="account-section-head"><div><h2>All tools</h2><p>Open any business area. Use <b>Ctrl+K</b> for faster navigation.</p></div></div>
+          <div id="dashboard-hub" class="hub"></div>
+        </section>
+        <section class="system-panel launch-readiness-card">
+          <div class="account-section-head"><div><h2>Launch readiness</h2><p>Owner-level go-live checklist.</p></div><a class="btn btn-outline" href="backups.html">Backup pack</a></div>
+          <div id="dashboard-launch-readiness"></div>
+        </section>
+        <section class="system-panel workflow-test-card">
+          <div class="account-section-head"><div><h2>Workflow test</h2><p>Run before major changes, onboarding, or launch.</p></div><div class="section-actions"><button class="btn btn-outline" id="workflow-test-copy" type="button">Copy report</button><button class="btn btn-outline" id="workflow-test-reset" type="button">Reset</button></div></div>
+          <div id="dashboard-workflow-test"></div>
+        </section>
+      </div>
+    </details>
   </div>
 </div></section></main>
 <footer id="site-footer" class="site-footer"></footer>
 <script src="https://kridiyatravel.com/js/auth.js" defer></script>
 <script src="js/staff-common.js" defer></script>
 <script src="js/dashboard.js" defer></script>
-</body></html>
+</body>
+</html>
