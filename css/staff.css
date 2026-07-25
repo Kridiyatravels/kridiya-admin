@@ -332,6 +332,67 @@ body { background: var(--bg); }
 @media (max-width: 940px) { .staff-work-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .staff-person-head { flex-direction: column; } .staff-work-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
+/* ---------- Owner review and backup readiness ---------- */
+.owner-review-summary,
+.backup-ready-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--staff-radius);
+  background: var(--surface-tint);
+}
+.owner-review-summary b,
+.backup-ready-summary b {
+  display: block;
+  color: var(--ink);
+  font-size: 1.5rem;
+  line-height: 1;
+  font-weight: 800;
+}
+.owner-review-summary span,
+.backup-ready-summary span {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--ink);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+.owner-review-summary p,
+.backup-ready-summary p {
+  margin: 0.25rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+.review-ok { border-color: oklch(0.75 0.12 145); background: oklch(0.98 0.025 145); }
+.review-warn { border-color: oklch(0.82 0.13 78); background: oklch(0.985 0.035 82); }
+.review-risk { border-color: oklch(0.7 0.18 30); background: oklch(0.98 0.035 35); }
+.review-check-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+}
+.review-check {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  padding: 0.72rem 0.8rem;
+}
+.review-check.done { border-color: oklch(0.78 0.1 150); background: oklch(0.98 0.02 150); }
+.review-check.todo { border-color: oklch(0.82 0.13 78); background: oklch(0.985 0.03 82); }
+.review-check b { display: block; color: var(--ink); font-size: 0.86rem; }
+.review-check p { margin: 0.24rem 0 0; color: var(--text-muted); font-size: 0.82rem; }
+@media (max-width: 620px) {
+  .owner-review-summary,
+  .backup-ready-summary { align-items: flex-start; flex-direction: column; }
+  .owner-review-summary .btn,
+  .backup-ready-summary .btn { width: 100%; justify-content: center; }
+}
+
 /* ---------- Dashboard command center ---------- */
 .command-center {
   display: grid;

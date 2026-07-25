@@ -100,6 +100,23 @@
       };
     });
   }
+  function renderReadiness() {
+    const has = function (title) { return exportsCache.some(function (item) { return item.title === title && item.rows.length; }); };
+    const rows = [
+      ["Finance summary", has("Owner finance summary"), "Sales, cost, profit, refunds, and net collected"],
+      ["Bookings", has("Bookings"), "Operational booking records and statuses"],
+      ["Payments", has("Payments"), "Customer payment and refund trail"],
+      ["Corporate", has("Corporate accounts"), "Company billing/account data"],
+      ["Documents", has("Documents"), "Generated document register"],
+      ["Activity", has("Activity"), "Admin/staff audit evidence"]
+    ];
+    const ready = rows.filter(function (r) { return r[1]; }).length;
+    document.getElementById("backup-readiness-panel").innerHTML =
+      '<div class="backup-ready-summary"><div><b>' + esc(ready) + '/' + esc(rows.length) + '</b><span>Backup areas ready</span><p>Monthly folder: Kridiya Travel/Finance/' + esc(stamp().slice(0, 7).replace("-", "/")) + '</p></div><a class="btn btn-outline" href="accounting.html">Accounting</a></div>' +
+      '<div class="review-check-grid">' + rows.map(function (r) {
+        return '<div class="review-check ' + (r[1] ? "done" : "todo") + '"><b>' + esc(r[0]) + '</b><p>' + esc(r[2]) + '</p></div>';
+      }).join("") + '</div>';
+  }
 
   async function loadExports() {
     const bookings = await rpc("list_operations_bookings", { limit_count: 1000 });
@@ -134,6 +151,7 @@
       '<div class="stat-tile"><div class="num">CSV</div><div class="label">Excel format</div></div>' +
       '<div class="stat-tile"><div class="num">Admin</div><div class="label">Access level</div></div>';
     document.getElementById("backup-last-run").textContent = "Loaded " + new Date().toLocaleString("en-GB");
+    renderReadiness();
     document.getElementById("backup-list").innerHTML = exportsCache.map(function (item, index) {
       return '<div class="backup-card"><div><h3>' + esc(item.title) + '</h3><p>' + esc(item.note) + '</p><div class="ops-kv"><span class="ops-chip">' + esc(item.rows.length) + ' row(s)</span><span class="ops-chip">' + esc(niceName(item.file.replace(/^kridiya-|\.csv$/g, ""))) + '</span></div></div><button class="btn btn-outline" type="button" data-export-index="' + index + '">Download</button></div>';
     }).join("");

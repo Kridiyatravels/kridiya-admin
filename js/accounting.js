@@ -101,6 +101,34 @@
     const pending = rows.filter(function (b) { return !paymentCleared(b.payment_status); }).reduce(function (s, b) { return s + num(b.selling_price); }, 0);
     return { sales: sales, cost: cost, profit: profit, received: received, pending: pending, refundPending: refundPendingTotal, refunded: refundCompletedTotal, netCollected: received - refundCompletedTotal };
   }
+  function reviewTone(totals) {
+    if (totals.refundPending > 0 || totals.pending > totals.received) return "risk";
+    if (totals.pending > 0) return "warn";
+    return "ok";
+  }
+  function marginPercent(totals) {
+    return totals.sales > 0 ? ((totals.profit / totals.sales) * 100).toFixed(1) + "%" : "0.0%";
+  }
+  function renderOwnerReview(rows, totals) {
+    const tone = reviewTone(totals);
+    const checks = [
+      { title: "Collections", text: totals.pending > 0 ? money(totals.pending) + " still needs collection/status review" : "No pending collection in this view", done: totals.pending === 0 },
+      { title: "Refunds", text: totals.refundPending > 0 ? money(totals.refundPending) + " waiting for approval/completion" : "No pending refund in this view", done: totals.refundPending === 0 },
+      { title: "Supplier cost", text: totals.cost > 0 ? money(totals.cost) + " supplier cost recorded" : "Supplier cost should be checked before month close", done: totals.cost > 0 || !rows.length },
+      { title: "Backup", text: "Export report, then download full backup pack", done: false },
+      { title: "SharePoint", text: "Save monthly copy to Kridiya Travel/Finance/YYYY/MM", done: false }
+    ];
+    document.getElementById("owner-review-panel").innerHTML =
+      '<div class="owner-review-summary review-' + esc(tone) + '"><div><b>' + esc(tone === "ok" ? "Ready" : tone === "warn" ? "Review" : "Attention") + '</b><span>Margin ' + esc(marginPercent(totals)) + ' / Net collected ' + esc(money(totals.netCollected)) + '</span></div><button class="btn btn-primary" type="button" id="owner-review-export">Export owner report</button></div>' +
+      '<div class="review-check-grid">' + checks.map(function (c) {
+        return '<div class="review-check ' + (c.done ? "done" : "todo") + '"><b>' + esc(c.title) + '</b><p>' + esc(c.text) + '</p></div>';
+      }).join("") + '</div>';
+    const btn = document.getElementById("owner-review-export");
+    if (btn) btn.addEventListener("click", function () {
+      downloadCsv("kridiya-owner-review-" + stamp() + ".csv", reportRows);
+      toast("Owner review report downloaded.");
+    });
+  }
   function groupBy(rows, keyFn) {
     return rows.reduce(function (map, row) {
       const key = keyFn(row) || "unknown";
@@ -196,6 +224,7 @@
         sharepoint_booking_folder: "Kridiya Travel/Operations/Bookings/" + bookingMonth(b).replace("-", "/") + "/" + (b.booking_reference || "No Reference")
       };
     });
+    renderOwnerReview(rows, totals);
   }
   function fillServiceFilter() {
     const select = document.getElementById("flt-accounting-service");
