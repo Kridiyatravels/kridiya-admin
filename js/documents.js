@@ -131,7 +131,7 @@
 
   function letterheadHTML(docLabel, docNumber, docDate) {
     let addr =
-      "Ras Al Khaimah, United Arab Emirates<br>" +
+      "FDRK7105, Compass Building, Al Shohada Road, Al Hamra Industrial Zone-FZ, Ras Al Khaimah, United Arab Emirates<br>" +
       "+971 50 941 3873 &middot; info@kridiyatravel.com &middot; kridiyatravel.com";
     if (settings.trade_license_no) addr += "<br>Trade licence: " + esc(settings.trade_license_no);
     if (settings.vat_registered && settings.trn) addr += "<br>TRN: " + esc(settings.trn);
@@ -784,7 +784,7 @@
     btn.disabled = true;
     const update = {
       legal_name: form.legal_name.value.trim() || "Kridiya Travel and Tourism FZ-LLC",
-      trade_license_no: form.trade_license_no.value.trim() || null,
+      trade_license_no: form.trade_license_no.value.trim() || "5033347",
       vat_registered: form.vat_registered.value === "true",
       trn: form.trn.value.trim() || null,
       bank_name: form.bank_name.value.trim() || null,
