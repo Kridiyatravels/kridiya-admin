@@ -57,7 +57,7 @@ const STAFF_NAV_MODEL = [
     { href: "admin.html", page: "admin", label: "Enquiries", icon: "inbox", desc: "Website enquiries", primary: true },
     { href: "customers.html", page: "customers", label: "Customers", icon: "user", desc: "Customer profiles", primary: true },
     { href: "bookings.html", page: "bookings", label: "Bookings", icon: "ticket", desc: "Confirmed bookings", primary: true },
-    { href: "corporate.html", page: "corporate", label: "Corporate", icon: "building", desc: "Corporate accounts", access: { perm: "view_corporates" } }
+    { href: "corporate.html", page: "corporate", label: "Corporate", icon: "building", desc: "Corporate accounts", primary: true, access: { perm: "view_corporates" } }
   ] },
   { group: "Money", items: [
     { href: "payments.html", page: "payments", label: "Payments", icon: "card", desc: "Customer & supplier payments", access: { perm: "view_payments" } },
