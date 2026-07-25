@@ -63,6 +63,7 @@
       return '<div class="stat-tile" style="--tile-accent:' + s[2] + '"><div class="num">' + s[1] + '</div><div class="label">' + esc(s[0]) + '</div></div>';
     }).join("");
 
+    renderOperationsQa(d);
     updateHubCounts({
       "admin.html": { n: d.enquiries_open || 0, tag: "open" },
       "bookings.html": { n: d.bookings_open || 0, tag: "open" },
@@ -111,6 +112,35 @@
       '<div class="command-actions">' + riskActions.map(function (a) {
         return '<a class="command-action" href="' + esc(a.href) + '"><b>' + esc(a.title) + '</b><span>' + esc(a.text) + '</span></a>';
       }).join("") + '</div>';
+  }
+
+  function renderOperationsQa(d) {
+    const panel = document.getElementById("dashboard-qa");
+    if (!panel) return;
+    const modules = [
+      { name: "Sales/CRM", href: "admin.html", state: num(d.enquiries_open) ? "active" : "ready", note: num(d.enquiries_open) + " open enquiry(s)" },
+      { name: "Bookings", href: "bookings.html", state: num(d.bookings_confirmed_unpaid) ? "risk" : "ready", note: num(d.bookings_open) + " open booking(s)" },
+      { name: "Payments/Refunds", href: "payments.html", state: (num(d.payments_pending) || num(d.refunds_pending)) ? "warn" : "ready", note: num(d.payments_pending) + " payment / " + num(d.refunds_pending) + " refund queue" },
+      { name: "Supplier Control", href: "payments.html", state: num(d.supplier_payments_pending) ? "warn" : "ready", note: num(d.supplier_payments_pending) + " supplier payment(s) pending" },
+      { name: "Documents", href: "documents.html", state: num(d.documents_pending) ? "warn" : "ready", note: num(d.documents_pending) + " booking(s) need document progress" },
+      { name: "Staff/Security", href: "staff.html", state: "ready", note: "Permissions, activity, and access review" },
+      { name: "Accounting", href: "accounting.html", state: "ready", note: "Owner review, export, backup checks" },
+      { name: "Templates", href: "templates.html", state: "ready", note: "Email, WhatsApp, supplier, and handover copy" }
+    ];
+    const risk = modules.filter(function (m) { return m.state === "risk"; }).length;
+    const warn = modules.filter(function (m) { return m.state === "warn"; }).length;
+    const tone = risk ? "risk" : warn ? "warn" : "ok";
+    const next = risk
+      ? "Fix red operational risks before issuing documents or closing bookings."
+      : warn
+        ? "Clear warning queues today, then run the full enquiry-to-accounting QA path."
+        : "Core modules are aligned. Run a final live workflow test.";
+    panel.innerHTML =
+      '<div class="ops-qa-summary qa-' + esc(tone) + '"><div><b>' + esc(risk ? risk + " risk" : warn ? warn + " warning" : "Aligned") + '</b><span>' + esc(next) + '</span></div><a class="btn btn-primary" href="admin.html">Start from enquiries</a></div>' +
+      '<div class="ops-qa-grid">' + modules.map(function (m) {
+        return '<a href="' + esc(m.href) + '" class="ops-qa-module qa-' + esc(m.state) + '"><b>' + esc(m.name) + '</b><span>' + esc(m.note) + '</span></a>';
+      }).join("") + '</div>' +
+      '<div class="ops-qa-flow"><b>Final workflow path</b><span>Enquiry -> quote -> booking -> customer payment -> supplier control -> documents -> accounting export -> backup review.</span></div>';
   }
 
   function updateHubCounts(map) {

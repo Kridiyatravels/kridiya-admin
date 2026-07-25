@@ -537,6 +537,41 @@ body { background: var(--bg); }
   .command-action:last-child { border-bottom: 0; }
 }
 
+.ops-qa-card { overflow: visible; }
+.ops-qa-summary {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  border: 1px solid var(--line); border-radius: var(--staff-radius); padding: 0.9rem 1rem;
+  background: var(--surface-tint);
+}
+.ops-qa-summary.qa-risk { border-color: color-mix(in oklab, var(--status-payment) 40%, var(--line)); background: var(--status-payment-bg); }
+.ops-qa-summary.qa-warn { border-color: color-mix(in oklab, var(--status-checking) 38%, var(--line)); background: var(--status-checking-bg); }
+.ops-qa-summary.qa-ok { border-color: color-mix(in oklab, var(--status-confirmed) 28%, var(--line)); background: var(--status-confirmed-bg); }
+.ops-qa-summary b { display: block; color: var(--ink); font-size: 1.25rem; line-height: 1; font-weight: 800; }
+.ops-qa-summary span { display: block; margin-top: 0.25rem; color: var(--ink-2); font-size: 0.86rem; }
+.ops-qa-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.6rem; margin-top: 0.75rem; }
+.ops-qa-module {
+  border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 0.72rem 0.8rem;
+  text-decoration: none; color: var(--ink); transition: border-color 0.15s, background 0.15s;
+}
+.ops-qa-module:hover { border-color: var(--brand); background: var(--surface-tint); }
+.ops-qa-module.qa-active { border-color: color-mix(in oklab, var(--brand) 35%, var(--line)); }
+.ops-qa-module.qa-risk { border-color: color-mix(in oklab, var(--status-payment) 35%, var(--line)); }
+.ops-qa-module.qa-warn { border-color: color-mix(in oklab, var(--status-checking) 35%, var(--line)); }
+.ops-qa-module b { display: block; font-size: 0.86rem; font-weight: 800; }
+.ops-qa-module span { display: block; margin-top: 0.25rem; color: var(--text-muted); font-size: 0.76rem; }
+.ops-qa-flow {
+  margin-top: 0.75rem; padding: 0.75rem 0.85rem; border: 1px solid color-mix(in oklab, var(--brand) 30%, var(--line));
+  border-radius: 10px; background: var(--brand-soft, #fdf1e4);
+}
+.ops-qa-flow b { display: block; color: var(--ink); font-size: 0.86rem; font-weight: 800; }
+.ops-qa-flow span { display: block; margin-top: 0.25rem; color: var(--text-muted); font-size: 0.82rem; }
+@media (max-width: 900px) {
+  .ops-qa-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ops-qa-summary { align-items: flex-start; flex-direction: column; }
+  .ops-qa-summary .btn { width: 100%; justify-content: center; }
+}
+@media (max-width: 520px) { .ops-qa-grid { grid-template-columns: 1fr; } }
+
 
 /* ---------- BOOKING DETAIL PAGE ---------- */
 .stat-text { font-size: 1.15rem !important; line-height: 1.15 !important; overflow-wrap: anywhere; }
