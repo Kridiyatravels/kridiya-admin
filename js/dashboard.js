@@ -4,6 +4,7 @@
   let sb = null;
   let dashboardTasks = [];
   const WORKFLOW_TEST_KEY = "kridiya_dashboard_workflow_test_v1";
+  const WORKFLOW_NOTES_KEY = "kridiya_dashboard_workflow_notes_v1";
   const WORKFLOW_TEST_STEPS = [
     { id: "enquiry", title: "Create or open enquiry", text: "Confirm name, email, phone, service, quote status, and internal notes.", href: "admin.html" },
     { id: "quote", title: "Send quote", text: "Add service-aware option, pricing, inclusions, validity, and customer-facing terms.", href: "admin.html" },
@@ -52,6 +53,7 @@
     app.hidden = false;
     await loadDashboard();
     document.addEventListener("click", handleDashboardClick);
+    document.addEventListener("input", handleDashboardInput);
   }
 
   async function loadDashboard() {
@@ -248,14 +250,24 @@
     localStorage.setItem(WORKFLOW_TEST_KEY, JSON.stringify(progress || {}));
   }
 
+  function readWorkflowNotes() {
+    return localStorage.getItem(WORKFLOW_NOTES_KEY) || "";
+  }
+
+  function writeWorkflowNotes(notes) {
+    localStorage.setItem(WORKFLOW_NOTES_KEY, notes || "");
+  }
+
   function renderWorkflowTest() {
     const panel = document.getElementById("dashboard-workflow-test");
     if (!panel) return;
     const progress = readWorkflowProgress();
+    const notes = readWorkflowNotes();
     const complete = WORKFLOW_TEST_STEPS.filter(function (s) { return progress[s.id]; }).length;
     const percent = Math.round((complete / WORKFLOW_TEST_STEPS.length) * 100);
     panel.innerHTML =
       '<div class="workflow-test-summary"><div><b>' + esc(complete) + '/' + esc(WORKFLOW_TEST_STEPS.length) + '</b><span>' + esc(percent) + '% of launch test completed on this device</span></div><a class="btn btn-primary" href="admin.html">Begin test</a></div>' +
+      '<label class="workflow-test-notes"><b>Test notes</b><textarea id="workflow-test-notes" rows="3" placeholder="Blockers, owner decisions, live-test result, invoice wording, refund issue, staff note...">' + esc(notes) + '</textarea></label>' +
       '<div class="workflow-test-list">' + WORKFLOW_TEST_STEPS.map(function (s, index) {
         const checked = progress[s.id] ? " checked" : "";
         return '<div class="workflow-step' + (progress[s.id] ? " is-done" : "") + '"><label><input type="checkbox" data-workflow-step="' + esc(s.id) + '"' + checked + '><span><b>' + esc(index + 1) + '. ' + esc(s.title) + '</b><small>' + esc(s.text) + '</small></span></label><a class="btn btn-outline btn-sm" href="' + esc(s.href) + '">Open</a></div>';
@@ -272,9 +284,15 @@
       "Progress: " + complete + "/" + WORKFLOW_TEST_STEPS.length + " (" + percent + "%)",
       ""
     ];
+    const notes = readWorkflowNotes().trim();
     WORKFLOW_TEST_STEPS.forEach(function (s, index) {
       lines.push((progress[s.id] ? "[x] " : "[ ] ") + (index + 1) + ". " + s.title + " - " + s.text);
     });
+    if (notes) {
+      lines.push("");
+      lines.push("Notes:");
+      lines.push(notes);
+    }
     return lines.join("\n");
   }
 
@@ -318,6 +336,7 @@
     const workflowReset = event.target.closest("#workflow-test-reset");
     if (workflowReset) {
       writeWorkflowProgress({});
+      writeWorkflowNotes("");
       renderWorkflowTest();
       toast("Workflow test reset.");
       return;
@@ -344,6 +363,12 @@
     }
     toast("Task completed.");
     await loadDashboard();
+  }
+
+  function handleDashboardInput(event) {
+    if (event.target && event.target.id === "workflow-test-notes") {
+      writeWorkflowNotes(event.target.value);
+    }
   }
   document.addEventListener("DOMContentLoaded", boot);
 })();

@@ -630,6 +630,22 @@ body { background: var(--bg); }
 }
 .workflow-test-summary b { display: block; color: var(--ink); font-size: 1.25rem; line-height: 1; font-weight: 800; }
 .workflow-test-summary span { display: block; margin-top: 0.25rem; color: var(--ink-2); font-size: 0.86rem; }
+.workflow-test-notes { display: block; margin-top: 0.75rem; }
+.workflow-test-notes b { display: block; margin-bottom: 0.35rem; color: var(--ink); font-size: 0.82rem; font-weight: 800; }
+.workflow-test-notes textarea {
+  width: 100%;
+  min-height: 84px;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  padding: 0.72rem 0.8rem;
+  font: inherit;
+  line-height: 1.45;
+}
+.workflow-test-notes textarea::placeholder { color: var(--text-muted); }
+.workflow-test-notes textarea:focus { outline: 2px solid color-mix(in oklab, var(--brand) 28%, transparent); border-color: var(--brand); }
 .workflow-test-list { display: grid; gap: 0.55rem; margin-top: 0.75rem; }
 .workflow-step {
   display: grid;
