@@ -31,12 +31,22 @@
           <span class="form-note" id="activity-count"></span>
         </div>
 
+        <div class="account-main security-control-card">
+          <div class="account-section-head"><div><h2>Security audit focus</h2><p>Fast review of staff access, sign-ins, settings, payments, refunds, and other sensitive actions.</p></div></div>
+          <div id="activity-security-panel"></div>
+        </div>
+
         <div class="account-main admin-filters-card">
           <div class="admin-filters">
             <div class="field">
               <label for="flt-event-type">EVENT TYPE</label>
               <select id="flt-event-type"><option value="">All activity</option></select>
             </div>
+            <div class="field admin-search-field">
+              <label for="flt-event-search">SEARCH</label>
+              <input id="flt-event-search" type="search" placeholder="Staff, event, reference">
+            </div>
+            <label class="admin-filter-check"><input type="checkbox" id="flt-security-only"> Security only</label>
             <label class="admin-filter-check"><input type="checkbox" id="flt-event-today"> Today only</label>
           </div>
         </div>

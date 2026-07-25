@@ -29,7 +29,8 @@
     "document.generated": { icon: "doc", color: "var(--status-docs)", bg: "var(--status-docs-bg)" },
     "settings.updated": { icon: "settings", color: "var(--text-muted)", bg: "var(--surface-tint)" },
     "auth.login": { icon: "check", color: "var(--status-confirmed)", bg: "var(--status-confirmed-bg)" },
-    "auth.logout": { icon: "logout", color: "var(--text-muted)", bg: "var(--surface-tint)" }
+    "auth.logout": { icon: "logout", color: "var(--text-muted)", bg: "var(--surface-tint)" },
+    "enquiry.marketing_outcome_added": { icon: "note", color: "var(--status-quoted)", bg: "var(--status-quoted-bg)" }
   };
 
   function eventMeta(type) {
@@ -50,6 +51,8 @@
         return who + " sent a quote of " + (m.currency || "AED") + " " + Number(m.amount || 0).toLocaleString("en-GB") + " for " + (m.reference || "an enquiry") + (m.title ? " (" + m.title + ")" : "");
       case "enquiry.converted_to_corporate_booking":
         return who + " converted " + (m.reference || "an enquiry") + " into a corporate booking" + (m.company_name ? " for " + m.company_name : "");
+      case "enquiry.marketing_outcome_added":
+        return who + " recorded a marketing outcome on " + (m.reference || "an enquiry");
       case "staff.created":
         return who + " created a staff account for " + (m.full_name || m.email || "someone") + (m.role ? " (" + m.role + ")" : "");
       case "staff.granted":
@@ -79,9 +82,50 @@
   function matchesFilters(row) {
     const typeF = document.getElementById("flt-event-type").value;
     const todayOnly = document.getElementById("flt-event-today").checked;
+    const securityOnly = document.getElementById("flt-security-only").checked;
+    const search = (document.getElementById("flt-event-search").value || "").trim().toLowerCase();
     if (typeF && row.event_type !== typeF) return false;
+    if (securityOnly && !isSecurityEvent(row)) return false;
+    if (search && searchable(row).indexOf(search) === -1) return false;
     if (todayOnly && new Date(row.created_at).toDateString() !== new Date().toDateString()) return false;
     return true;
+  }
+
+  function searchable(row) {
+    return [
+      row.event_type,
+      row.actor_email,
+      describeEvent(row),
+      JSON.stringify(row.metadata || {})
+    ].join(" ").toLowerCase();
+  }
+
+  function isSecurityEvent(row) {
+    return /^(auth|staff|settings)\./.test(row.event_type) ||
+      /payment|refund|permission|pin|backup|export/i.test(row.event_type);
+  }
+
+  function renderSecurityPanel() {
+    const panel = document.getElementById("activity-security-panel");
+    if (!panel) return;
+    const securityEvents = allEvents.filter(isSecurityEvent);
+    const today = securityEvents.filter(function (r) { return new Date(r.created_at).toDateString() === new Date().toDateString(); });
+    const staffChanges = securityEvents.filter(function (r) { return /^staff\./.test(r.event_type); });
+    const signIns = securityEvents.filter(function (r) { return r.event_type === "auth.login"; });
+    const sensitive = securityEvents.filter(function (r) { return /payment|refund|settings|export|pin|permission/i.test(r.event_type); });
+    const next = sensitive.length
+      ? "Review sensitive changes first, then scan staff and sign-in events."
+      : securityEvents.length
+        ? "Scan staff and sign-in activity for anything unusual."
+        : "No security-sensitive events are visible in the current audit window.";
+    panel.innerHTML =
+      '<div class="security-summary security-' + (sensitive.length ? "warn" : "ok") + '"><div><b>' + KridiyaAuth.escapeHTML(String(securityEvents.length)) + ' security event(s)</b><span>' + KridiyaAuth.escapeHTML(next) + '</span></div><button type="button" class="btn btn-primary" id="show-security-events">Show security only</button></div>' +
+      '<div class="security-grid">' +
+        '<div><b>' + KridiyaAuth.escapeHTML(String(today.length)) + '</b><span>Today</span></div>' +
+        '<div><b>' + KridiyaAuth.escapeHTML(String(staffChanges.length)) + '</b><span>Staff changes</span></div>' +
+        '<div><b>' + KridiyaAuth.escapeHTML(String(signIns.length)) + '</b><span>Sign-ins</span></div>' +
+        '<div><b>' + KridiyaAuth.escapeHTML(String(sensitive.length)) + '</b><span>Sensitive actions</span></div>' +
+      '</div>';
   }
 
   function dayLabel(iso) {
@@ -102,6 +146,7 @@
     const listEl = document.getElementById("activity-list");
     const visible = allEvents.filter(matchesFilters);
     document.getElementById("activity-count").textContent = visible.length + " of " + allEvents.length + " events";
+    renderSecurityPanel();
 
     if (!visible.length) {
       listEl.innerHTML = '<div class="account-main empty-state"><p>No activity yet.</p></div>';
@@ -177,8 +222,14 @@
     app.hidden = false;
     renderList();
 
-    ["flt-event-type", "flt-event-today"].forEach(function (id) {
+    ["flt-event-type", "flt-event-today", "flt-security-only"].forEach(function (id) {
       document.getElementById(id).addEventListener("change", renderList);
+    });
+    document.getElementById("flt-event-search").addEventListener("input", renderList);
+    document.getElementById("activity-security-panel").addEventListener("click", function (e) {
+      if (!e.target.closest("#show-security-events")) return;
+      document.getElementById("flt-security-only").checked = true;
+      renderList();
     });
   }
 

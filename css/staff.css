@@ -332,6 +332,49 @@ body { background: var(--bg); }
 @media (max-width: 940px) { .staff-work-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .staff-person-head { flex-direction: column; } .staff-work-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
+/* ---------- IT & security review ---------- */
+.security-control-card { overflow: visible; }
+.security-summary {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 0.9rem 1rem; border: 1px solid var(--line); border-radius: var(--staff-radius);
+  background: var(--surface-tint);
+}
+.security-summary b {
+  display: block; color: var(--ink); font-size: 1.35rem; line-height: 1;
+  font-weight: 800; font-variant-numeric: tabular-nums;
+}
+.security-summary span { display: block; margin-top: 0.3rem; color: var(--ink-2); font-size: 0.86rem; }
+.security-summary.security-risk { border-color: color-mix(in oklab, var(--status-payment) 35%, var(--line)); background: var(--status-payment-bg); }
+.security-summary.security-warn { border-color: color-mix(in oklab, var(--status-checking) 35%, var(--line)); background: var(--status-checking-bg); }
+.security-summary.security-ok { border-color: color-mix(in oklab, var(--status-confirmed) 25%, var(--line)); background: var(--status-confirmed-bg); }
+.security-grid {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.65rem; margin-top: 0.75rem;
+}
+.security-grid div {
+  border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 0.75rem 0.85rem;
+}
+.security-grid b { display: block; color: var(--ink); font-size: 1.1rem; line-height: 1; font-weight: 800; }
+.security-grid span { display: block; margin-top: 0.25rem; color: var(--text-muted); font-size: 0.78rem; font-weight: 700; }
+.security-review-list {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; margin-top: 0.75rem;
+}
+.security-review-list section {
+  border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 0.85rem;
+}
+.security-review-list h3 { margin: 0 0 0.55rem; font-size: 0.86rem; color: var(--ink); }
+.security-person {
+  display: inline-flex; align-items: center; margin: 0 0.35rem 0.35rem 0; border: 1px solid var(--line);
+  border-radius: 999px; padding: 0.18rem 0.55rem; background: var(--surface-tint); color: var(--ink-2);
+  font-size: 0.76rem; font-weight: 800;
+}
+@media (max-width: 840px) {
+  .security-summary { align-items: flex-start; flex-direction: column; }
+  .security-summary .btn { width: 100%; justify-content: center; }
+  .security-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .security-review-list { grid-template-columns: 1fr; }
+}
+@media (max-width: 460px) { .security-grid { grid-template-columns: 1fr; } }
+
 /* ---------- Owner review and backup readiness ---------- */
 .owner-review-summary,
 .backup-ready-summary {

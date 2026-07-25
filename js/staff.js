@@ -34,12 +34,79 @@
   function whenText(v) { return v ? new Date(v).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "No activity"; }
   function num(v) { return Number(v || 0); }
   function permissionCount(p) { return PERMS.filter(function (name) { return !!p[name]; }).length; }
+  function daysSince(v) {
+    const d = v ? new Date(v) : null;
+    if (!d || isNaN(d.getTime())) return null;
+    return Math.floor((Date.now() - d.getTime()) / 864e5);
+  }
+  function sensitivePermissions(p) {
+    return [
+      ["manage_staff", "Manage staff"],
+      ["manage_settings", "Settings"],
+      ["edit_payments", "Edit payments"],
+      ["approve_refunds", "Approve refunds"],
+      ["view_profit", "Profit"],
+      ["export_reports", "Export reports"]
+    ].filter(function (x) { return !!p[x[0]]; });
+  }
   function riskLevel(staff, monitor, perms) {
     if (!staff.active) return { label: "Inactive", tone: "muted" };
     if (perms.manage_staff || perms.manage_settings || perms.export_reports) return { label: "High access", tone: "risk" };
     if (perms.view_profit || perms.edit_payments || perms.approve_refunds) return { label: "Finance access", tone: "warn" };
     if (monitor && !monitor.last_activity_at) return { label: "No activity", tone: "warn" };
+    if (monitor && daysSince(monitor.last_activity_at) >= 14) return { label: "Stale login", tone: "warn" };
     return { label: "Standard", tone: "ok" };
+  }
+  function securityIssues(staffRows, monitoringRows, perms) {
+    const monitorByUser = {};
+    (monitoringRows || []).forEach(function (r) { monitorByUser[r.user_id] = r; });
+    const activeRows = staffRows.filter(function (s) { return s.active; });
+    const highAccess = activeRows.filter(function (s) {
+      const p = perms[s.user_id] || {};
+      return sensitivePermissions(p).length > 0 || String(s.role) === "admin" || String(s.role) === "owner";
+    });
+    const stale = activeRows.filter(function (s) {
+      const m = monitorByUser[s.user_id];
+      return !m || !m.last_activity_at || daysSince(m.last_activity_at) >= 14;
+    });
+    const broad = activeRows.filter(function (s) { return permissionCount(perms[s.user_id] || {}) >= 12; });
+    const inactive = staffRows.filter(function (s) { return !s.active; });
+    const adminCount = staffRows.filter(function (s) { return s.active && (String(s.role) === "admin" || String(s.role) === "owner"); }).length;
+    return { activeRows: activeRows, highAccess: highAccess, stale: stale, broad: broad, inactive: inactive, adminCount: adminCount };
+  }
+  function staffName(s) { return s.full_name || s.email || "Staff member"; }
+  function renderPeople(list, emptyText) {
+    if (!list.length) return '<p class="form-note">' + esc(emptyText) + '</p>';
+    return list.slice(0, 5).map(function (s) {
+      return '<span class="security-person">' + esc(staffName(s)) + '</span>';
+    }).join("");
+  }
+  function renderSecurityPanel(staffRows, monitoringRows, perms) {
+    const panel = document.getElementById("staff-security-panel");
+    if (!panel) return;
+    const issues = securityIssues(staffRows || [], monitoringRows || [], perms || {});
+    const openFindings = issues.highAccess.length + issues.stale.length + issues.broad.length;
+    const tone = openFindings ? (issues.highAccess.length || issues.broad.length ? "risk" : "warn") : "ok";
+    const next = issues.highAccess.length
+      ? "Review high-access staff and confirm they still need sensitive permissions."
+      : issues.stale.length
+        ? "Reset PINs or remove access for stale active accounts."
+        : issues.broad.length
+          ? "Reduce broad permission sets to the minimum needed for each role."
+          : "Security posture looks clean. Keep monthly owner review.";
+    panel.innerHTML =
+      '<div class="security-summary security-' + esc(tone) + '"><div><b>' + esc(openFindings ? openFindings + " finding(s)" : "Clean") + '</b><span>' + esc(next) + '</span></div><a class="btn btn-primary" href="activity.html">Review audit log</a></div>' +
+      '<div class="security-grid">' +
+        '<div><b>' + esc(issues.adminCount) + '</b><span>Owner/admin accounts</span></div>' +
+        '<div><b>' + esc(issues.highAccess.length) + '</b><span>Sensitive access</span></div>' +
+        '<div><b>' + esc(issues.stale.length) + '</b><span>Stale active accounts</span></div>' +
+        '<div><b>' + esc(issues.broad.length) + '</b><span>Broad permissions</span></div>' +
+      '</div>' +
+      '<div class="security-review-list">' +
+        '<section><h3>Sensitive access</h3>' + renderPeople(issues.highAccess, "No active high-access staff found.") + '</section>' +
+        '<section><h3>Stale accounts</h3>' + renderPeople(issues.stale, "No stale active accounts found.") + '</section>' +
+        '<section><h3>Owner checklist</h3><p class="form-note">Monthly: confirm active staff, reset PIN after role changes, remove departed staff, review finance permissions, and scan the activity log for unusual payment, refund, settings, or staff changes.</p></section>' +
+      '</div>';
   }
   function renderPermissionGroups(p) {
     return PERM_GROUPS.map(function (group) {
@@ -164,7 +231,10 @@
     const permResult = await sb.from("staff_permissions").select("*");
     const perms = {};
     (permResult.data || []).forEach(function (p) { perms[p.user_id] = p; });
-    if (!staffResult.error && !permResult.error) renderStaffStats(staffResult.data || [], rows, perms);
+    if (!staffResult.error && !permResult.error) {
+      renderStaffStats(staffResult.data || [], rows, perms);
+      renderSecurityPanel(staffResult.data || [], rows, perms);
+    }
     if (!rows.length) {
       box.innerHTML = '<p class="form-note">No staff activity found yet.</p>';
       return;
