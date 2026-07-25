@@ -26,6 +26,10 @@
   let canCreateBookings = false;
   let canEditCorporates = false;
 
+  function esc(v) {
+    return KridiyaAuth.escapeHTML(String(v == null ? "" : v));
+  }
+
   function fmtMoney(amount, currency) {
     return currency + " " + Number(amount).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
