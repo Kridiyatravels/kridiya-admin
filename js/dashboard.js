@@ -3,6 +3,17 @@
   if (document.body.dataset.page !== "dashboard") return;
   let sb = null;
   let dashboardTasks = [];
+  const WORKFLOW_TEST_KEY = "kridiya_dashboard_workflow_test_v1";
+  const WORKFLOW_TEST_STEPS = [
+    { id: "enquiry", title: "Create or open enquiry", text: "Confirm name, email, phone, service, quote status, and internal notes.", href: "admin.html" },
+    { id: "quote", title: "Send quote", text: "Add service-aware option, pricing, inclusions, validity, and customer-facing terms.", href: "admin.html" },
+    { id: "booking", title: "Convert to booking", text: "Check booking reference, customer link, travel details, passenger data, and tasks.", href: "bookings.html" },
+    { id: "payment", title: "Record customer payment", text: "Request, proof, received amount, balance, refund edge case, and receipt trail.", href: "payments.html" },
+    { id: "supplier", title: "Control supplier cost", text: "Supplier name, supplier reference, payable amount, paid amount, and exposure.", href: "payments.html" },
+    { id: "documents", title: "Generate documents", text: "Invoice, itinerary, voucher, visa note, cancellation/refund letter if required.", href: "documents.html" },
+    { id: "accounting", title: "Review accounting", text: "Sales, cost, gross profit, net collected, refunds, and export readiness.", href: "accounting.html" },
+    { id: "backup", title: "Download backup pack", text: "Export finance, bookings, customers, payments, documents, and activity audit.", href: "backups.html" }
+  ];
 
   function esc(v) { return KridiyaAuth.escapeHTML(String(v == null ? "" : v)); }
   function label(v) { return String(v || "").replace(/_/g, " ").replace(/\b\w/g, function (c) { return c.toUpperCase(); }); }
@@ -65,6 +76,7 @@
 
     renderOperationsQa(d);
     renderLaunchReadiness(d);
+    renderWorkflowTest();
     updateHubCounts({
       "admin.html": { n: d.enquiries_open || 0, tag: "open" },
       "bookings.html": { n: d.bookings_open || 0, tag: "open" },
@@ -224,6 +236,32 @@
       }).join("") + '</div>';
   }
 
+  function readWorkflowProgress() {
+    try {
+      return JSON.parse(localStorage.getItem(WORKFLOW_TEST_KEY) || "{}") || {};
+    } catch (err) {
+      return {};
+    }
+  }
+
+  function writeWorkflowProgress(progress) {
+    localStorage.setItem(WORKFLOW_TEST_KEY, JSON.stringify(progress || {}));
+  }
+
+  function renderWorkflowTest() {
+    const panel = document.getElementById("dashboard-workflow-test");
+    if (!panel) return;
+    const progress = readWorkflowProgress();
+    const complete = WORKFLOW_TEST_STEPS.filter(function (s) { return progress[s.id]; }).length;
+    const percent = Math.round((complete / WORKFLOW_TEST_STEPS.length) * 100);
+    panel.innerHTML =
+      '<div class="workflow-test-summary"><div><b>' + esc(complete) + '/' + esc(WORKFLOW_TEST_STEPS.length) + '</b><span>' + esc(percent) + '% of launch test completed on this device</span></div><a class="btn btn-primary" href="admin.html">Begin test</a></div>' +
+      '<div class="workflow-test-list">' + WORKFLOW_TEST_STEPS.map(function (s, index) {
+        const checked = progress[s.id] ? " checked" : "";
+        return '<div class="workflow-step' + (progress[s.id] ? " is-done" : "") + '"><label><input type="checkbox" data-workflow-step="' + esc(s.id) + '"' + checked + '><span><b>' + esc(index + 1) + '. ' + esc(s.title) + '</b><small>' + esc(s.text) + '</small></span></label><a class="btn btn-outline btn-sm" href="' + esc(s.href) + '">Open</a></div>';
+      }).join("") + '</div>';
+  }
+
   function updateHubCounts(map) {
     Object.keys(map).forEach(function (href) {
       const slot = document.querySelector('.hub-count[data-count-for="' + href + '"]');
@@ -253,6 +291,21 @@
   }
 
   async function handleDashboardClick(event) {
+    const workflowToggle = event.target.closest("[data-workflow-step]");
+    if (workflowToggle) {
+      const progress = readWorkflowProgress();
+      progress[workflowToggle.dataset.workflowStep] = workflowToggle.checked;
+      writeWorkflowProgress(progress);
+      renderWorkflowTest();
+      return;
+    }
+    const workflowReset = event.target.closest("#workflow-test-reset");
+    if (workflowReset) {
+      writeWorkflowProgress({});
+      renderWorkflowTest();
+      toast("Workflow test reset.");
+      return;
+    }
     const doneButton = event.target.closest(".js-dashboard-task-done");
     if (!doneButton) return;
     doneButton.disabled = true;

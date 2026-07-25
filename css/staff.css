@@ -617,6 +617,45 @@ body { background: var(--bg); }
 }
 @media (max-width: 520px) { .launch-readiness-list { grid-template-columns: 1fr; } }
 
+.workflow-test-card { overflow: visible; }
+.workflow-test-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid color-mix(in oklab, var(--brand) 28%, var(--line));
+  border-radius: var(--staff-radius);
+  padding: 0.9rem 1rem;
+  background: var(--brand-soft, #fdf1e4);
+}
+.workflow-test-summary b { display: block; color: var(--ink); font-size: 1.25rem; line-height: 1; font-weight: 800; }
+.workflow-test-summary span { display: block; margin-top: 0.25rem; color: var(--ink-2); font-size: 0.86rem; }
+.workflow-test-list { display: grid; gap: 0.55rem; margin-top: 0.75rem; }
+.workflow-step {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  padding: 0.72rem 0.8rem;
+}
+.workflow-step.is-done {
+  border-color: color-mix(in oklab, var(--status-confirmed) 30%, var(--line));
+  background: var(--status-confirmed-bg);
+}
+.workflow-step label { display: flex; align-items: flex-start; gap: 0.65rem; margin: 0; cursor: pointer; }
+.workflow-step input { margin-top: 0.2rem; width: 16px; height: 16px; accent-color: var(--brand); flex: 0 0 auto; }
+.workflow-step b { display: block; color: var(--ink); font-size: 0.88rem; font-weight: 800; }
+.workflow-step small { display: block; margin-top: 0.22rem; color: var(--text-muted); font-size: 0.76rem; line-height: 1.35; }
+@media (max-width: 640px) {
+  .workflow-test-summary,
+  .workflow-step { align-items: flex-start; grid-template-columns: 1fr; flex-direction: column; }
+  .workflow-test-summary .btn,
+  .workflow-step .btn { width: 100%; justify-content: center; }
+}
+
 
 /* ---------- BOOKING DETAIL PAGE ---------- */
 .stat-text { font-size: 1.15rem !important; line-height: 1.15 !important; overflow-wrap: anywhere; }
