@@ -299,6 +299,15 @@ function renderLoginForm(gateEl, onSuccess) {
     try {
       const user = await KridiyaAuth.login(adminForm.email.value, adminForm.password.value);
       const sb = await KridiyaAuth.client();
+      // Extra lock: the Admin tab is for owners/admins only. Anyone else
+      // (regular staff, or a website customer whose email+password happen
+      // to be valid) is signed straight back out — no admin session is
+      // ever created for a non-admin account.
+      const adminCheck = await sb.rpc("is_admin");
+      if (adminCheck.error || adminCheck.data !== true) {
+        await KridiyaAuth.logout();
+        throw new Error("This account is not an admin. Staff: use the PIN tab instead.");
+      }
       logActivity(sb, user.id, "auth.login", "user", user.id, { method: "password" });
       onSuccess();
     } catch (err) {
