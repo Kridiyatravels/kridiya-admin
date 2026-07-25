@@ -64,6 +64,7 @@
     }).join("");
 
     renderOperationsQa(d);
+    renderLaunchReadiness(d);
     updateHubCounts({
       "admin.html": { n: d.enquiries_open || 0, tag: "open" },
       "bookings.html": { n: d.bookings_open || 0, tag: "open" },
@@ -141,6 +142,86 @@
         return '<a href="' + esc(m.href) + '" class="ops-qa-module qa-' + esc(m.state) + '"><b>' + esc(m.name) + '</b><span>' + esc(m.note) + '</span></a>';
       }).join("") + '</div>' +
       '<div class="ops-qa-flow"><b>Final workflow path</b><span>Enquiry -> quote -> booking -> customer payment -> supplier control -> documents -> accounting export -> backup review.</span></div>';
+  }
+
+  function readinessState(done, warningText, readyText) {
+    return {
+      done: !!done,
+      tone: done ? "ok" : "warn",
+      text: done ? readyText : warningText
+    };
+  }
+
+  function renderLaunchReadiness(d) {
+    const panel = document.getElementById("dashboard-launch-readiness");
+    if (!panel) return;
+    const checks = [
+      {
+        title: "Sales pipeline",
+        href: "admin.html",
+        status: readinessState(
+          num(d.enquiries_open) === 0,
+          num(d.enquiries_open) + " enquiry(s) still need sales follow-up.",
+          "No open enquiry queue blocking launch."
+        )
+      },
+      {
+        title: "Booking control",
+        href: "bookings.html",
+        status: readinessState(
+          num(d.bookings_confirmed_unpaid) === 0 && num(d.tasks_overdue) === 0,
+          num(d.bookings_confirmed_unpaid) + " unpaid confirmed booking(s), " + num(d.tasks_overdue) + " overdue task(s).",
+          "Confirmed bookings and overdue tasks are controlled."
+        )
+      },
+      {
+        title: "Finance and refunds",
+        href: "payments.html",
+        status: readinessState(
+          num(d.payments_pending) === 0 && num(d.refunds_pending) === 0,
+          money(d.refund_value_pending || 0) + " refund value pending; " + num(d.payments_pending) + " payment(s) pending.",
+          "Payment and refund queues are clear."
+        )
+      },
+      {
+        title: "Supplier exposure",
+        href: "payments.html",
+        status: readinessState(
+          num(d.supplier_payments_pending) === 0,
+          num(d.supplier_payments_pending) + " supplier payment(s) need control.",
+          "Supplier payment exposure is clear."
+        )
+      },
+      {
+        title: "Documents and templates",
+        href: "documents.html",
+        status: readinessState(
+          num(d.documents_pending) === 0,
+          num(d.documents_pending) + " booking(s) still need document progress.",
+          "Document handover queue is clear."
+        )
+      },
+      {
+        title: "Audit and backup",
+        href: "backups.html",
+        status: {
+          done: true,
+          tone: "ok",
+          text: "Backup exports and activity audit review are available."
+        }
+      }
+    ];
+    const complete = checks.filter(function (c) { return c.status.done; }).length;
+    const percent = Math.round((complete / checks.length) * 100);
+    const summaryTone = percent === 100 ? "ok" : percent >= 70 ? "warn" : "risk";
+    const summaryText = percent === 100
+      ? "Ready for final live workflow testing."
+      : "Clear the warning items before treating the system as launch-ready.";
+    panel.innerHTML =
+      '<div class="launch-readiness-summary launch-' + esc(summaryTone) + '"><div><b>' + esc(percent) + '% ready</b><span>' + esc(summaryText) + '</span></div><a class="btn btn-primary" href="activity.html">Review audit</a></div>' +
+      '<div class="launch-readiness-list">' + checks.map(function (c) {
+        return '<a class="launch-check launch-' + esc(c.status.tone) + '" href="' + esc(c.href) + '"><b>' + esc(c.title) + '</b><span>' + esc(c.status.text) + '</span></a>';
+      }).join("") + '</div>';
   }
 
   function updateHubCounts(map) {
