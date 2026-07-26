@@ -1183,16 +1183,39 @@ body { background: var(--bg); }
 
 /* ---------- Professional quote builder ---------- */
 .quote-actions-bar { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; margin-bottom: 0.9rem; }
-.quote-option { border-color: color-mix(in oklab, var(--brand) 34%, var(--line)); }
+.quote-option {
+  position: relative; padding-right: 3rem;
+  border-color: color-mix(in oklab, var(--brand) 34%, var(--line));
+}
 .quote-line { margin: 0.15rem 0 0; font-size: 0.86rem; color: var(--ink-2); }
-.quote-option-head { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin: 0; }
+.quote-option-head {
+  width: 100%; max-width: none;
+  display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin: 0;
+}
 .quote-remove {
-  margin-left: auto; flex: none; width: 26px; height: 26px; border-radius: 50%;
+  flex: none; width: 30px; height: 30px; border-radius: 50%;
   border: 1px solid var(--line); background: var(--surface); color: var(--text-muted);
-  font-size: 1.05rem; line-height: 1; cursor: pointer; padding: 0;
+  font-size: 1.1rem; line-height: 1; cursor: pointer; padding: 0;
+}
+.quote-option > .quote-option-head > .quote-remove {
+  position: absolute; top: 0.55rem; right: 0.65rem;
 }
 .quote-remove:hover { color: #fff; background: var(--status-payment); border-color: transparent; }
+.quote-remove:focus-visible { outline: 3px solid color-mix(in oklab, var(--brand) 28%, transparent); outline-offset: 2px; }
 .pro-quote-form { display: flex; flex-direction: column; gap: 0.7rem; margin-top: 0.9rem; }
+.quote-builder-head {
+  display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+  padding-bottom: 0.7rem; border-bottom: 1px solid var(--line);
+}
+.quote-builder-head > div { min-width: 0; display: grid; gap: 0.18rem; }
+.quote-builder-head b { color: var(--ink); font-size: 0.95rem; }
+.quote-builder-head span:not(.quote-option-step) { color: var(--text-muted); font-size: 0.8rem; }
+.quote-option-step {
+  flex: none; min-width: 76px; min-height: 34px; padding: 0 0.7rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 999px; background: var(--brand-soft); color: var(--brand-deep);
+  font-size: 0.78rem; font-weight: 800;
+}
 .pro-quote-form .qf-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.7rem; align-items: start; }
 .pro-quote-form .qf {
   width: 100%; box-sizing: border-box; min-height: 44px; font: inherit;
@@ -1206,12 +1229,45 @@ body { background: var(--bg); }
 }
 .pro-quote-form .qf::placeholder { color: var(--text-muted); }
 .pro-quote-form .qf:focus { outline: 2px solid var(--brand); outline-offset: 1px; border-color: var(--brand); }
-.pro-quote-form > button[type="submit"] { align-self: flex-start; }
+.qf-terms-label { margin-top: 0.1rem; color: var(--ink-2); font-size: 0.78rem; font-weight: 700; }
+.quote-builder-actions { display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap; }
+.quote-builder-actions .btn { min-height: 44px; }
+.quote-builder-actions .btn-primary { min-width: 132px; }
 .pro-quote-form .qf-grid .qf-date { display: flex; flex-direction: column; gap: 0.25rem; }
 .pro-quote-form .qf-grid .qf-date.qf-wide { grid-column: 1 / -1; }
 .pro-quote-form .qf-date .qf-cap { font-size: 0.72rem; font-weight: 700; color: var(--ink-2); }
 .pro-quote-form .qf-date .qf { min-height: 40px; }
 @media (max-width: 520px) { .pro-quote-form .qf-grid { grid-template-columns: 1fr; } }
+
+.quote-draft-list {
+  margin: 0.8rem 0 1rem; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--surface); overflow: hidden;
+}
+.quote-draft-heading {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 0.65rem 0.8rem; border-bottom: 1px solid var(--line); background: var(--surface-tint);
+}
+.quote-draft-heading b { color: var(--ink); font-size: 0.84rem; }
+.quote-draft-heading span { color: var(--text-muted); font-size: 0.76rem; }
+.quote-draft-row {
+  min-height: 56px; padding: 0.55rem 0.65rem;
+  display: grid; grid-template-columns: 30px minmax(0, 1fr) 30px; align-items: center; gap: 0.7rem;
+  border-bottom: 1px solid var(--line);
+}
+.quote-draft-row:last-child { border-bottom: 0; }
+.quote-draft-number {
+  width: 28px; height: 28px; display: grid; place-items: center;
+  border-radius: 50%; background: var(--brand-soft); color: var(--brand-deep);
+  font-size: 0.75rem; font-weight: 800;
+}
+.quote-draft-row > div { min-width: 0; display: grid; gap: 0.15rem; }
+.quote-draft-row b { color: var(--ink); font-size: 0.84rem; overflow-wrap: anywhere; }
+.quote-draft-row small { color: var(--text-muted); font-size: 0.76rem; }
+.quote-draft-row .quote-remove { position: static; }
+@media (max-width: 520px) {
+  .quote-builder-head { align-items: flex-start; }
+  .quote-builder-actions .btn { flex: 1 1 100%; }
+}
 
 /* ---------- Preset add-on tick-boxes ---------- */
 .pro-quote-form .qf-addons {

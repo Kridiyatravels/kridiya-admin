@@ -22,6 +22,7 @@
   let notesByEnquiry = {};
   let requestsByEnquiry = {};
   let quotesByEnquiry = {};
+  let quoteDraftsByEnquiry = {};
   let bookingByEnquiry = {};
   let canCreateBookings = false;
   let canEditCorporates = false;
@@ -33,6 +34,28 @@
 
   function fmtMoney(amount, currency) {
     return currency + " " + Number(amount).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function quotePrice(quote) {
+    const price = Number(quote && quote.price_amount);
+    return Number.isFinite(price) ? price : Number.MAX_SAFE_INTEGER;
+  }
+
+  function sortQuoteOptions(quotes) {
+    return (quotes || []).slice().sort(function (a, b) {
+      const byPrice = quotePrice(a) - quotePrice(b);
+      if (byPrice) return byPrice;
+      return String(a.created_at || "").localeCompare(String(b.created_at || ""));
+    });
+  }
+
+  function quoteName(title) {
+    return String(title || "").replace(/^Option\s+\d+\s*:\s*/i, "").trim();
+  }
+
+  function numberedQuoteTitle(title, index) {
+    const name = quoteName(title);
+    return "Option " + (index + 1) + (name ? ": " + name : "");
   }
 
   function fmtWhen(iso) {
@@ -178,12 +201,56 @@
     '</div>';
   }
 
-  const DEFAULT_QUOTE_TERMS =
-    "- Fares are subject to availability and may change until the ticket is issued.\n" +
-    "- Full payment is required before booking confirmation.\n" +
-    "- Date changes, cancellations and no-shows are subject to airline penalties plus service fees.\n" +
-    "- Passport must be valid for at least 6 months from the travel date.\n" +
-    "- Visa (if required) is the traveller's responsibility unless arranged by Kridiya Travel.";
+  const QUOTE_TERMS_BY_SERVICE = {
+    flight:
+      "- Fares are subject to availability and may change until the ticket is issued.\n" +
+      "- Full payment is required before ticketing.\n" +
+      "- Date changes, cancellations and no-shows are subject to airline penalties plus service fees.\n" +
+      "- Passenger names must match the passport exactly.\n" +
+      "- Passport and visa requirements are the traveller's responsibility unless arranged by Kridiya Travel.",
+    hotel:
+      "- Rates and rooms are subject to availability until the booking is confirmed.\n" +
+      "- Tourism fees, security deposits and incidental charges are payable directly unless stated as included.\n" +
+      "- Check-in, cancellation, amendment and no-show rules follow the selected hotel's policy.\n" +
+      "- Guest names and ages must be correct before confirmation.",
+    visa:
+      "- Visa approval is solely at the discretion of the relevant immigration authority.\n" +
+      "- Processing time starts only after all required documents and payment are received.\n" +
+      "- Government, embassy and service fees are non-refundable once processing begins.\n" +
+      "- The passport must meet the destination's validity and blank-page requirements.",
+    holiday:
+      "- Package components are subject to availability until full payment and confirmation.\n" +
+      "- Airline, hotel, transfer and activity cancellation rules apply to their respective components.\n" +
+      "- Itinerary timings may change due to operational conditions.\n" +
+      "- Passport and visa requirements are the traveller's responsibility unless included.",
+    umrah:
+      "- Package services are subject to visa, flight, hotel and transport availability.\n" +
+      "- Room sharing and hotel distances are as stated in the selected option.\n" +
+      "- Saudi entry, health and permit requirements must be met by every pilgrim.\n" +
+      "- Changes and cancellations are subject to supplier and airline penalties.",
+    cruise:
+      "- Cruise fares and cabins are subject to availability until confirmed.\n" +
+      "- Port fees, gratuities, beverages and shore excursions are included only when stated.\n" +
+      "- Passenger names and passport details must match travel documents.\n" +
+      "- Cruise line amendment, cancellation and no-show rules apply.",
+    transfer:
+      "- The quoted rate covers the stated route, vehicle, passenger count and luggage allowance.\n" +
+      "- Waiting time, route changes, extra stops and excess luggage may incur additional charges.\n" +
+      "- Flight delays must be reported promptly when flight monitoring is not included.\n" +
+      "- Cancellation and no-show charges apply according to the supplier's policy.",
+    insurance:
+      "- Cover is subject to the insurer's policy wording, eligibility rules, limits and exclusions.\n" +
+      "- Medical conditions and high-risk activities must be declared before purchase.\n" +
+      "- Policy details must be checked before travel; premiums are normally non-refundable after issue.",
+    other:
+      "- Services are subject to supplier availability until payment and written confirmation.\n" +
+      "- Amendments, cancellations and no-shows follow the stated supplier conditions.\n" +
+      "- Only items listed under inclusions form part of this quotation."
+  };
+
+  function quoteTerms(service) {
+    return QUOTE_TERMS_BY_SERVICE[service] || QUOTE_TERMS_BY_SERVICE.other;
+  }
 
   function fmtQuoteDate(iso) {
     if (!iso) return "";
@@ -191,19 +258,72 @@
     return isNaN(d) ? iso : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
   }
 
-  /* Preset optional add-ons offered on every quote option. */
-  const QUOTE_ADDONS = [
-    { name: "Extra baggage", hint: "e.g. +10kg" },
-    { name: "Seat selection", hint: "e.g. window / extra legroom" },
-    { name: "Meal", hint: "e.g. special meal" },
-    { name: "Travel insurance", hint: "" }
-  ];
+  const QUOTE_ADDONS_BY_SERVICE = {
+    flight: [
+      { name: "Extra baggage", hint: "e.g. +10kg" },
+      { name: "Seat selection", hint: "window / aisle / extra legroom" },
+      { name: "Meal", hint: "special meal" },
+      { name: "Travel insurance", hint: "" }
+    ],
+    hotel: [
+      { name: "Breakfast", hint: "per room / stay" },
+      { name: "Extra bed", hint: "per night" },
+      { name: "Airport transfer", hint: "one way / return" },
+      { name: "Early check-in / late check-out", hint: "" }
+    ],
+    visa: [
+      { name: "Express processing", hint: "" },
+      { name: "Document assistance", hint: "" },
+      { name: "Travel insurance", hint: "" },
+      { name: "Courier service", hint: "" }
+    ],
+    holiday: [
+      { name: "Private transfers", hint: "" },
+      { name: "Optional excursion", hint: "" },
+      { name: "Extra night", hint: "" },
+      { name: "Travel insurance", hint: "" }
+    ],
+    umrah: [
+      { name: "Ziyarat tour", hint: "" },
+      { name: "Private transfer", hint: "" },
+      { name: "Extra night", hint: "" },
+      { name: "Visa processing", hint: "" }
+    ],
+    cruise: [
+      { name: "Beverage package", hint: "" },
+      { name: "Gratuities", hint: "" },
+      { name: "Shore excursion", hint: "" },
+      { name: "Travel insurance", hint: "" }
+    ],
+    transfer: [
+      { name: "Meet and greet", hint: "" },
+      { name: "Child seat", hint: "" },
+      { name: "Extra waiting time", hint: "" },
+      { name: "Additional stop", hint: "" }
+    ],
+    insurance: [
+      { name: "Trip cancellation cover", hint: "" },
+      { name: "Adventure sports cover", hint: "" },
+      { name: "Pre-existing condition cover", hint: "" },
+      { name: "Policy extension", hint: "" }
+    ],
+    other: [
+      { name: "Optional upgrade", hint: "" },
+      { name: "Priority service", hint: "" },
+      { name: "Delivery / courier", hint: "" },
+      { name: "Additional support", hint: "" }
+    ]
+  };
+
+  function quoteAddons(service) {
+    return QUOTE_ADDONS_BY_SERVICE[service] || QUOTE_ADDONS_BY_SERVICE.other;
+  }
 
   /* The tick-box add-on grid shown inside the quote form. */
-  function quoteAddonFields() {
+  function quoteAddonFields(service) {
     return '<fieldset class="qf-addons">' +
       '<legend>Optional add-ons</legend>' +
-      QUOTE_ADDONS.map(function (a) {
+      quoteAddons(service).map(function (a) {
         return '<label class="addon-item">' +
           '<input type="checkbox" class="addon-check" value="' + KridiyaAuth.escapeHTML(a.name) + '">' +
           '<span class="addon-name">' + KridiyaAuth.escapeHTML(a.name) + "</span>" +
@@ -230,7 +350,7 @@
   /* Builds the professional customer message from every option added to
      this enquiry, ready to paste into WhatsApp. */
   function buildQuoteMessage(enq) {
-    const list = (quotesByEnquiry[enq.id] || []).slice().reverse();
+    const list = sortQuoteOptions(quotesByEnquiry[enq.id] || []);
     if (!list.length) return "";
     const name = enq.full_name ? enq.full_name.split(" ")[0] : "there";
     const out = [];
@@ -239,7 +359,7 @@
     out.push("Here " + (list.length > 1 ? "are your options" : "is your quote") + ":");
     list.forEach(function (q, i) {
       out.push("");
-      out.push("*" + (q.title || ("Option " + (i + 1))) + "*");
+      out.push("*" + numberedQuoteTitle(q.title, i) + "*");
       const od = (q.option_data && typeof q.option_data === "object") ? q.option_data : {};
       const odKeys = Object.keys(od);
       if (odKeys.length) {
@@ -251,7 +371,7 @@
         if (q.inbound) out.push("Return: " + q.inbound);
         if (q.baggage) out.push("Baggage: " + q.baggage);
       }
-      out.push("Fare: " + fmtMoney(q.price_amount, q.currency) + " per person");
+      out.push("Price: " + fmtMoney(q.price_amount, q.currency) + " " + quotePriceBasis(enq.service_type));
       const adds = Array.isArray(q.addons) ? q.addons : [];
       if (adds.length) {
         out.push("Optional add-ons:");
@@ -260,7 +380,7 @@
     });
     out.push("");
     out.push("*Terms & Conditions:*");
-    ((list[0] && list[0].terms) ? list[0].terms : DEFAULT_QUOTE_TERMS).split("\n").forEach(function (t) {
+    ((list[0] && list[0].terms) ? list[0].terms : quoteTerms(enq.service_type)).split("\n").forEach(function (t) {
       if (t.trim()) out.push(t.trim());
     });
     if (list[0] && list[0].valid_until) { out.push(""); out.push("Prices valid until " + fmtWhen(list[0].valid_until) + "."); }
@@ -277,18 +397,25 @@
     hotel: [
       { n: "h_hotel", label: "Hotel", t: "text", ph: "Hotel — e.g. Hilton Dubai", wide: true },
       { n: "h_location", label: "Location", t: "text", ph: "City / area" },
+      { n: "h_category", label: "Category", t: "select", ph: "Hotel category…", opts: ["3 star", "4 star", "5 star", "Hotel apartment", "Resort"] },
       { n: "h_checkin", label: "Check-in", t: "date" },
       { n: "h_checkout", label: "Check-out", t: "date" },
       { n: "h_room", label: "Room type", t: "text", ph: "Room type — e.g. Deluxe Double" },
+      { n: "h_rooms", label: "Rooms", t: "text", ph: "Rooms — e.g. 1 room" },
       { n: "h_meal", label: "Meal plan", t: "select", opts: ["Room only", "Breakfast included", "Half board", "Full board", "All inclusive"] },
-      { n: "h_guests", label: "Guests", t: "text", ph: "Guests — e.g. 2 adults", wide: true }
+      { n: "h_guests", label: "Guests", t: "text", ph: "Guests — e.g. 2 adults, 1 child" },
+      { n: "h_policy", label: "Rate conditions", t: "select", ph: "Rate conditions…", opts: ["Refundable", "Partially refundable", "Non-refundable", "Pay at hotel"] }
     ],
     holiday: [
       { n: "ho_dest", label: "Destination", t: "text", ph: "Destination — e.g. Bali, Indonesia", wide: true },
       { n: "ho_from", label: "Travel start", t: "date" },
       { n: "ho_to", label: "Travel end", t: "date" },
+      { n: "ho_duration", label: "Duration", t: "text", ph: "Duration — e.g. 5 nights / 6 days" },
+      { n: "ho_flights", label: "Flights", t: "text", ph: "Flights — airline / routing", wide: true },
       { n: "ho_hotels", label: "Hotel(s)", t: "text", ph: "Hotel(s)", wide: true },
-      { n: "ho_incl", label: "Inclusions", t: "text", ph: "Inclusions — flights, transfers, tours…", wide: true },
+      { n: "ho_room", label: "Room / meal plan", t: "text", ph: "Room and meal plan" },
+      { n: "ho_transfer", label: "Transfers", t: "select", ph: "Transfers…", opts: ["Not included", "Shared return transfer", "Private return transfer"] },
+      { n: "ho_incl", label: "Inclusions", t: "text", ph: "Tours, activities and other inclusions", wide: true },
       { n: "ho_trav", label: "Travellers", t: "text", ph: "Travellers — e.g. 2 adults, 1 child", wide: true }
     ],
     umrah: [
@@ -297,8 +424,12 @@
       { n: "um_start", label: "Travel start", t: "date" },
       { n: "um_end", label: "Travel end", t: "date" },
       { n: "um_makkah", label: "Hotel — Makkah", t: "text", ph: "Hotel — Makkah" },
+      { n: "um_makkah_nights", label: "Makkah nights", t: "text", ph: "e.g. 7 nights" },
       { n: "um_madinah", label: "Hotel — Madinah", t: "text", ph: "Hotel — Madinah" },
+      { n: "um_madinah_nights", label: "Madinah nights", t: "text", ph: "e.g. 5 nights" },
       { n: "um_room", label: "Room type", t: "select", opts: ["Quad sharing", "Triple sharing", "Double", "Single"] },
+      { n: "um_meal", label: "Meal plan", t: "select", ph: "Meal plan…", opts: ["Room only", "Breakfast", "Half board", "Full board"] },
+      { n: "um_visa", label: "Umrah visa", t: "select", ph: "Visa…", opts: ["Included", "Not included", "Not required"] },
       { n: "um_pax", label: "Pilgrims", t: "text", ph: "Pilgrims — e.g. 2 adults", wide: true }
     ],
     cruise: [
@@ -307,7 +438,10 @@
       { n: "cr_sail", label: "Sailing date", t: "date" },
       { n: "cr_nights", label: "Duration", t: "text", ph: "Duration — e.g. 5 nights" },
       { n: "cr_cabin", label: "Cabin type", t: "select", opts: ["Interior", "Ocean view", "Balcony", "Suite"] },
+      { n: "cr_cabin_detail", label: "Cabin details", t: "text", ph: "Deck / occupancy / cabin category" },
       { n: "cr_itin", label: "Itinerary", t: "text", ph: "Itinerary / ports", wide: true },
+      { n: "cr_dining", label: "Dining", t: "select", ph: "Dining…", opts: ["Included", "Dining package included", "Not included"] },
+      { n: "cr_fees", label: "Taxes / port fees", t: "select", ph: "Taxes and fees…", opts: ["Included", "Not included"] },
       { n: "cr_guests", label: "Guests", t: "text", ph: "Guests — e.g. 2 adults", wide: true }
     ],
     transfer: [
@@ -316,8 +450,11 @@
       { n: "tr_to", label: "To", t: "text", ph: "To — drop-off location", wide: true },
       { n: "tr_date", label: "Date", t: "date" },
       { n: "tr_time", label: "Pickup time", t: "text", ph: "Pickup time (optional)" },
+      { n: "tr_flight", label: "Flight number", t: "text", ph: "Flight number (if applicable)" },
       { n: "tr_vehicle", label: "Vehicle", t: "select", opts: ["Sedan", "SUV", "Van", "Minibus", "Luxury / limousine"] },
-      { n: "tr_pax", label: "Passengers", t: "text", ph: "Passengers — e.g. 3 + luggage" }
+      { n: "tr_pax", label: "Passengers", t: "text", ph: "Passengers — e.g. 3" },
+      { n: "tr_luggage", label: "Luggage", t: "text", ph: "Luggage — e.g. 3 large bags" },
+      { n: "tr_wait", label: "Included waiting", t: "text", ph: "e.g. 60 minutes" }
     ],
     insurance: [
       { n: "in_plan", label: "Plan", t: "text", ph: "Plan — e.g. Schengen Travel Insurance", wide: true },
@@ -326,7 +463,17 @@
       { n: "in_area", label: "Area of cover", t: "text", ph: "Area — e.g. Worldwide / Schengen" },
       { n: "in_from", label: "Cover start", t: "date" },
       { n: "in_to", label: "Cover end", t: "date" },
+      { n: "in_excess", label: "Policy excess", t: "text", ph: "Excess — e.g. AED 250" },
+      { n: "in_benefits", label: "Key benefits", t: "text", ph: "Medical, baggage, delay, cancellation…", wide: true },
       { n: "in_pax", label: "Insured persons", t: "text", ph: "Insured — e.g. 2 adults", wide: true }
+    ],
+    other: [
+      { n: "ot_service", label: "Service", t: "text", ph: "Service name", wide: true },
+      { n: "ot_provider", label: "Supplier", t: "text", ph: "Supplier / provider" },
+      { n: "ot_date", label: "Service date", t: "date" },
+      { n: "ot_details", label: "Details", t: "text", ph: "Exact service details", wide: true },
+      { n: "ot_inclusions", label: "Inclusions", t: "text", ph: "What is included", wide: true },
+      { n: "ot_basis", label: "Price basis", t: "text", ph: "Per person / group / service" }
     ]
   };
 
@@ -364,17 +511,18 @@
 
   /* Precise, service-aware example for the "Option label" placeholder. */
   const QUOTE_TITLE_EG = {
-    flight: "Option 1: Air Arabia",
-    hotel: "Option 1: Hilton Dubai",
-    visa: "Option 1: 30-day tourist visa",
-    holiday: "Option 1: Bali, 5 nights",
-    umrah: "Option 1: 14-night Umrah",
-    cruise: "Option 1: MSC, 5 nights",
-    transfer: "Option 1: Airport pickup",
-    insurance: "Option 1: Schengen cover"
+    flight: "Air Arabia",
+    hotel: "Hilton Dubai",
+    visa: "UAE 30-day tourist visa",
+    holiday: "Bali, 5 nights",
+    umrah: "14-night Umrah package",
+    cruise: "MSC, 5 nights",
+    transfer: "Dubai Airport pickup",
+    insurance: "Schengen travel cover",
+    other: "Service or supplier name"
   };
   function quoteTitlePlaceholder(service) {
-    return "Option label — e.g. " + (QUOTE_TITLE_EG[service] || "Option 1");
+    return "Option name — e.g. " + (QUOTE_TITLE_EG[service] || QUOTE_TITLE_EG.other);
   }
   /* Service-aware price hint. */
   const QUOTE_PRICE_EG = {
@@ -385,10 +533,25 @@
     umrah: "Price / person",
     cruise: "Price / person",
     transfer: "Price / trip",
-    insurance: "Price / person"
+    insurance: "Price / person",
+    other: "Total price"
   };
   function quotePricePlaceholder(service) {
     return QUOTE_PRICE_EG[service] || "Price";
+  }
+  const QUOTE_PRICE_BASIS = {
+    flight: "per person",
+    hotel: "per room",
+    visa: "per applicant",
+    holiday: "per person",
+    umrah: "per person",
+    cruise: "per person",
+    transfer: "per trip",
+    insurance: "per person",
+    other: "total"
+  };
+  function quotePriceBasis(service) {
+    return QUOTE_PRICE_BASIS[service] || QUOTE_PRICE_BASIS.other;
   }
 
   /* Service-specific fields for the quote form. Bespoke builders for flight
@@ -398,19 +561,24 @@
     if (st === "visa") {
       return "" +
         '<input class="qf qf-wide" name="v_country" type="text" placeholder="Country — e.g. United Arab Emirates">' +
+        '<input class="qf" name="v_nationality" type="text" placeholder="Applicant nationality">' +
         '<input class="qf" name="v_type" type="text" placeholder="Visa type — e.g. Tourist 30 days">' +
         '<select class="qf" name="v_entries"><option value="">Entries…</option><option value="Single entry">Single entry</option><option value="Multiple entry">Multiple entry</option></select>' +
         '<input class="qf" name="v_validity" type="text" placeholder="Validity — e.g. 60 days">' +
-        '<input class="qf" name="v_processing" type="text" placeholder="Processing — e.g. 3–4 working days">';
+        '<input class="qf" name="v_processing" type="text" placeholder="Processing — e.g. 3–4 working days">' +
+        '<input class="qf qf-wide" name="v_inclusions" type="text" placeholder="Included — government fee, insurance, assistance…">';
     }
     if (QUOTE_SERVICE_FIELDS[st]) return buildServiceFields(QUOTE_SERVICE_FIELDS[st]);
     return "" +
       '<input class="qf" name="airline" type="text" placeholder="Airline — e.g. Air Arabia">' +
       '<select class="qf" name="stops"><option value="">Stops…</option><option value="Direct">Direct</option><option value="1 stop">1 stop</option><option value="2 stops">2 stops</option></select>' +
+      '<input class="qf" name="flight_number" type="text" placeholder="Flight number(s)">' +
+      '<select class="qf" name="cabin"><option value="">Cabin…</option><option value="Economy">Economy</option><option value="Premium economy">Premium economy</option><option value="Business">Business</option><option value="First">First</option></select>' +
+      '<select class="qf qf-wide" name="fare_type"><option value="">Fare conditions…</option><option value="Refundable">Refundable</option><option value="Partially refundable">Partially refundable</option><option value="Non-refundable">Non-refundable</option><option value="Changeable with fee">Changeable with fee</option></select>' +
       '<span class="ac-wrap qf-wide"><input class="qf" name="from" type="text" placeholder="From — type city or airport (e.g. Dubai)" data-airport></span>' +
       '<span class="ac-wrap qf-wide"><input class="qf" name="to" type="text" placeholder="To — type city or airport (e.g. Colombo)" data-airport></span>' +
-      '<input class="qf" name="depart_date" type="date">' +
-      '<input class="qf" name="return_date" type="date">' +
+      '<label class="qf-date"><span class="qf-cap">Onward date</span><input class="qf" name="depart_date" type="date"></label>' +
+      '<label class="qf-date"><span class="qf-cap">Return date</span><input class="qf" name="return_date" type="date"></label>' +
       '<input class="qf" name="depart_time" type="text" placeholder="Onward time (optional)">' +
       '<input class="qf" name="return_time" type="text" placeholder="Return time (optional)">' +
       '<input class="qf qf-wide" name="baggage" type="text" placeholder="Baggage — e.g. 30kg + 7kg cabin">';
@@ -424,10 +592,12 @@
     function put(k, v) { const t = String(v == null ? "" : v).trim(); if (t) d[k] = t; }
     if (st === "visa") {
       put("Country", form.v_country.value);
+      put("Applicant nationality", form.v_nationality.value);
       put("Visa type", form.v_type.value);
       put("Entries", form.v_entries.value);
       put("Validity", form.v_validity.value);
       put("Processing", form.v_processing.value);
+      put("Included", form.v_inclusions.value);
       return d;
     }
     if (QUOTE_SERVICE_FIELDS[st]) return gatherServiceData(form, QUOTE_SERVICE_FIELDS[st]);
@@ -435,6 +605,9 @@
     const stops = form.stops.value;
     if (airline) d["Airline"] = airline + (stops ? " (" + stops + ")" : "");
     else if (stops) d["Type"] = stops;
+    put("Flight number", form.flight_number.value);
+    put("Cabin", form.cabin.value);
+    put("Fare conditions", form.fare_type.value);
     const fromA = resolveAirport(form.from), toA = resolveAirport(form.to);
     const routeFwd = (fromA && toA) ? fromA.city + " (" + fromA.iata + ") → " + toA.city + " (" + toA.iata + ")" : [form.from.value.trim(), form.to.value.trim()].filter(Boolean).join(" → ");
     const routeRev = (fromA && toA) ? toA.city + " (" + toA.iata + ") → " + fromA.city + " (" + fromA.iata + ")" : [form.to.value.trim(), form.from.value.trim()].filter(Boolean).join(" → ");
@@ -445,6 +618,71 @@
     if (ret) d["Return"] = ret;
     put("Baggage", form.baggage.value);
     return d;
+  }
+
+  function gatherQuoteFormOption(form, optionIndex) {
+    const title = form.title.value.trim();
+    const price = parseFloat(form.price_amount.value);
+    if (!title) {
+      form.title.setCustomValidity("Enter the airline, hotel, package or option name.");
+      form.title.reportValidity();
+      form.title.setCustomValidity("");
+      return null;
+    }
+    if (!(price >= 0)) {
+      form.price_amount.setCustomValidity("Enter a valid price.");
+      form.price_amount.reportValidity();
+      form.price_amount.setCustomValidity("");
+      return null;
+    }
+    const currency = (form.currency.value || "AED").trim().toUpperCase();
+    const validUntil = form.valid_until.value ? new Date(form.valid_until.value).toISOString() : null;
+    return {
+      title: numberedQuoteTitle(title, optionIndex),
+      option_data: gatherOptionData(form),
+      addons: gatherAddons(form),
+      price_amount: price,
+      currency: currency,
+      valid_until: validUntil,
+      terms: form.terms.value.trim() || null
+    };
+  }
+
+  function quoteFormHasOption(form) {
+    return Boolean(form.title.value.trim() || form.price_amount.value.trim());
+  }
+
+  function resetQuoteForm(form) {
+    form.reset();
+    form.querySelectorAll(".addon-price").forEach(function (price) {
+      price.value = "";
+      price.disabled = true;
+    });
+    form.title.focus();
+  }
+
+  function reopenQuotePanel(listEl, enquiryId) {
+    const row = listEl.querySelector('.admin-enq[data-id="' + enquiryId + '"]');
+    if (row) row.classList.add("expanded");
+    const panel = listEl.querySelector('.admin-notes[data-quotes-for="' + enquiryId + '"]');
+    if (panel) panel.hidden = false;
+  }
+
+  function quoteDraftsHTML(drafts, enquiryId) {
+    if (!drafts.length) return "";
+    return '<div class="quote-draft-list"><div class="quote-draft-heading"><b>Options ready to save</b><span>' +
+      drafts.length + " draft" + (drafts.length === 1 ? "" : "s") + "</span></div>" +
+      sortQuoteOptions(drafts).map(function (draft, index) {
+        return '<div class="quote-draft-row">' +
+          '<span class="quote-draft-number">' + (index + 1) + "</span>" +
+          '<div><b>' + KridiyaAuth.escapeHTML(numberedQuoteTitle(draft.title, index)) + '</b><small>' +
+            fmtMoney(draft.price_amount, draft.currency) + "</small></div>" +
+          '<button type="button" class="quote-remove js-remove-quote-draft" data-index="' + drafts.indexOf(draft) +
+            '" data-enq="' + enquiryId +
+            '" title="Remove this draft option" aria-label="Remove draft option">×</button>' +
+        "</div>";
+      }).join("") +
+    "</div>";
   }
 
   function matchesFilters(enq) {
@@ -565,7 +803,8 @@
       const created = new Date(enq.created_at);
       const notes = notesByEnquiry[enq.id] || [];
       const requests = requestsByEnquiry[enq.id] || [];
-      const quotes = quotesByEnquiry[enq.id] || [];
+      const quotes = sortQuoteOptions(quotesByEnquiry[enq.id] || []);
+      const quoteDrafts = quoteDraftsByEnquiry[enq.id] || [];
       const wa = waReplyLink(enq);
       const initial = (enq.full_name || "?").trim().charAt(0).toUpperCase();
       const corporate = isCorporateEnquiry(enq);
@@ -648,7 +887,7 @@
             (quotes.length ? '<div class="quote-actions-bar"><button type="button" class="btn btn-primary js-copy-quotes" data-id="' + enq.id + '">' + icon("mail") + ' Copy for WhatsApp</button><span class="form-note">' + quotes.length + ' option(s) in this quote</span></div>' : '') +
             '<div class="admin-notes-list">' +
               (quotes.length
-                ? quotes.slice().reverse().map(function (q, i) {
+                ? quotes.map(function (q, i) {
                     const adds = Array.isArray(q.addons) ? q.addons : [];
                     const od = (q.option_data && typeof q.option_data === "object") ? q.option_data : {};
                     const odLines = Object.keys(od).map(function (k) { return od[k] ? '<p class="quote-line">' + KridiyaAuth.escapeHTML(k) + ": " + KridiyaAuth.escapeHTML(String(od[k])) + "</p>" : ""; }).join("");
@@ -657,16 +896,18 @@
                       (q.inbound ? '<p class="quote-line">Return: ' + KridiyaAuth.escapeHTML(q.inbound) + "</p>" : "") +
                       (q.baggage ? '<p class="quote-line">Baggage: ' + KridiyaAuth.escapeHTML(q.baggage) + "</p>" : "");
                     return '<div class="admin-note quote-option">' +
-                      '<p class="quote-option-head"><b>' + KridiyaAuth.escapeHTML(q.title || ("Option " + (i + 1))) + "</b> — " + fmtMoney(q.price_amount, q.currency) + '/person <span class="admin-badge">' + KridiyaAuth.statusLabel(q.status) + "</span>" +
+                      '<p class="quote-option-head"><b>' + KridiyaAuth.escapeHTML(numberedQuoteTitle(q.title, i)) + "</b> — " + fmtMoney(q.price_amount, q.currency) + " " + quotePriceBasis(enq.service_type) + ' <span class="admin-badge">' + KridiyaAuth.statusLabel(q.status) + "</span>" +
                         '<button type="button" class="quote-remove js-remove-quote" data-id="' + q.id + '" data-enq="' + enq.id + '" title="Remove this option" aria-label="Remove option">×</button></p>' +
                       (odLines || legacy) +
                       (adds.length ? '<div class="ops-kv">' + adds.map(function (a) { return '<span class="ops-chip">+ ' + KridiyaAuth.escapeHTML(a.name) + (a.price != null ? " " + fmtMoney(a.price, q.currency) : "") + "</span>"; }).join("") + "</div>" : "") +
                       (q.valid_until ? '<p class="form-note" style="margin:0.2rem 0 0">Valid until ' + fmtWhen(q.valid_until) + "</p>" : "") +
                       "</div>";
                   }).join("")
-                : '<p class="form-note">No options added yet. Build an option below and click “+ Add option”. Add as many as you like, then Copy for WhatsApp.</p>') +
+                : '<p class="form-note">No saved quote yet. Build one or more options below, then save the complete quote.</p>') +
             "</div>" +
-            '<form class="admin-quote-form pro-quote-form" data-id="' + enq.id + '" data-service="' + KridiyaAuth.escapeHTML(enq.service_type || "") + '">' +
+            quoteDraftsHTML(quoteDrafts, enq.id) +
+            '<form class="admin-quote-form pro-quote-form" data-id="' + enq.id + '" data-service="' + KridiyaAuth.escapeHTML(enq.service_type || "") + '" novalidate>' +
+              '<div class="quote-builder-head"><div><b>Build quote options</b><span>Add each supplier or package, then save once.</span></div><span class="quote-option-step">Option ' + (quoteDrafts.length + 1) + "</span></div>" +
               '<div class="qf-grid">' +
                 '<input class="qf qf-wide" name="title" type="text" placeholder="' + KridiyaAuth.escapeHTML(quoteTitlePlaceholder(enq.service_type || "")) + '" required>' +
                 quoteServiceFields(enq) +
@@ -674,9 +915,13 @@
                 '<input class="qf" name="currency" type="text" value="AED" maxlength="3">' +
                 '<input class="qf qf-wide" name="valid_until" type="datetime-local" title="Quote valid until">' +
               "</div>" +
-              quoteAddonFields() +
-              '<textarea class="qf qf-area" name="terms">' + KridiyaAuth.escapeHTML(DEFAULT_QUOTE_TERMS) + "</textarea>" +
-              '<button class="btn btn-primary" type="submit">+ Add option</button>' +
+              quoteAddonFields(enq.service_type || "") +
+              '<label class="qf-terms-label" for="quote-terms-' + enq.id + '">Terms and conditions</label>' +
+              '<textarea class="qf qf-area" id="quote-terms-' + enq.id + '" name="terms">' + KridiyaAuth.escapeHTML(quoteTerms(enq.service_type || "")) + "</textarea>" +
+              '<div class="quote-builder-actions">' +
+                '<button class="btn btn-outline js-add-quote-option" type="button">+ Add another option</button>' +
+                '<button class="btn btn-primary" type="submit">Save quote</button>' +
+              "</div>" +
             "</form>" +
           "</div>" +
           (booking ? "" : convertPanel(enq)) +
@@ -868,6 +1113,33 @@
         if (panel) panel.hidden = !panel.hidden;
         return;
       }
+      const addQuoteOptionBtn = e.target.closest(".js-add-quote-option");
+      if (addQuoteOptionBtn) {
+        const quoteForm = addQuoteOptionBtn.closest(".admin-quote-form");
+        const enquiryId = quoteForm.dataset.id;
+        const drafts = quoteDraftsByEnquiry[enquiryId] || [];
+        const draft = gatherQuoteFormOption(quoteForm, drafts.length);
+        if (!draft) return;
+        if (!quoteDraftsByEnquiry[enquiryId]) quoteDraftsByEnquiry[enquiryId] = [];
+        quoteDraftsByEnquiry[enquiryId].push(draft);
+        resetQuoteForm(quoteForm);
+        renderList();
+        reopenQuotePanel(listEl, enquiryId);
+        toast("Option added. Add another option or save the quote.");
+        return;
+      }
+      const removeQuoteDraftBtn = e.target.closest(".js-remove-quote-draft");
+      if (removeQuoteDraftBtn) {
+        const enquiryId = removeQuoteDraftBtn.dataset.enq;
+        const draftIndex = Number(removeQuoteDraftBtn.dataset.index);
+        if (quoteDraftsByEnquiry[enquiryId] && Number.isInteger(draftIndex)) {
+          quoteDraftsByEnquiry[enquiryId].splice(draftIndex, 1);
+        }
+        renderList();
+        reopenQuotePanel(listEl, enquiryId);
+        toast("Draft option removed.");
+        return;
+      }
       const copyQuoteBtn = e.target.closest(".js-copy-quotes");
       if (copyQuoteBtn) {
         const cqEnq = allEnquiries.find(function (r) { return r.id === copyQuoteBtn.dataset.id; });
@@ -1017,43 +1289,52 @@
       if (!form) return;
       e.preventDefault();
       const id = form.dataset.id;
-      const title = form.title.value.trim();
-      const price = parseFloat(form.price_amount.value);
-      if (!title || !(price >= 0)) return;
-      const currency = (form.currency.value || "AED").trim().toUpperCase();
-      const validUntil = form.valid_until.value ? new Date(form.valid_until.value).toISOString() : null;
-      const terms = form.terms.value.trim();
-      const optionData = gatherOptionData(form);
+      const drafts = (quoteDraftsByEnquiry[id] || []).slice();
+      if (quoteFormHasOption(form) || !drafts.length) {
+        const currentOption = gatherQuoteFormOption(form, drafts.length);
+        if (!currentOption) return;
+        drafts.push(currentOption);
+      }
+      const sortedOptions = sortQuoteOptions(drafts).map(function (option, index) {
+        return {
+          enquiry_id: id,
+          title: numberedQuoteTitle(option.title, index),
+          option_data: option.option_data,
+          addons: option.addons,
+          price_amount: option.price_amount,
+          currency: option.currency,
+          valid_until: option.valid_until,
+          terms: option.terms,
+          created_by: currentStaffId
+        };
+      });
       const btn = form.querySelector('button[type="submit"]');
+      const addBtn = form.querySelector(".js-add-quote-option");
       btn.disabled = true;
+      if (addBtn) addBtn.disabled = true;
       const result = await sb
         .from("quotes")
-        .insert({
-          enquiry_id: id,
-          title: title,
-          option_data: optionData,
-          addons: gatherAddons(form),
-          price_amount: price,
-          currency: currency,
-          valid_until: validUntil,
-          terms: terms || null,
-          created_by: currentStaffId
-        })
-        .select("*")
-        .single();
+        .insert(sortedOptions)
+        .select("*");
       btn.disabled = false;
+      if (addBtn) addBtn.disabled = false;
       if (result.error) {
-        toast("Could not send quote: " + result.error.message);
+        toast("Could not save quote: " + result.error.message);
         return;
       }
       if (!quotesByEnquiry[id]) quotesByEnquiry[id] = [];
-      quotesByEnquiry[id].unshift(result.data);
+      quotesByEnquiry[id] = sortQuoteOptions(quotesByEnquiry[id].concat(result.data || []));
+      delete quoteDraftsByEnquiry[id];
       renderList();
-      const panel = listEl.querySelector('.admin-notes[data-quotes-for="' + id + '"]');
-      if (panel) panel.hidden = false;
+      reopenQuotePanel(listEl, id);
       const quoteEnq = allEnquiries.find(function (r) { return r.id === id; });
-      logActivity(sb, currentStaffId, "enquiry.quote_sent", "enquiry", id, { reference: quoteEnq ? quoteEnq.reference : null, title: title, amount: price, currency: currency });
-      toast("Quote sent to customer.");
+      logActivity(sb, currentStaffId, "enquiry.quote_sent", "enquiry", id, {
+        reference: quoteEnq ? quoteEnq.reference : null,
+        options: sortedOptions.length,
+        lowest_amount: sortedOptions[0].price_amount,
+        currency: sortedOptions[0].currency
+      });
+      toast(sortedOptions.length + " quote option" + (sortedOptions.length === 1 ? "" : "s") + " saved, lowest price first.");
     });
   }
 
