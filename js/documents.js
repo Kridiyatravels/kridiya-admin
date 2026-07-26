@@ -61,6 +61,131 @@
       note: "Supplier rules, payment terms, changes, cancellations and refunds apply as per the relevant service provider."
     }
   };
+  const QUOTE_SERVICE_PRESETS = {
+    flight: {
+      label: "Flight",
+      optionLabel: "Airline option",
+      terms: "Fares are subject to availability and may change until ticketing. Baggage, seats, changes, cancellations and no-show rules follow the selected airline and fare conditions."
+    },
+    hotel: {
+      label: "Hotel",
+      optionLabel: "Hotel option",
+      fields: [
+        ["hotel_name", "Hotel name", "text", "e.g. Address Beach Resort"],
+        ["location", "Location", "text", "City / area"],
+        ["checkin", "Check-in", "date", ""],
+        ["checkout", "Check-out", "date", ""],
+        ["room_type", "Room type", "text", "e.g. Deluxe King"],
+        ["rooms_guests", "Rooms / guests", "text", "e.g. 1 room, 2 adults"],
+        ["meal_plan", "Meal plan", "text", "Room only / breakfast / half board"],
+        ["cancellation", "Cancellation terms", "text", "Refundable until..."]
+      ],
+      terms: "Hotel rates and room availability are subject to confirmation. Check-in rules, cancellation conditions and tourism or city taxes follow the selected hotel and supplier."
+    },
+    holiday: {
+      label: "Holiday package",
+      optionLabel: "Package option",
+      fields: [
+        ["package_name", "Package name", "text", "e.g. Georgia Explorer"],
+        ["destination", "Destination", "text", "City / country"],
+        ["date_from", "Travel start", "date", ""],
+        ["date_to", "Travel end", "date", ""],
+        ["duration", "Duration", "text", "e.g. 5 days / 4 nights"],
+        ["accommodation", "Accommodation", "text", "Hotel and room details"],
+        ["inclusions", "Inclusions", "textarea", "Flights, hotel, transfers, tours..."],
+        ["exclusions", "Exclusions", "textarea", "Visa, meals, personal expenses..."]
+      ],
+      terms: "Package components are subject to supplier availability. Changes, cancellations and refunds follow the applicable airline, hotel, tour and transfer supplier conditions."
+    },
+    visa: {
+      label: "Visa",
+      optionLabel: "Visa option",
+      fields: [
+        ["country", "Destination country", "text", ""],
+        ["visa_type", "Visa type", "text", "e.g. 30-day tourist visa"],
+        ["entry_type", "Entry type", "text", "Single / multiple"],
+        ["processing_time", "Processing time", "text", "e.g. 5-7 working days"],
+        ["validity", "Validity / stay", "text", "e.g. Valid 60 days, 30-day stay"],
+        ["requirements", "Key requirements", "textarea", "Passport, photo, bank statement..."],
+        ["included", "Included services", "textarea", "Application review, typing, submission..."],
+        ["government_fee", "Government fee note", "text", "Included / payable separately"]
+      ],
+      terms: "Visa approval and processing times are controlled by the relevant authority. Fees may be non-refundable after submission, and approval is never guaranteed."
+    },
+    umrah: {
+      label: "Umrah",
+      optionLabel: "Umrah option",
+      fields: [
+        ["package_name", "Package name", "text", ""],
+        ["date_from", "Travel start", "date", ""],
+        ["date_to", "Travel end", "date", ""],
+        ["transport", "Transport", "text", "Flight / bus / private transfer"],
+        ["hotel_makkah", "Makkah hotel", "text", ""],
+        ["hotel_madinah", "Madinah hotel", "text", ""],
+        ["room_type", "Room type", "text", "Double / triple / quad"],
+        ["inclusions", "Inclusions", "textarea", "Visa, hotels, transport, ziyarat..."]
+      ],
+      terms: "Umrah visa, transport, hotel and permit conditions are subject to Saudi authority and supplier rules. Availability must be reconfirmed before payment."
+    },
+    cruise: {
+      label: "Cruise",
+      optionLabel: "Cruise option",
+      fields: [
+        ["cruise_line", "Cruise line", "text", ""],
+        ["ship_name", "Ship", "text", ""],
+        ["sail_date", "Sailing date", "date", ""],
+        ["return_date", "Return date", "date", ""],
+        ["itinerary", "Itinerary / ports", "textarea", ""],
+        ["cabin_type", "Cabin type", "text", "Interior / ocean view / balcony"],
+        ["occupancy", "Occupancy", "text", "e.g. 2 adults"],
+        ["inclusions", "Inclusions", "textarea", "Meals, port charges, gratuities..."]
+      ],
+      terms: "Cruise fares, cabin availability, port charges, gratuities, visa requirements and cancellation rules follow the selected cruise line."
+    },
+    transfer: {
+      label: "Transfer",
+      optionLabel: "Transfer option",
+      fields: [
+        ["provider", "Provider", "text", ""],
+        ["vehicle", "Vehicle", "text", "Sedan / SUV / van / coach"],
+        ["pickup", "Pickup", "text", "Airport / hotel / address"],
+        ["dropoff", "Drop-off", "text", ""],
+        ["service_date", "Date", "date", ""],
+        ["service_time", "Pickup time", "time", ""],
+        ["passengers", "Passengers", "text", ""],
+        ["baggage", "Baggage capacity", "text", ""]
+      ],
+      terms: "Transfer timing and vehicle are subject to supplier confirmation. Waiting time, excess baggage, route changes and additional stops may incur extra charges."
+    },
+    insurance: {
+      label: "Travel insurance",
+      optionLabel: "Insurance option",
+      fields: [
+        ["provider", "Insurer", "text", ""],
+        ["plan_name", "Plan", "text", ""],
+        ["coverage_area", "Coverage area", "text", "Worldwide / Schengen / regional"],
+        ["date_from", "Coverage start", "date", ""],
+        ["date_to", "Coverage end", "date", ""],
+        ["travellers", "Travellers / ages", "text", ""],
+        ["benefits", "Main benefits", "textarea", "Medical, baggage, cancellation..."],
+        ["excess", "Excess / deductible", "text", ""]
+      ],
+      terms: "Coverage, exclusions, excesses and claim decisions follow the insurer's policy wording. Customers should review the full policy before purchase."
+    },
+    other: {
+      label: "Other service",
+      optionLabel: "Service option",
+      fields: [
+        ["option_name", "Option name", "text", ""],
+        ["provider", "Provider", "text", ""],
+        ["description", "Service details", "textarea", ""],
+        ["inclusions", "Inclusions", "textarea", ""],
+        ["exclusions", "Exclusions", "textarea", ""],
+        ["delivery", "Delivery / validity", "text", ""]
+      ],
+      terms: "Availability, payment, changes, cancellations and refunds follow the conditions of the relevant service provider."
+    }
+  };
   const DOCUMENT_REQUIREMENTS = {
     flight: ["Passport copy", "Visa/residence permit if required", "Passenger name exactly as passport", "Travel dates and route", "Mobile number and email"],
     visa: ["Passport copy valid at least 6 months", "UAE visa / Emirates ID copy if applicable", "Passport-size photo", "Travel dates", "Employment/NOC or salary certificate if required", "Bank statement if required", "Hotel/flight booking if required", "Previous visa/refusal copy if applicable"],
@@ -74,6 +199,7 @@
   };
 
   const DOC_KINDS = [
+    { id: "quotation", label: "Customer quote — multiple options", docType: "quotation", nameField: "customer_name" },
     { id: "invoice", label: "Invoice", docType: "invoice" },
     { id: "eticket_flight_oneway", label: "E-Ticket — Flight (one-way)", docType: "eticket", service: "flight", trip: "One-way", nameField: "passengers" },
     { id: "eticket_flight_roundtrip", label: "E-Ticket — Flight (round-trip)", docType: "eticket", service: "flight", trip: "Round-trip", nameField: "passengers" },
@@ -166,12 +292,14 @@
     const panel = document.getElementById("doc-control-panel");
     if (!panel || !settings) return;
     const ready = docReadiness();
+    const quoteKinds = DOC_KINDS.filter(function (k) { return k.docType === "quotation"; }).length;
     const invoiceKinds = DOC_KINDS.filter(function (k) { return k.docType === "invoice"; }).length;
     const ticketKinds = DOC_KINDS.filter(function (k) { return k.docType === "eticket"; }).length;
-    const supportKinds = DOC_KINDS.length - invoiceKinds - ticketKinds;
+    const supportKinds = DOC_KINDS.length - quoteKinds - invoiceKinds - ticketKinds;
     panel.innerHTML =
       '<div class="doc-control-summary doc-' + esc(ready.tone) + '"><div><b>' + esc(ready.kind.label) + '</b><span>' + esc(ready.next) + '</span></div><span class="staff-risk ' + esc(ready.tone === "ok" ? "ok" : "warn") + '">' + esc(ready.tone === "ok" ? "Ready" : "Review") + '</span></div>' +
       '<div class="doc-control-grid">' +
+        '<div><b>' + esc(quoteKinds) + '</b><span>Quote types</span></div>' +
         '<div><b>' + esc(invoiceKinds) + '</b><span>Invoice types</span></div>' +
         '<div><b>' + esc(ticketKinds) + '</b><span>Ticket/voucher types</span></div>' +
         '<div><b>' + esc(supportKinds) + '</b><span>Support notices</span></div>' +
@@ -199,6 +327,7 @@
     ".doc-number{font-size:1.3rem;font-weight:700;margin-top:0.2rem}" +
     ".doc-date{font-size:0.8rem;color:#666;margin-top:0.15rem}" +
     "h2{font-family:Arial,sans-serif;font-size:1rem;color:#a3480f;margin:1.6rem 0 0.5rem;text-transform:uppercase;letter-spacing:0.04em}" +
+    "h3.quote-journey-title{font-family:Arial,sans-serif;font-size:0.82rem;color:#333;margin:1rem 0 0.35rem}" +
     "table{width:100%;border-collapse:collapse;font-family:Arial,sans-serif;font-size:0.86rem}" +
     "table th{text-align:left;background:#fdf1e4;padding:0.5rem 0.7rem;border-bottom:2px solid #e8b98a;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.03em;color:#8a4210}" +
     "table td{padding:0.55rem 0.7rem;border-bottom:1px solid #eee;vertical-align:top}" +
@@ -210,6 +339,10 @@
     ".kv .v{color:#1a1a1a;font-weight:600}" +
     ".note{font-family:Arial,sans-serif;font-size:0.82rem;color:#555;white-space:pre-line;line-height:1.6}" +
     ".box{background:#fdf1e4;border:1px solid #f0d3ae;border-radius:8px;padding:0.9rem 1.1rem;margin-top:0.6rem}" +
+    ".print-quote-option{margin-top:1.35rem;padding-top:1rem;border-top:2px solid #e8b98a;break-inside:avoid}" +
+    ".print-quote-option-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;font-family:Arial,sans-serif;margin-bottom:0.8rem}" +
+    ".print-quote-option-head div{display:grid;gap:0.15rem}.print-quote-option-head span{font-size:0.72rem;color:#777;text-transform:uppercase}.print-quote-option-head b{font-size:1rem;color:#1a1a1a}.print-quote-option-head strong{font-size:1rem;color:#a3480f;white-space:nowrap}" +
+    ".quote-option-meta{margin-bottom:0.75rem}.quote-connection-row td{background:#fafafa;color:#666;font-size:0.76rem;font-style:italic;padding:0.3rem 0.7rem}" +
     ".footer-note{margin-top:2.4rem;padding-top:1rem;border-top:1px solid #eee;font-family:Arial,sans-serif;font-size:0.74rem;color:#888}" +
     "@media print{body{padding:0.4in}}";
 
@@ -352,6 +485,319 @@
   function prefillEmail() { return linkedEnquiry ? linkedEnquiry.email : ""; }
   function prefillPhone() { return linkedEnquiry ? linkedEnquiry.phone : ""; }
   function prefillRef() { return linkedEnquiry ? linkedEnquiry.reference : ""; }
+
+  /* ---- Customer quotation: several complete options in one document ---- */
+  function quoteFieldHTML(field) {
+    const key = field[0];
+    const labelText = field[1];
+    const type = field[2];
+    const placeholder = field[3] || "";
+    const control = type === "textarea"
+      ? '<textarea data-field="' + esc(key) + '" placeholder="' + esc(placeholder) + '"></textarea>'
+      : '<input data-field="' + esc(key) + '" type="' + esc(type) + '" placeholder="' + esc(placeholder) + '">';
+    return '<div class="field ' + (type === "textarea" ? "col-12" : "col-6") + '"><label>' + esc(labelText.toUpperCase()) + "</label>" + control + "</div>";
+  }
+  function quoteOptionValue(option, key) {
+    const el = option.querySelector('[data-field="' + key + '"]');
+    return el ? el.value.trim() : "";
+  }
+  function quoteFlightSegmentHTML() {
+    return (
+      '<div class="quote-flight-segment">' +
+        '<div class="field-row quote-flight-segment-grid">' +
+          '<div class="field col-3"><label>AIRLINE</label><input data-segment-field="airline"></div>' +
+          '<div class="field col-3"><label>FLIGHT NO.</label><input data-segment-field="flightno" placeholder="e.g. G9 401"></div>' +
+          '<div class="field col-3"><label>FROM</label><input data-segment-field="from" data-airport placeholder="Dubai (DXB)"></div>' +
+          '<div class="field col-3"><label>TO</label><input data-segment-field="to" data-airport placeholder="Chennai (MAA)"></div>' +
+          '<div class="field col-6"><label>DEPARTURE</label><input data-segment-field="departure" type="datetime-local"></div>' +
+          '<div class="field col-6"><label>ARRIVAL</label><input data-segment-field="arrival" type="datetime-local"></div>' +
+        "</div>" +
+        '<button type="button" class="btn btn-outline quote-remove-segment" aria-label="Remove flight segment">Remove segment</button>' +
+      "</div>"
+    );
+  }
+  function quoteJourneyHTML(direction, labelText) {
+    return (
+      '<section class="quote-journey" data-direction="' + esc(direction) + '">' +
+        '<div class="quote-journey-head"><div><b>' + esc(labelText) + '</b><span>Add one row for a direct flight, or more rows for connections.</span></div>' +
+          '<button type="button" class="btn btn-outline quote-add-segment">+ Add connecting flight</button></div>' +
+        '<div class="quote-flight-segments">' + quoteFlightSegmentHTML() + "</div>" +
+      "</section>"
+    );
+  }
+  function quoteFlightOptionBody() {
+    return (
+      '<div class="field-row quote-option-core">' +
+        '<div class="field col-6"><label>OPTION NAME / AIRLINE</label><input data-field="option_name" placeholder="e.g. Air Arabia"></div>' +
+        '<div class="field col-3"><label>TRIP TYPE</label><select data-field="trip_type"><option value="roundtrip">Round trip</option><option value="oneway">One way</option></select></div>' +
+        '<div class="field col-3"><label>PRICE / PERSON</label><input data-field="price" type="number" min="0" step="0.01" placeholder="0.00"></div>' +
+        '<div class="field col-4"><label>CLASS</label><input data-field="cabin" value="Economy"></div>' +
+        '<div class="field col-4"><label>BAGGAGE</label><input data-field="baggage" placeholder="e.g. 30kg + 7kg cabin"></div>' +
+        '<div class="field col-4"><label>FARE / BOOKING NOTE</label><input data-field="fare_note" placeholder="Refundable / changes allowed..."></div>' +
+      "</div>" +
+      '<div class="quote-journeys">' +
+        quoteJourneyHTML("onward", "Onward journey") +
+        quoteJourneyHTML("return", "Return journey") +
+      "</div>"
+    );
+  }
+  function quoteGenericOptionBody(service) {
+    const preset = QUOTE_SERVICE_PRESETS[service] || QUOTE_SERVICE_PRESETS.other;
+    return (
+      '<div class="field-row quote-option-core">' +
+        '<div class="field col-6"><label>OPTION LABEL</label><input data-field="label" placeholder="e.g. Best value / Flexible / Premium"></div>' +
+        '<div class="field col-3"><label>PRICE</label><input data-field="price" type="number" min="0" step="0.01" placeholder="0.00"></div>' +
+        '<div class="field col-3"><label>PRICE BASIS</label><select data-field="price_basis"><option value="total">Total</option><option value="per person">Per person</option><option value="per applicant">Per applicant</option><option value="per room">Per room</option><option value="per night">Per night</option><option value="per vehicle">Per vehicle</option><option value="per policy">Per policy</option></select></div>' +
+        preset.fields.map(quoteFieldHTML).join("") +
+      "</div>"
+    );
+  }
+  function buildFormQuotation(mount) {
+    mount.innerHTML =
+      '<div class="field-row doc-quote-customer-row">' +
+        '<div class="field col-6"><label>CUSTOMER NAME</label><input name="customer_name" required value="' + esc(prefillName()) + '"></div>' +
+        '<div class="field col-6"><label>EMAIL</label><input name="customer_email" type="email" value="' + esc(prefillEmail()) + '"></div>' +
+        '<div class="field col-4"><label>PHONE / WHATSAPP</label><input name="customer_phone" value="' + esc(prefillPhone()) + '"></div>' +
+        '<div class="field col-4"><label>SERVICE</label><select name="quote_service" id="quote-service">' +
+          Object.keys(QUOTE_SERVICE_PRESETS).map(function (key) { return '<option value="' + esc(key) + '">' + esc(QUOTE_SERVICE_PRESETS[key].label) + "</option>"; }).join("") +
+        "</select></div>" +
+        '<div class="field col-2"><label>CURRENCY</label><input name="currency" class="currency-input" value="AED" maxlength="3"></div>' +
+        '<div class="field col-2"><label>VALID UNTIL</label><input name="valid_until" type="datetime-local"></div>' +
+        '<div class="field col-12"><label>TRAVELLERS / GUESTS</label><textarea name="travellers" placeholder="Names or traveller count">' + esc(prefillName()) + "</textarea></div>" +
+      "</div>" +
+      '<div class="doc-quote-builder-head"><div><h3>Quote options</h3><p>Each option is a complete alternative. Saved and printed options are automatically ordered by price.</p></div>' +
+        '<button type="button" class="btn btn-outline quote-add-option">+ Add another option</button></div>' +
+      '<div id="quote-options" class="doc-quote-options"></div>' +
+      '<button type="button" class="btn btn-outline doc-quote-add-bottom quote-add-option">+ Add another option</button>' +
+      '<div class="field"><label>TERMS / IMPORTANT NOTES</label><textarea name="terms"></textarea></div>';
+
+    const serviceSel = mount.querySelector('[name="quote_service"]');
+    const optionsMount = mount.querySelector("#quote-options");
+    const termsEl = mount.querySelector('[name="terms"]');
+    let optionSequence = 0;
+
+    function renumberOptions() {
+      Array.from(optionsMount.children).forEach(function (option, index) {
+        const numberEl = option.querySelector(".doc-quote-option-number");
+        if (numberEl) numberEl.textContent = "Option " + (index + 1);
+        const remove = option.querySelector(".doc-quote-remove-option");
+        if (remove) remove.disabled = optionsMount.children.length <= 1;
+      });
+    }
+    function initQuoteAirports(scope) {
+      if (typeof initAirportAC === "function") initAirportAC(scope);
+    }
+    function addOption() {
+      const service = serviceSel.value;
+      const preset = QUOTE_SERVICE_PRESETS[service] || QUOTE_SERVICE_PRESETS.other;
+      const option = document.createElement("section");
+      option.className = "doc-quote-option";
+      option.dataset.optionId = String(optionSequence++);
+      option.innerHTML =
+        '<div class="doc-quote-option-head"><div><span class="doc-quote-option-number"></span><b>' + esc(preset.optionLabel) + '</b></div>' +
+          '<button type="button" class="btn btn-outline doc-quote-remove-option">Remove option</button></div>' +
+        '<div class="doc-quote-option-body">' + (service === "flight" ? quoteFlightOptionBody() : quoteGenericOptionBody(service)) + "</div>";
+      optionsMount.appendChild(option);
+      renumberOptions();
+      initQuoteAirports(option);
+    }
+    function resetForService() {
+      optionsMount.innerHTML = "";
+      optionSequence = 0;
+      termsEl.value = (QUOTE_SERVICE_PRESETS[serviceSel.value] || QUOTE_SERVICE_PRESETS.other).terms;
+      addOption();
+    }
+
+    mount.querySelectorAll(".quote-add-option").forEach(function (button) { button.addEventListener("click", addOption); });
+    serviceSel.addEventListener("change", resetForService);
+    optionsMount.addEventListener("click", function (event) {
+      const addSegment = event.target.closest(".quote-add-segment");
+      if (addSegment) {
+        const journey = addSegment.closest(".quote-journey");
+        const segments = journey.querySelector(".quote-flight-segments");
+        segments.insertAdjacentHTML("beforeend", quoteFlightSegmentHTML());
+        initQuoteAirports(segments.lastElementChild);
+        return;
+      }
+      const removeSegment = event.target.closest(".quote-remove-segment");
+      if (removeSegment) {
+        const segments = removeSegment.closest(".quote-flight-segments");
+        if (segments.children.length > 1) removeSegment.closest(".quote-flight-segment").remove();
+        return;
+      }
+      const removeOption = event.target.closest(".doc-quote-remove-option");
+      if (removeOption && optionsMount.children.length > 1) {
+        removeOption.closest(".doc-quote-option").remove();
+        renumberOptions();
+      }
+    });
+    optionsMount.addEventListener("change", function (event) {
+      if (!event.target.matches('[data-field="trip_type"]')) return;
+      const option = event.target.closest(".doc-quote-option");
+      const returnJourney = option.querySelector('[data-direction="return"]');
+      returnJourney.hidden = event.target.value === "oneway";
+    });
+    if (linkedEnquiry && QUOTE_SERVICE_PRESETS[linkedEnquiry.service_type]) {
+      serviceSel.value = linkedEnquiry.service_type;
+    }
+    resetForService();
+  }
+  function gatherQuoteSegment(segment) {
+    function segmentValue(key) {
+      const el = segment.querySelector('[data-segment-field="' + key + '"]');
+      return el ? el.value.trim() : "";
+    }
+    return {
+      airline: segmentValue("airline"),
+      flightno: segmentValue("flightno"),
+      from: segmentValue("from"),
+      to: segmentValue("to"),
+      departure: segmentValue("departure"),
+      arrival: segmentValue("arrival")
+    };
+  }
+  function gatherQuotation(form) {
+    const service = form.quote_service.value;
+    const preset = QUOTE_SERVICE_PRESETS[service] || QUOTE_SERVICE_PRESETS.other;
+    const options = Array.from(form.querySelectorAll(".doc-quote-option")).map(function (option, index) {
+      const price = num(quoteOptionValue(option, "price"));
+      if (price <= 0) throw new Error("Enter a price greater than zero for option " + (index + 1) + ".");
+      if (service === "flight") {
+        const tripType = quoteOptionValue(option, "trip_type") || "roundtrip";
+        const journeys = Array.from(option.querySelectorAll(".quote-journey")).filter(function (journey) {
+          return journey.dataset.direction !== "return" || tripType === "roundtrip";
+        }).map(function (journey) {
+          const segments = Array.from(journey.querySelectorAll(".quote-flight-segment")).map(gatherQuoteSegment).filter(function (segment) {
+            return segment.from || segment.to || segment.flightno;
+          });
+          return { direction: journey.dataset.direction, segments: segments };
+        });
+        if (!journeys[0] || !journeys[0].segments.length) throw new Error("Add at least one onward flight for option " + (index + 1) + ".");
+        if (tripType === "roundtrip" && (!journeys[1] || !journeys[1].segments.length)) {
+          throw new Error("Add at least one return flight for option " + (index + 1) + ", or change it to one way.");
+        }
+        journeys.forEach(function (journey) {
+          journey.segments.forEach(function (segment, segmentIndex) {
+            if (!segment.from || !segment.to) {
+              throw new Error("Complete the From and To airports for " + journey.direction + " segment " + (segmentIndex + 1) + " in option " + (index + 1) + ".");
+            }
+          });
+        });
+        return {
+          label: quoteOptionValue(option, "option_name") || "Flight option " + (index + 1),
+          price: price,
+          trip_type: tripType,
+          cabin: quoteOptionValue(option, "cabin"),
+          baggage: quoteOptionValue(option, "baggage"),
+          fare_note: quoteOptionValue(option, "fare_note"),
+          journeys: journeys
+        };
+      }
+      const details = {};
+      preset.fields.forEach(function (field) { details[field[0]] = quoteOptionValue(option, field[0]); });
+      const fallback = details.hotel_name || details.package_name || details.visa_type || details.cruise_line || details.provider || details.option_name;
+      return {
+        label: quoteOptionValue(option, "label") || fallback || preset.optionLabel + " " + (index + 1),
+        price: price,
+        price_basis: quoteOptionValue(option, "price_basis") || "total",
+        details: details
+      };
+    }).sort(function (a, b) { return a.price - b.price; });
+    if (!options.length) throw new Error("Add at least one quote option.");
+    return {
+      customer_name: form.customer_name.value.trim(),
+      customer_email: form.customer_email.value.trim(),
+      customer_phone: form.customer_phone.value.trim(),
+      service: service,
+      travellers: form.travellers.value.trim(),
+      currency: (form.currency.value || "AED").toUpperCase(),
+      valid_until: form.valid_until.value,
+      terms: form.terms.value.trim(),
+      reference: prefillRef(),
+      options: options,
+      total: options[0].price
+    };
+  }
+  function fmtDateTime(value) {
+    if (!value) return "";
+    const date = new Date(value);
+    if (isNaN(date.getTime())) return value;
+    return date.toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  }
+  function quoteLayover(previous, current) {
+    if (!previous || !current || !previous.arrival || !current.departure) return "";
+    const minutes = Math.round((new Date(current.departure) - new Date(previous.arrival)) / 60000);
+    if (!isFinite(minutes) || minutes < 0) return "";
+    return Math.floor(minutes / 60) + "h " + (minutes % 60) + "m";
+  }
+  function renderQuoteFlightOption(option, optionNumber) {
+    const journeys = option.journeys.map(function (journey) {
+      const rows = journey.segments.map(function (segment, index) {
+        const previous = journey.segments[index - 1];
+        const layover = quoteLayover(previous, segment);
+        const connection = index > 0
+          ? '<tr class="quote-connection-row"><td colspan="5">Connection in ' + esc(previous.to || segment.from) + (layover ? " — " + esc(layover) : "") + "</td></tr>"
+          : "";
+        return connection + "<tr><td>" + (index + 1) + "</td><td>" + esc(segment.airline) + " " + esc(segment.flightno) +
+          "</td><td>" + esc(segment.from) + " &rarr; " + esc(segment.to) + "</td><td>" + esc(fmtDateTime(segment.departure)) +
+          "</td><td>" + esc(fmtDateTime(segment.arrival)) + "</td></tr>";
+      }).join("");
+      return '<h3 class="quote-journey-title">' + esc(journey.direction === "return" ? "Return journey" : "Onward journey") + "</h3>" +
+        "<table><thead><tr><th>Leg</th><th>Flight</th><th>Route</th><th>Departure</th><th>Arrival</th></tr></thead><tbody>" + rows + "</tbody></table>";
+    }).join("");
+    return (
+      '<section class="print-quote-option">' +
+        '<div class="print-quote-option-head"><div><span>Option ' + optionNumber + '</span><b>' + esc(option.label) + '</b></div><strong>' + money(option.price, option.currency) + " / person</strong></div>" +
+        '<div class="kv quote-option-meta"><span class="k">Trip</span><span class="v">' + esc(option.trip_type === "oneway" ? "One way" : "Round trip") + "</span>" +
+          (option.cabin ? '<span class="k">Class</span><span class="v">' + esc(option.cabin) + "</span>" : "") +
+          (option.baggage ? '<span class="k">Baggage</span><span class="v">' + esc(option.baggage) + "</span>" : "") +
+          (option.fare_note ? '<span class="k">Fare note</span><span class="v">' + esc(option.fare_note) + "</span>" : "") +
+        "</div>" + journeys +
+      "</section>"
+    );
+  }
+  function renderQuoteGenericOption(option, optionNumber, service, currency) {
+    const preset = QUOTE_SERVICE_PRESETS[service] || QUOTE_SERVICE_PRESETS.other;
+    const details = preset.fields.map(function (field) {
+      const value = option.details && option.details[field[0]];
+      return value ? '<span class="k">' + esc(field[1]) + '</span><span class="v">' + nl2br(value) + "</span>" : "";
+    }).join("");
+    return (
+      '<section class="print-quote-option">' +
+        '<div class="print-quote-option-head"><div><span>Option ' + optionNumber + '</span><b>' + esc(option.label) + '</b></div><strong>' + money(option.price, currency) + (option.price_basis && option.price_basis !== "total" ? " / " + esc(option.price_basis.replace(/^per /, "")) : " total") + "</strong></div>" +
+        '<div class="kv quote-option-meta">' + details + "</div>" +
+      "</section>"
+    );
+  }
+  function renderQuotation(data, docNumber) {
+    const servicePreset = QUOTE_SERVICE_PRESETS[data.service] || QUOTE_SERVICE_PRESETS.other;
+    const options = (data.options || []).slice().sort(function (a, b) { return num(a.price) - num(b.price); });
+    const summary = options.map(function (option, index) {
+      const basis = data.service === "flight" ? " / person" : option.price_basis && option.price_basis !== "total" ? " / " + esc(option.price_basis.replace(/^per /, "")) : " total";
+      return "<tr><td>Option " + (index + 1) + "</td><td>" + esc(option.label) + "</td><td>" + (index === 0 ? "Lowest price" : "Alternative") + "</td><td><b>" + money(option.price, data.currency) + basis + "</b></td></tr>";
+    }).join("");
+    const detail = options.map(function (option, index) {
+      if (data.service === "flight") {
+        option.currency = data.currency;
+        return renderQuoteFlightOption(option, index + 1);
+      }
+      return renderQuoteGenericOption(option, index + 1, data.service, data.currency);
+    }).join("");
+    return (
+      letterheadHTML("Customer Quote — " + servicePreset.label, docNumber, todayISO()) +
+      '<div class="kv"><span class="k">Prepared for</span><span class="v">' + esc(data.customer_name) + "</span>" +
+        (data.customer_email ? '<span class="k">Email</span><span class="v">' + esc(data.customer_email) + "</span>" : "") +
+        (data.customer_phone ? '<span class="k">Phone / WhatsApp</span><span class="v">' + esc(data.customer_phone) + "</span>" : "") +
+        (data.travellers ? '<span class="k">Travellers / guests</span><span class="v">' + nl2br(data.travellers) + "</span>" : "") +
+        (data.valid_until ? '<span class="k">Valid until</span><span class="v">' + esc(fmtDateTime(data.valid_until)) + "</span>" : "") +
+        (data.reference ? '<span class="k">Kridiya reference</span><span class="v">' + esc(data.reference) + "</span>" : "") +
+      "</div>" +
+      "<h2>Options at a glance</h2>" +
+      "<table><thead><tr><th>Option</th><th>Provider / package</th><th>Position</th><th>Price</th></tr></thead><tbody>" + summary + "</tbody></table>" +
+      detail +
+      (data.terms ? "<h2>Important terms</h2><p class='note'>" + nl2br(data.terms) + "</p>" : "")
+    );
+  }
 
   /* ---- Invoice ---- */
   function buildFormInvoice(mount) {
@@ -863,6 +1309,7 @@
 
   /* ================= Kind registry: form builder + gather + render ================= */
   const HANDLERS = {
+    quotation: { build: buildFormQuotation, gather: gatherQuotation, render: renderQuotation },
     invoice: { build: buildFormInvoice, gather: gatherInvoice, render: function (d, n) { return renderInvoice(d, n); } },
     eticket_flight_oneway: { build: function (m) { buildFormFlight(m, "one"); }, gather: gatherFlight, render: function (d, n) { return renderFlight(d, n, "One-way"); } },
     eticket_flight_roundtrip: { build: function (m) { buildFormFlight(m, "round"); }, gather: gatherFlight, render: function (d, n) { return renderFlight(d, n, "Round-trip"); } },
@@ -994,7 +1441,13 @@
     const kind = findKind(kindId);
     const handler = HANDLERS[kindId];
     const form = document.getElementById("doc-fields");
-    const data = handler.gather(form);
+    let data;
+    try {
+      data = handler.gather(form);
+    } catch (err) {
+      toast(err.message || "Complete the required document details.");
+      return;
+    }
 
     const customerName = deriveCustomerName(kind, data);
     if (!customerName) {

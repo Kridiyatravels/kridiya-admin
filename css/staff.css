@@ -1096,7 +1096,7 @@ body { background: var(--bg); }
 .doc-control-summary b { display: block; color: var(--ink); font-size: 1.15rem; line-height: 1.1; font-weight: 800; }
 .doc-control-summary span { display: block; margin-top: 0.25rem; color: var(--ink-2); font-size: 0.86rem; }
 .doc-control-grid {
-  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.65rem; margin-top: 0.75rem;
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.65rem; margin-top: 0.75rem;
 }
 .doc-control-grid div { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 0.72rem 0.8rem; }
 .doc-control-grid b { display: block; color: var(--ink); font-size: 1.05rem; line-height: 1; font-weight: 800; }
@@ -3662,6 +3662,164 @@ table tbody tr:hover {
   padding-top: var(--sp-2);
 }
 
+.doc-quote-customer-row {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+}
+
+.doc-quote-customer-row > .field {
+  grid-column: span 6;
+}
+
+.doc-quote-customer-row > .col-4 {
+  grid-column: span 4;
+}
+
+.doc-quote-customer-row > .col-2 {
+  grid-column: span 2;
+}
+
+.doc-quote-customer-row > .col-12 {
+  grid-column: 1 / -1;
+}
+
+.doc-quote-builder-head,
+.doc-quote-option-head,
+.quote-journey-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+}
+
+.doc-quote-builder-head {
+  padding-top: var(--sp-2);
+}
+
+.doc-quote-builder-head h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.doc-quote-builder-head p,
+.quote-journey-head span {
+  margin: var(--sp-1) 0 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.doc-quote-options {
+  display: grid;
+  gap: var(--sp-4);
+}
+
+.doc-quote-add-bottom {
+  justify-self: start;
+}
+
+.doc-quote-option {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.doc-quote-option-head {
+  min-height: 58px;
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-tint);
+}
+
+.doc-quote-option-head > div {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+}
+
+.doc-quote-option-number {
+  color: var(--brand-deep);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.doc-quote-option-head b {
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
+.doc-quote-option-body {
+  padding: var(--sp-4);
+}
+
+.quote-option-core {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+}
+
+.quote-option-core > .field {
+  grid-column: span 6;
+}
+
+.quote-option-core > .col-8 {
+  grid-column: span 8;
+}
+
+.quote-option-core > .col-4 {
+  grid-column: span 4;
+}
+
+.quote-option-core > .col-3 {
+  grid-column: span 3;
+}
+
+.quote-option-core > .col-12 {
+  grid-column: 1 / -1;
+}
+
+.quote-journeys {
+  display: grid;
+  gap: var(--sp-4);
+  margin-top: var(--sp-4);
+}
+
+.quote-journey {
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--line);
+}
+
+.quote-journey-head b {
+  display: block;
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
+.quote-flight-segments {
+  display: grid;
+  gap: var(--sp-3);
+  margin-top: var(--sp-3);
+}
+
+.quote-flight-segment {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.quote-flight-segment-grid {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+}
+
+.quote-flight-segment-grid > .field {
+  grid-column: span 3;
+}
+
+.quote-flight-segment-grid > .col-6 {
+  grid-column: span 6;
+}
+
 .doc-action-row .btn,
 .account-head > .btn,
 .account-head > a.btn {
@@ -3672,7 +3830,10 @@ table tbody tr:hover {
   #rep-items .repeat-field-row,
   .doc-invoice-customer-row,
   .doc-money-row,
-  .doc-ticket-passenger-row {
+  .doc-ticket-passenger-row,
+  .doc-quote-customer-row,
+  .quote-option-core,
+  .quote-flight-segment-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -3686,6 +3847,17 @@ table tbody tr:hover {
   .doc-ticket-passenger-row > .field:first-child,
   .doc-ticket-passenger-row > .field:nth-child(4),
   .doc-ticket-passenger-row > .field:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .doc-quote-customer-row > .field,
+  .quote-option-core > .field,
+  .quote-flight-segment-grid > .field {
+    grid-column: auto;
+  }
+
+  .doc-quote-customer-row > .col-12,
+  .quote-option-core > .col-12 {
     grid-column: 1 / -1;
   }
 
@@ -3714,6 +3886,9 @@ table tbody tr:hover {
   .doc-invoice-customer-row,
   .doc-money-row,
   .doc-ticket-passenger-row,
+  .doc-quote-customer-row,
+  .quote-option-core,
+  .quote-flight-segment-grid,
   .doc-addon-checks {
     grid-template-columns: 1fr;
   }
@@ -3729,5 +3904,27 @@ table tbody tr:hover {
 
   .chip-add {
     flex: 1 1 150px;
+  }
+
+  .doc-quote-builder-head,
+  .doc-quote-option-head,
+  .quote-journey-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .doc-quote-builder-head .btn,
+  .doc-quote-option-head .btn,
+  .quote-journey-head .btn,
+  .doc-quote-add-bottom {
+    width: 100%;
+  }
+
+  .quote-flight-segment {
+    grid-template-columns: 1fr;
+  }
+
+  .quote-remove-segment {
+    width: 100%;
   }
 }
