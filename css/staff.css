@@ -1210,7 +1210,13 @@ body { background: var(--bg); }
 .cust-line:last-child { border-bottom: none; }
 .cust-line-main { flex: 1 1 auto; min-width: 0; font-size: 0.86rem; }
 .cust-line-main b { font-weight: 700; }
-.cust-line-sub { display: block; font-size: 0.78rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cust-line-sub {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
 .cust-line-date { font-size: 0.78rem; color: var(--text-muted); flex: 0 0 auto; }
 .cust-line-amount { font-size: 0.86rem; font-weight: 700; flex: 0 0 auto; }
 .cust-unlinked { padding: 1rem 1.15rem; }
@@ -2527,6 +2533,7 @@ textarea,
 .ops-row {
   min-width: 0;
   transition: background-color var(--ease-ui);
+  align-items: center;
 }
 
 .ops-row:hover {
@@ -2535,6 +2542,12 @@ textarea,
 
 .ops-row-main {
   padding-left: var(--sp-2);
+  min-width: 0;
+}
+
+.ops-row-main b,
+.ops-row-main p {
+  overflow-wrap: anywhere;
 }
 
 .ops-row-actions {
@@ -2560,6 +2573,26 @@ textarea,
 .cust-head {
   min-height: 68px;
   transition: background-color var(--ease-ui);
+  min-width: 0;
+}
+
+.enq-row-main .top-line,
+.cust-name-line {
+  min-width: 0;
+}
+
+.enq-row-main b,
+.cust-name-line b {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.enq-row-time,
+.cust-line-date,
+.cust-line-amount {
+  color: var(--text-muted);
 }
 
 .enq-row-head:focus-visible,
