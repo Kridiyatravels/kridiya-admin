@@ -94,6 +94,29 @@
         "Name files as: YYYY-MM-DD - BOOKING-REFERENCE - Customer Name - Document Type.ext.",
         "Never share internal folders directly with customers; release customer-ready files through admin first."
       ]
+    },
+    {
+      title: "Launch checklist",
+      owner: "Owner/admin",
+      href: "dashboard.html",
+      steps: [
+        "Before launch, open Dashboard, Enquiries, Customers, Bookings, Payments, Documents, Staff, Activity, and Backups once.",
+        "Confirm no confirmed booking is missing payment control, no refund is waiting without owner action, and no overdue task blocks handover.",
+        "Download the backup pack and save it into the monthly archive folder.",
+        "Confirm business settings are correct: legal name, trade licence, bank details, no-VAT status, and cancellation/refund wording.",
+        "After launch, run the same checklist weekly and run the full backup/security review monthly."
+      ]
+    },
+    {
+      title: "Emergency fallback",
+      owner: "Owner/admin",
+      href: "backups.html",
+      steps: [
+        "If admin is unavailable, use the latest backup pack as the temporary operating record.",
+        "Track manual changes in a spreadsheet: booking updates, payments, refunds, supplier notes, document releases, and customer messages.",
+        "Do not share internal archive folders with customers during outage; send only final customer-ready files.",
+        "When admin returns, enter every manual change back into the system and upload the supporting files."
+      ]
     }
   ];
 
