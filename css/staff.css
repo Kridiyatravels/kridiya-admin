@@ -451,8 +451,7 @@ body { background: var(--bg); }
   margin-bottom: 1.2rem;
 }
 .command-health,
-.command-finance,
-.command-actions {
+.command-finance {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--staff-radius);
@@ -1763,11 +1762,6 @@ main .container,
   gap: var(--staff-space-md);
 }
 
-.stat-tile {
-  padding: 1rem;
-  border-radius: var(--staff-radius);
-}
-
 /* Document workspace */
 #doc-app {
   max-width: 1100px;
@@ -2034,8 +2028,7 @@ main .container,
 
 .account-main,
 .command-health,
-.command-finance,
-.command-actions {
+.command-finance {
   box-shadow: none;
 }
 
