@@ -20,8 +20,8 @@
     <div class="account-head"><div><h1>B2B Portals</h1><p>Supplier links and secure login notes. Passwords stay in a password manager, not this site.</p></div><button type="button" class="btn btn-primary" id="portal-new-toggle">Add portal</button></div>
     <div class="account-main" id="portal-form-card" hidden>
       <form id="portal-form" class="form-grid" onsubmit="return false">
-        <div class="field-row"><div class="field col-4"><label>PORTAL NAME</label><input name="portal_name" required></div><div class="field col-4"><label>WEBSITE URL</label><input name="website_url" required placeholder="https://"></div><div class="field col-4"><label>SERVICE SCOPE</label><input name="service_scope" value="all"></div><div class="field col-6"><label>USERNAME HINT</label><input name="username_hint" placeholder="Do not enter password"></div><div class="field col-6"><label>PASSWORD LOCATION</label><input name="password_location" value="Password manager"></div><div class="field col-12"><label>NOTES</label><textarea name="owner_notes"></textarea></div></div>
-        <button type="submit" class="btn btn-primary">Save portal</button>
+        <div class="field-row"><div class="field col-4"><label>PORTAL NAME</label><input name="portal_name" required></div><div class="field col-4"><label>WEBSITE URL</label><input name="website_url" required placeholder="https://"></div><div class="field col-4"><label>SERVICE SCOPE</label><input name="service_scope" value="all"></div><div class="field col-4"><label>USERNAME / AGENT CODE HINT</label><input name="username_hint" placeholder="Agent Code: KRIDIYA"></div><div class="field col-4"><label>PASSWORD LOCATION</label><input name="password_location" value="Password manager"></div><div class="field col-4"><label>STATUS</label><select name="status"><option value="active">Active</option><option value="inactive">Inactive</option></select></div><div class="field col-12"><label>NOTES</label><textarea name="owner_notes"></textarea></div></div>
+        <button type="submit" class="btn btn-primary" id="portal-submit">Save portal</button><button type="button" class="btn btn-outline" id="portal-cancel">Cancel</button>
       </form>
     </div>
     <div class="account-main"><div class="account-section-head"><div><h2>Portal directory</h2><p>Active supplier systems for flights, visa, and future services.</p></div><span class="form-note" id="portals-count"></span></div><div id="portals-list"></div></div>
@@ -30,5 +30,5 @@
 <footer id="site-footer" class="site-footer"></footer>
 <script src="https://kridiyatravel.com/js/auth.js" defer></script>
 <script src="js/staff-common.js?v=20260726c" defer></script>
-<script src="js/portals.js?v=20260726a" defer></script>
+<script src="js/portals.js?v=20260726b" defer></script>
 </body></html>
