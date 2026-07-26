@@ -208,8 +208,8 @@
     { id: "eticket_holiday", label: "E-Ticket — Holiday package", docType: "eticket", service: "holiday", nameField: "travellers" },
     { id: "eticket_umrah", label: "E-Ticket — Umrah package", docType: "eticket", service: "umrah", nameField: "pilgrims" },
     { id: "eticket_cruise", label: "E-Ticket — Cruise package", docType: "eticket", service: "cruise", nameField: "guests" },
-    { id: "eticket_transfer", label: "E-Ticket — Transfer options", docType: "eticket", service: "transfer", nameField: "customer_name" },
-    { id: "eticket_insurance", label: "E-Ticket — Travel insurance options", docType: "eticket", service: "insurance", nameField: "customer_name" },
+    { id: "eticket_transfer", label: "Transfer Quote - Service Options", docType: "eticket", service: "transfer", nameField: "customer_name" },
+    { id: "eticket_insurance", label: "Travel Insurance Quote - Policy Options", docType: "eticket", service: "insurance", nameField: "customer_name" },
     { id: "eticket_other", label: "E-Ticket — Other travel service", docType: "eticket", service: "other", nameField: "customer_name" },
     { id: "cancellation", label: "Cancellation notice", docType: "cancellation" },
     { id: "visa_rejection", label: "Visa rejection notice", docType: "visa_rejection", nameField: "applicants" }
@@ -506,11 +506,14 @@
       '<div class="quote-flight-segment">' +
         '<div class="field-row quote-flight-segment-grid">' +
           '<div class="field col-3"><label>AIRLINE</label><input data-segment-field="airline"></div>' +
+          '<div class="field col-3"><label>OPERATED BY</label><input data-segment-field="operated_by" placeholder="If different"></div>' +
           '<div class="field col-3"><label>FLIGHT NO.</label><input data-segment-field="flightno" placeholder="e.g. G9 401"></div>' +
           '<div class="field col-3"><label>FROM</label><input data-segment-field="from" data-airport placeholder="Dubai (DXB)"></div>' +
           '<div class="field col-3"><label>TO</label><input data-segment-field="to" data-airport placeholder="Chennai (MAA)"></div>' +
-          '<div class="field col-6"><label>DEPARTURE</label><input data-segment-field="departure" type="datetime-local"></div>' +
-          '<div class="field col-6"><label>ARRIVAL</label><input data-segment-field="arrival" type="datetime-local"></div>' +
+          '<div class="field col-3"><label>DEPARTURE TERMINAL</label><input data-segment-field="departure_terminal" placeholder="e.g. T1"></div>' +
+          '<div class="field col-3"><label>ARRIVAL TERMINAL</label><input data-segment-field="arrival_terminal" placeholder="e.g. T3"></div>' +
+          '<div class="field col-3"><label>DEPARTURE</label><input data-segment-field="departure" type="datetime-local"></div>' +
+          '<div class="field col-3"><label>ARRIVAL</label><input data-segment-field="arrival" type="datetime-local"></div>' +
         "</div>" +
         '<button type="button" class="btn btn-outline quote-remove-segment" aria-label="Remove flight segment">Remove segment</button>' +
       "</div>"
@@ -539,14 +542,20 @@
         '<div class="field col-3"><label>TRIP TYPE</label><input value="' + esc(tripLabel) + '" disabled><input data-field="trip_type" type="hidden" value="' + esc(tripType) + '"></div>' +
         '<div class="field col-3"><label>PRICE / PERSON</label><input data-field="price" type="number" min="0" step="0.01" placeholder="0.00"></div>' +
         '<div class="field col-4"><label>CLASS</label><input data-field="cabin" value="Economy"></div>' +
+        '<div class="field col-4"><label>BOOKING CLASS / FARE BASIS</label><input data-field="fare_basis" placeholder="e.g. V / Saver"></div>' +
+        '<div class="field col-4"><label>BOOKING STATUS</label><input data-field="booking_status" placeholder="e.g. Available / On request"></div>' +
         '<div class="field col-4"><label>BAGGAGE</label><input data-field="baggage" placeholder="e.g. 30kg + 7kg cabin"></div>' +
         '<div class="field col-4"><label>FARE / BOOKING NOTE</label><input data-field="fare_note" placeholder="Refundable / changes allowed..."></div>' +
-        '<div class="field col-12"><label>AIRLINE PNR / BOOKING REF (OPTIONAL)</label><input data-field="pnr"></div>' +
+        '<div class="field col-4"><label>QUOTE / RESERVATION REF (OPTIONAL)</label><input data-field="pnr"></div>' +
+        '<div class="field col-4"><label>BASE FARE / PERSON</label><input data-field="base_fare" type="number" min="0" step="0.01" placeholder="0.00"></div>' +
+        '<div class="field col-4"><label>TAXES / FEES / PERSON</label><input data-field="taxes" type="number" min="0" step="0.01" placeholder="0.00"></div>' +
+        '<div class="field col-4"><label>PAYMENT DEADLINE</label><input data-field="payment_deadline" type="datetime-local"></div>' +
         '<div class="field col-12"><label>OPTIONAL EXTRAS INCLUDED</label><div class="doc-addon-checks">' +
           PRESET_ADDONS.map(function (extra) {
             return '<label class="doc-addon-check"><input type="checkbox" data-flight-extra value="' + esc(extra) + '"> ' + esc(extra) + "</label>";
           }).join("") +
         "</div></div>" +
+        '<div class="field col-12"><label>AIRLINE RULES / CHANGE / CANCELLATION / NO-SHOW</label><textarea data-field="airline_rules" placeholder="Paste or summarize the airline fare rules for this option."></textarea></div>' +
       "</div>" +
       '<div class="quote-journeys">' + journeys + "</div>"
     );
@@ -662,9 +671,12 @@
     }
     return {
       airline: segmentValue("airline"),
+      operated_by: segmentValue("operated_by"),
       flightno: segmentValue("flightno"),
       from: segmentValue("from"),
       to: segmentValue("to"),
+      departure_terminal: segmentValue("departure_terminal"),
+      arrival_terminal: segmentValue("arrival_terminal"),
       departure: segmentValue("departure"),
       arrival: segmentValue("arrival")
     };
@@ -701,9 +713,15 @@
           price: price,
           trip_type: tripType,
           cabin: quoteOptionValue(option, "cabin"),
+          fare_basis: quoteOptionValue(option, "fare_basis"),
+          booking_status: quoteOptionValue(option, "booking_status"),
           baggage: quoteOptionValue(option, "baggage"),
           fare_note: quoteOptionValue(option, "fare_note"),
           pnr: quoteOptionValue(option, "pnr"),
+          base_fare: quoteOptionValue(option, "base_fare"),
+          taxes: quoteOptionValue(option, "taxes"),
+          payment_deadline: quoteOptionValue(option, "payment_deadline"),
+          airline_rules: quoteOptionValue(option, "airline_rules"),
           extras: Array.from(option.querySelectorAll("[data-flight-extra]:checked")).map(function (input) { return input.value; }),
           journeys: journeys
         };
@@ -753,8 +771,11 @@
         const connection = index > 0
           ? '<tr class="quote-connection-row"><td colspan="5">Connection in ' + esc(previous.to || segment.from) + (layover ? " — " + esc(layover) : "") + "</td></tr>"
           : "";
-        return connection + "<tr><td>" + (index + 1) + "</td><td>" + esc(segment.airline) + " " + esc(segment.flightno) +
-          "</td><td>" + esc(segment.from) + " &rarr; " + esc(segment.to) + "</td><td>" + esc(fmtDateTime(segment.departure)) +
+        const carrier = esc(segment.airline) + " " + esc(segment.flightno) + (segment.operated_by ? "<br><small>Operated by " + esc(segment.operated_by) + "</small>" : "");
+        const route = esc(segment.from) + " &rarr; " + esc(segment.to) +
+          (segment.departure_terminal || segment.arrival_terminal ? "<br><small>" + esc(segment.departure_terminal ? "Dep " + segment.departure_terminal : "") + esc(segment.departure_terminal && segment.arrival_terminal ? " / " : "") + esc(segment.arrival_terminal ? "Arr " + segment.arrival_terminal : "") + "</small>" : "");
+        return connection + "<tr><td>" + (index + 1) + "</td><td>" + carrier +
+          "</td><td>" + route + "</td><td>" + esc(fmtDateTime(segment.departure)) +
           "</td><td>" + esc(fmtDateTime(segment.arrival)) + "</td></tr>";
       }).join("");
       const journeyLabel = journey.direction === "return" ? "Return journey" : journey.direction === "itinerary" ? "Flight itinerary" : "Onward journey";
@@ -766,11 +787,17 @@
         '<div class="print-quote-option-head"><div><span>Option ' + optionNumber + '</span><b>' + esc(option.label) + '</b></div><strong>' + money(option.price, option.currency) + " / person</strong></div>" +
         '<div class="kv quote-option-meta"><span class="k">Trip</span><span class="v">' + esc(option.trip_type === "oneway" ? "One way" : option.trip_type === "multicity" ? "Multi-city" : "Round trip") + "</span>" +
           (option.cabin ? '<span class="k">Class</span><span class="v">' + esc(option.cabin) + "</span>" : "") +
+          (option.fare_basis ? '<span class="k">Booking class / fare basis</span><span class="v">' + esc(option.fare_basis) + "</span>" : "") +
+          (option.booking_status ? '<span class="k">Booking status</span><span class="v">' + esc(option.booking_status) + "</span>" : "") +
           (option.baggage ? '<span class="k">Baggage</span><span class="v">' + esc(option.baggage) + "</span>" : "") +
           (option.fare_note ? '<span class="k">Fare note</span><span class="v">' + esc(option.fare_note) + "</span>" : "") +
-          (option.pnr ? '<span class="k">Airline PNR</span><span class="v">' + esc(option.pnr) + "</span>" : "") +
+          (option.pnr ? '<span class="k">Quote / reservation ref</span><span class="v">' + esc(option.pnr) + "</span>" : "") +
+          (option.base_fare ? '<span class="k">Base fare / person</span><span class="v">' + money(option.base_fare, option.currency) + "</span>" : "") +
+          (option.taxes ? '<span class="k">Taxes / fees / person</span><span class="v">' + money(option.taxes, option.currency) + "</span>" : "") +
+          (option.payment_deadline ? '<span class="k">Payment deadline</span><span class="v">' + esc(fmtDateTime(option.payment_deadline)) + "</span>" : "") +
           (option.extras && option.extras.length ? '<span class="k">Extras included</span><span class="v">' + esc(option.extras.join(", ")) + "</span>" : "") +
         "</div>" + journeys +
+        (option.airline_rules ? "<h3>Airline rules</h3><p class='note'>" + nl2br(option.airline_rules) + "</p>" : "") +
       "</section>"
     );
   }
@@ -802,7 +829,7 @@
       return renderQuoteGenericOption(option, index + 1, data.service, data.currency);
     }).join("");
     return (
-      letterheadHTML(documentLabel || (servicePreset.label + " Options"), docNumber, todayISO()) +
+      letterheadHTML(documentLabel || (servicePreset.label + " Quote / Proposed Itinerary"), docNumber, todayISO()) +
       '<div class="kv"><span class="k">Prepared for</span><span class="v">' + esc(data.customer_name) + "</span>" +
         (data.customer_email ? '<span class="k">Email</span><span class="v">' + esc(data.customer_email) + "</span>" : "") +
         (data.customer_phone ? '<span class="k">Phone / WhatsApp</span><span class="v">' + esc(data.customer_phone) + "</span>" : "") +
@@ -971,6 +998,19 @@
         '<div class="field col-3"><label>CLASS</label><input name="cabin" value="Economy"></div>' +
         '<div class="field col-3"><label>BAGGAGE</label><input name="baggage" placeholder="e.g. 20kg checked + 7kg cabin"></div>' +
         '<div class="field col-6"><label>AIRLINE PNR / BOOKING REF</label><input name="pnr"></div>' +
+        '<div class="field col-6"><label>E-TICKET NUMBER(S), ONE PER PASSENGER</label><textarea name="ticket_numbers" placeholder="13-digit airline ticket number(s)"></textarea></div>' +
+        '<div class="field col-3"><label>ISSUE DATE</label><input name="issue_date" type="date" value="' + todayISO() + '"></div>' +
+        '<div class="field col-3"><label>ISSUING AIRLINE</label><input name="issuing_airline"></div>' +
+        '<div class="field col-3"><label>BOOKING STATUS</label><input name="booking_status" placeholder="Confirmed / Ticketed"></div>' +
+        '<div class="field col-3"><label>BOOKING CLASS / FARE BASIS</label><input name="fare_basis" placeholder="e.g. V / Saver"></div>' +
+        '<div class="field col-3"><label>BASE FARE</label><input name="base_fare" type="number" min="0" step="0.01"></div>' +
+        '<div class="field col-3"><label>TAXES / FEES</label><input name="taxes" type="number" min="0" step="0.01"></div>' +
+        '<div class="field col-3"><label>TOTAL PAID</label><input name="total_paid" type="number" min="0" step="0.01"></div>' +
+        '<div class="field col-3"><label>CURRENCY</label><input class="currency-input" name="currency" value="AED" maxlength="3"></div>' +
+        '<div class="field col-4"><label>PAYMENT STATUS</label><input name="payment_status" placeholder="Paid / Balance due"></div>' +
+        '<div class="field col-4"><label>PAYMENT METHOD</label><input name="payment_method" placeholder="Cash / bank transfer / card"></div>' +
+        '<div class="field col-4"><label>AIRLINE RECORD LOCATOR</label><input name="airline_locator" placeholder="If different from PNR"></div>' +
+        '<div class="field col-12"><label>CHANGE / CANCELLATION / NO-SHOW RULES</label><textarea name="airline_rules" placeholder="Paste the airline fare rules or the key rule summary."></textarea></div>' +
         addonChecksHTML("flight_addon") +
       "</div>";
     const initial = legCount === "round" ? 2 : 1;
@@ -978,9 +1018,12 @@
       return (
         '<div class="field-row repeat-field-row">' +
         '<div class="field col-3"><label>AIRLINE</label><input name="airline_' + i + '"></div>' +
+        '<div class="field col-3"><label>OPERATED BY</label><input name="operated_by_' + i + '" placeholder="If different"></div>' +
         '<div class="field col-3"><label>FLIGHT NO.</label><input name="flightno_' + i + '"></div>' +
         '<div class="field col-3"><label>FROM</label><input name="from_' + i + '" data-airport placeholder="Dubai (DXB)"></div>' +
         '<div class="field col-3"><label>TO</label><input name="to_' + i + '" data-airport placeholder="Kochi (COK)"></div>' +
+        '<div class="field col-3"><label>DEPARTURE TERMINAL</label><input name="departure_terminal_' + i + '" placeholder="e.g. T1"></div>' +
+        '<div class="field col-3"><label>ARRIVAL TERMINAL</label><input name="arrival_terminal_' + i + '" placeholder="e.g. T3"></div>' +
         '<div class="field col-4"><label>DATE</label><input name="date_' + i + '" type="date"></div>' +
         '<div class="field col-4"><label>DEPART</label><input name="deptime_' + i + '" type="time"></div>' +
         '<div class="field col-4"><label>ARRIVE</label><input name="arrtime_' + i + '" type="time"></div>' +
@@ -1000,9 +1043,12 @@
       const idx = row.dataset.index;
       return {
         airline: fieldVal(row, "airline_" + idx),
+        operated_by: fieldVal(row, "operated_by_" + idx),
         flightno: fieldVal(row, "flightno_" + idx),
         from: fieldVal(row, "from_" + idx),
         to: fieldVal(row, "to_" + idx),
+        departure_terminal: fieldVal(row, "departure_terminal_" + idx),
+        arrival_terminal: fieldVal(row, "arrival_terminal_" + idx),
         date: fieldVal(row, "date_" + idx),
         deptime: fieldVal(row, "deptime_" + idx),
         arrtime: fieldVal(row, "arrtime_" + idx)
@@ -1014,6 +1060,19 @@
       cabin: form.cabin.value.trim(),
       baggage: form.baggage.value.trim(),
       pnr: form.pnr.value.trim(),
+      ticket_numbers: form.ticket_numbers.value.trim(),
+      issue_date: form.issue_date.value || todayISO(),
+      issuing_airline: form.issuing_airline.value.trim(),
+      booking_status: form.booking_status.value.trim(),
+      fare_basis: form.fare_basis.value.trim(),
+      base_fare: form.base_fare.value ? parseFloat(form.base_fare.value) : null,
+      taxes: form.taxes.value ? parseFloat(form.taxes.value) : null,
+      total_paid: form.total_paid.value ? parseFloat(form.total_paid.value) : null,
+      currency: (form.currency.value || "AED").toUpperCase(),
+      payment_status: form.payment_status.value.trim(),
+      payment_method: form.payment_method.value.trim(),
+      airline_locator: form.airline_locator.value.trim(),
+      airline_rules: form.airline_rules.value.trim(),
       extras: gatherAddonChecks(form, "flight_addon")
     };
   }
@@ -1036,6 +1095,42 @@
       "<h2>Flight details</h2>" +
       "<table><thead><tr><th>Leg</th><th>Flight</th><th>Route</th><th>Date</th><th>Time</th></tr></thead><tbody>" + legRows + "</tbody></table>" +
       '<div class="box"><p class="note" style="margin:0">Please arrive at the airport at least 3 hours before departure for international flights. Carry a valid passport/visa as required for your destination. Contact Kridiya Travel immediately if any flight time changes.</p></div>'
+    );
+  }
+
+  function renderIssuedFlight(data, docNumber, tripLabel) {
+    const legRows = data.legs.map(function (l, i) {
+      const carrier = esc(l.airline) + " " + esc(l.flightno) + (l.operated_by ? "<br><small>Operated by " + esc(l.operated_by) + "</small>" : "");
+      const route = esc(l.from) + " &rarr; " + esc(l.to) +
+        (l.departure_terminal || l.arrival_terminal ? "<br><small>" + esc(l.departure_terminal ? "Dep " + l.departure_terminal : "") + esc(l.departure_terminal && l.arrival_terminal ? " / " : "") + esc(l.arrival_terminal ? "Arr " + l.arrival_terminal : "") + "</small>" : "");
+      return (
+        "<tr><td>" + (i + 1) + "</td><td>" + carrier + "</td><td>" + route +
+        "</td><td>" + fmtDate(l.date) + "</td><td>" + esc(l.deptime) + " &ndash; " + esc(l.arrtime) + "</td></tr>"
+      );
+    }).join("");
+    return (
+      letterheadHTML("E-Ticket — " + tripLabel + " Flight", docNumber, data.issue_date || todayISO()) +
+      '<div class="kv"><span class="k">Passenger(s)</span><span class="v">' + nl2br(data.passengers) + "</span>" +
+        (data.ticket_numbers ? '<span class="k">E-ticket number(s)</span><span class="v">' + nl2br(data.ticket_numbers) + "</span>" : "") +
+        '<span class="k">Class</span><span class="v">' + esc(data.cabin) + "</span>" +
+        (data.issuing_airline ? '<span class="k">Issuing airline</span><span class="v">' + esc(data.issuing_airline) + "</span>" : "") +
+        (data.booking_status ? '<span class="k">Booking status</span><span class="v">' + esc(data.booking_status) + "</span>" : "") +
+        (data.fare_basis ? '<span class="k">Booking class / fare basis</span><span class="v">' + esc(data.fare_basis) + "</span>" : "") +
+        (data.baggage ? '<span class="k">Baggage</span><span class="v">' + esc(data.baggage) + "</span>" : "") +
+        (data.extras && data.extras.length ? '<span class="k">Extras included</span><span class="v">' + esc(data.extras.join(", ")) + "</span>" : "") +
+        (data.pnr ? '<span class="k">Airline PNR</span><span class="v">' + esc(data.pnr) + "</span>" : "") +
+        (data.airline_locator ? '<span class="k">Airline record locator</span><span class="v">' + esc(data.airline_locator) + "</span>" : "") +
+        (data.base_fare != null ? '<span class="k">Base fare</span><span class="v">' + money(data.base_fare, data.currency) + "</span>" : "") +
+        (data.taxes != null ? '<span class="k">Taxes / fees</span><span class="v">' + money(data.taxes, data.currency) + "</span>" : "") +
+        (data.total_paid != null ? '<span class="k">Total paid</span><span class="v">' + money(data.total_paid, data.currency) + "</span>" : "") +
+        (data.payment_status ? '<span class="k">Payment status</span><span class="v">' + esc(data.payment_status) + "</span>" : "") +
+        (data.payment_method ? '<span class="k">Payment method</span><span class="v">' + esc(data.payment_method) + "</span>" : "") +
+        (linkedEnquiry ? '<span class="k">Kridiya reference</span><span class="v">' + esc(linkedEnquiry.reference) + "</span>" : "") +
+      "</div>" +
+      "<h2>Flight details</h2>" +
+      "<table><thead><tr><th>Leg</th><th>Flight</th><th>Route</th><th>Date</th><th>Time</th></tr></thead><tbody>" + legRows + "</tbody></table>" +
+      (data.airline_rules ? "<h2>Change / cancellation / no-show rules</h2><p class='note'>" + nl2br(data.airline_rules) + "</p>" : "") +
+      '<div class="box"><p class="note" style="margin:0">This is an issued e-ticket itinerary. Boarding pass barcode or QR code is provided by the airline during check-in, not generated by Kridiya Travel.</p></div>'
     );
   }
 
@@ -1334,57 +1429,57 @@
     eticket_flight_oneway: {
       build: function (m) { buildFormQuotation(m, "flight", "oneway"); },
       gather: gatherQuotation,
-      render: function (d, n) { return Array.isArray(d.options) ? renderQuotation(d, n, "E-Ticket — One-way Flight Options") : renderFlight(d, n, "One-way"); }
+      render: function (d, n) { return Array.isArray(d.options) ? renderQuotation(d, n, "Flight Quote - One-way Proposed Itinerary") : renderIssuedFlight(d, n, "One-way"); }
     },
     eticket_flight_roundtrip: {
       build: function (m) { buildFormQuotation(m, "flight", "roundtrip"); },
       gather: gatherQuotation,
-      render: function (d, n) { return Array.isArray(d.options) ? renderQuotation(d, n, "E-Ticket — Round-trip Flight Options") : renderFlight(d, n, "Round-trip"); }
+      render: function (d, n) { return Array.isArray(d.options) ? renderQuotation(d, n, "Flight Quote - Round-trip Proposed Itinerary") : renderIssuedFlight(d, n, "Round-trip"); }
     },
     eticket_flight_multicity: {
       build: function (m) { buildFormQuotation(m, "flight", "multicity"); },
       gather: gatherQuotation,
-      render: function (d, n) { return Array.isArray(d.options) ? renderQuotation(d, n, "E-Ticket — Multi-city Flight Options") : renderFlight(d, n, "Multi-city"); }
+      render: function (d, n) { return Array.isArray(d.options) ? renderQuotation(d, n, "Flight Quote - Multi-city Proposed Itinerary") : renderIssuedFlight(d, n, "Multi-city"); }
     },
     eticket_hotel: {
       build: function (m) { buildFormQuotation(m, "hotel"); },
       gather: gatherQuotation,
-      render: function (d, n) { return Array.isArray(d.options) ? renderQuotation(d, n, "E-Ticket — Hotel Options") : renderHotel(d, n); }
+      render: function (d, n) { return Array.isArray(d.options) ? renderQuotation(d, n, "Hotel Quote - Stay Options") : renderHotel(d, n); }
     },
     eticket_visa: {
       build: function (m) { buildFormQuotation(m, "visa"); },
       gather: gatherQuotation,
-      render: function (d, n) { return Array.isArray(d.options) ? renderQuotation(d, n, "E-Ticket — Visa Options") : renderVisa(d, n); }
+      render: function (d, n) { return Array.isArray(d.options) ? renderQuotation(d, n, "Visa Quote - Service Options") : renderVisa(d, n); }
     },
     eticket_holiday: {
       build: function (m) { buildFormQuotation(m, "holiday"); },
       gather: gatherQuotation,
-      render: function (d, n) { return Array.isArray(d.options) ? renderQuotation(d, n, "E-Ticket — Holiday Package Options") : renderHoliday(d, n); }
+      render: function (d, n) { return Array.isArray(d.options) ? renderQuotation(d, n, "Holiday Quote - Package Options") : renderHoliday(d, n); }
     },
     eticket_umrah: {
       build: function (m) { buildFormQuotation(m, "umrah"); },
       gather: gatherQuotation,
-      render: function (d, n) { return Array.isArray(d.options) ? renderQuotation(d, n, "E-Ticket — Umrah Package Options") : renderUmrah(d, n); }
+      render: function (d, n) { return Array.isArray(d.options) ? renderQuotation(d, n, "Umrah Quote - Package Options") : renderUmrah(d, n); }
     },
     eticket_cruise: {
       build: function (m) { buildFormQuotation(m, "cruise"); },
       gather: gatherQuotation,
-      render: function (d, n) { return Array.isArray(d.options) ? renderQuotation(d, n, "E-Ticket — Cruise Package Options") : renderCruise(d, n); }
+      render: function (d, n) { return Array.isArray(d.options) ? renderQuotation(d, n, "Cruise Quote - Package Options") : renderCruise(d, n); }
     },
     eticket_transfer: {
       build: function (m) { buildFormQuotation(m, "transfer"); },
       gather: gatherQuotation,
-      render: function (d, n) { return renderQuotation(d, n, "E-Ticket — Transfer Options"); }
+      render: function (d, n) { return renderQuotation(d, n, "Transfer Quote - Service Options"); }
     },
     eticket_insurance: {
       build: function (m) { buildFormQuotation(m, "insurance"); },
       gather: gatherQuotation,
-      render: function (d, n) { return renderQuotation(d, n, "E-Ticket — Travel Insurance Options"); }
+      render: function (d, n) { return renderQuotation(d, n, "Travel Insurance Quote - Policy Options"); }
     },
     eticket_other: {
       build: function (m) { buildFormQuotation(m, "other"); },
       gather: gatherQuotation,
-      render: function (d, n) { return renderQuotation(d, n, "E-Ticket — Travel Service Options"); }
+      render: function (d, n) { return renderQuotation(d, n, "Travel Service Quote - Options"); }
     },
     cancellation: { build: buildFormCancellation, gather: gatherCancellation, render: renderCancellation },
     visa_rejection: { build: buildFormRejection, gather: gatherRejection, render: renderRejection }
