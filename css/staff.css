@@ -2473,6 +2473,14 @@ textarea,
   border-radius: 8px;
   background: var(--surface);
 }
+.signature-preview table {
+  max-width: 100%;
+}
+#sig-preview-wrap .section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
 
 .customer-search-field {
   flex: 1 1 320px;

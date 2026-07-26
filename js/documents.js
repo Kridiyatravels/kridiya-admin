@@ -1020,32 +1020,86 @@
     toast("Draft preview only — nothing saved. Use Save & Print to issue it.");
   }
 
-  function buildSignatureHTML(name, title) {
+  function businessMailIdentityData() {
+    const phone = (document.getElementById("sig-phone") && document.getElementById("sig-phone").value.trim()) || "+971 50 941 3873";
+    const email = (document.getElementById("sig-email") && document.getElementById("sig-email").value.trim()) || "info@kridiyatravel.com";
+    return {
+      name: (document.getElementById("sig-name") && document.getElementById("sig-name").value.trim()) || "Kridiya Travel",
+      title: (document.getElementById("sig-title") && document.getElementById("sig-title").value.trim()) || "Travel Consultant",
+      phone: phone,
+      phoneHref: phone.replace(/[^\d+]/g, ""),
+      email: email,
+      website: "kridiyatravel.com",
+      legal: settings.legal_name || "KRIDIYA Travel and Tourism FZ-LLC",
+      address: "Ras Al Khaimah, United Arab Emirates"
+    };
+  }
+
+  function buildSignatureHTML(data) {
     return (
-      '<table cellpadding="0" cellspacing="0" border="0" style="font-family:Arial,Helvetica,sans-serif;color:#2b2b2b;border-collapse:collapse">' +
+      '<table cellpadding="0" cellspacing="0" border="0" role="presentation" style="font-family:Arial,Helvetica,sans-serif;color:#2b2b2b;border-collapse:collapse;max-width:620px">' +
         "<tr>" +
-          '<td style="padding-right:14px;border-right:2px solid #c9601c;vertical-align:middle">' +
-            '<img src="' + LOGO_URL + '" width="54" height="54" alt="Kridiya Travel" style="display:block;border:0">' +
+          '<td style="padding-right:16px;border-right:3px solid #c9601c;vertical-align:middle">' +
+            '<img src="' + LOGO_URL + '" width="64" height="64" alt="Kridiya Travel" style="display:block;border:0;width:64px;height:64px;object-fit:contain">' +
           "</td>" +
-          '<td style="padding-left:14px;vertical-align:middle">' +
-            '<div style="font-size:15px;font-weight:700;color:#1a1a1a">' + esc(name) + "</div>" +
-            '<div style="font-size:12.5px;color:#a3480f;font-weight:600;margin-top:1px">' + esc(title) + " · " + esc(settings.legal_name) + "</div>" +
-            '<div style="font-size:12px;color:#555;margin-top:6px;line-height:1.6">' +
-              '<a href="tel:+971509413873" style="color:#555;text-decoration:none">+971 50 941 3873</a> &nbsp;&middot;&nbsp; ' +
-              '<a href="mailto:info@kridiyatravel.com" style="color:#555;text-decoration:none">info@kridiyatravel.com</a> &nbsp;&middot;&nbsp; ' +
-              '<a href="https://kridiyatravel.com" style="color:#555;text-decoration:none">kridiyatravel.com</a>' +
-              "<br>Ras Al Khaimah, United Arab Emirates" +
+          '<td style="padding-left:16px;vertical-align:middle">' +
+            '<div style="font-size:16px;font-weight:700;color:#111827;line-height:1.25">' + esc(data.name) + "</div>" +
+            '<div style="font-size:13px;color:#a3480f;font-weight:700;margin-top:2px;line-height:1.35">' + esc(data.title) + " | " + esc(data.legal) + "</div>" +
+            '<div style="font-size:12px;color:#4b5563;margin-top:7px;line-height:1.65">' +
+              '<a href="tel:' + esc(data.phoneHref) + '" style="color:#4b5563;text-decoration:none">' + esc(data.phone) + '</a> &nbsp;|&nbsp; ' +
+              '<a href="mailto:' + esc(data.email) + '" style="color:#4b5563;text-decoration:none">' + esc(data.email) + '</a> &nbsp;|&nbsp; ' +
+              '<a href="https://kridiyatravel.com" style="color:#4b5563;text-decoration:none">' + esc(data.website) + "</a>" +
+              "<br>" + esc(data.address) +
             "</div>" +
-            '<div style="font-size:11px;color:#999;margin-top:6px">' +
-              '<a href="https://www.instagram.com/kridiyatravel" style="color:#999;text-decoration:none">Instagram</a> &nbsp;&middot;&nbsp; ' +
-              '<a href="https://www.facebook.com/profile.php?id=61592086520680" style="color:#999;text-decoration:none">Facebook</a>' +
+            '<div style="font-size:11px;color:#6b7280;margin-top:7px;line-height:1.5">' +
+              '<span style="color:#a3480f;font-weight:700">Your Journey, Our Passion.</span> &nbsp;|&nbsp; ' +
+              '<a href="https://www.instagram.com/kridiyatravel" style="color:#6b7280;text-decoration:none">Instagram</a> &nbsp;|&nbsp; ' +
+              '<a href="https://www.facebook.com/profile.php?id=61592086520680" style="color:#6b7280;text-decoration:none">Facebook</a>' +
             "</div>" +
           "</td>" +
         "</tr>" +
+        '<tr><td colspan="2" style="padding-top:10px;font-size:10.5px;color:#8a8f98;line-height:1.45">This email and any attachments are confidential and intended only for the named recipient. Travel fares, availability, visa rules, supplier terms, and refund timelines may change until booking/payment/authority confirmation is complete.</td></tr>' +
       "</table>"
     );
   }
 
+  function buildReplySignatureHTML(data) {
+    return (
+      '<table cellpadding="0" cellspacing="0" border="0" role="presentation" style="font-family:Arial,Helvetica,sans-serif;color:#2b2b2b;border-collapse:collapse;max-width:520px">' +
+        '<tr><td style="vertical-align:middle;padding-right:10px"><img src="' + LOGO_URL + '" width="38" height="38" alt="Kridiya Travel" style="display:block;border:0;width:38px;height:38px"></td>' +
+        '<td style="vertical-align:middle;border-left:2px solid #c9601c;padding-left:10px">' +
+          '<div style="font-size:14px;font-weight:700;color:#111827;line-height:1.25">' + esc(data.name) + '</div>' +
+          '<div style="font-size:12px;color:#a3480f;font-weight:700">' + esc(data.title) + ' | Kridiya Travel</div>' +
+          '<div style="font-size:11.5px;color:#4b5563;margin-top:4px"><a href="tel:' + esc(data.phoneHref) + '" style="color:#4b5563;text-decoration:none">' + esc(data.phone) + '</a> | <a href="https://kridiyatravel.com" style="color:#4b5563;text-decoration:none">kridiyatravel.com</a></div>' +
+        "</td></tr>" +
+      "</table>"
+    );
+  }
+
+  function buildMailBannerHTML(data) {
+    return (
+      '<table cellpadding="0" cellspacing="0" border="0" role="presentation" style="font-family:Arial,Helvetica,sans-serif;border-collapse:collapse;width:100%;max-width:680px;background:#fff8ef;border:1px solid #ead7bf">' +
+        '<tr><td style="padding:16px 18px;background:#ffffff;border-bottom:3px solid #c9601c">' +
+          '<table cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse;width:100%"><tr>' +
+            '<td style="vertical-align:middle;width:58px"><img src="' + LOGO_URL + '" width="58" height="58" alt="Kridiya Travel" style="display:block;border:0;width:58px;height:58px"></td>' +
+            '<td style="vertical-align:middle;padding-left:12px"><div style="font-size:18px;font-weight:800;color:#a3480f;line-height:1.25">KRIDIYA Travel and Tourism FZ-LLC</div><div style="font-size:12px;color:#4b5563;margin-top:3px">Your Journey, Our Passion. | Flights | Visas | Hotels | Holidays | Umrah</div></td>' +
+          "</tr></table>" +
+        "</td></tr>" +
+        '<tr><td style="padding:14px 18px;font-size:12px;color:#4b5563;line-height:1.65">' +
+          '<b style="color:#111827">Contact:</b> <a href="tel:' + esc(data.phoneHref) + '" style="color:#4b5563;text-decoration:none">' + esc(data.phone) + '</a> | <a href="mailto:' + esc(data.email) + '" style="color:#4b5563;text-decoration:none">' + esc(data.email) + '</a> | <a href="https://kridiyatravel.com" style="color:#4b5563;text-decoration:none">kridiyatravel.com</a><br>' +
+          '<span style="font-size:11px;color:#6b7280">Travel documents, fares, booking deadlines, visa decisions, and refund rules depend on the relevant airline, hotel, supplier, authority, or payment provider.</span>' +
+        "</td></tr>" +
+      "</table>"
+    );
+  }
+
+  function buildEmailIdentityHTML() {
+    const data = businessMailIdentityData();
+    const style = (document.getElementById("sig-style") && document.getElementById("sig-style").value) || "full";
+    if (style === "reply") return buildReplySignatureHTML(data);
+    if (style === "banner") return buildMailBannerHTML(data);
+    return buildSignatureHTML(data);
+  }
   async function boot() {
     const gate = document.getElementById("doc-gate");
     const app = document.getElementById("doc-app");
@@ -1093,9 +1147,7 @@
     document.getElementById("settings-save").addEventListener("click", saveSettings);
 
     document.getElementById("sig-build").addEventListener("click", function () {
-      const name = document.getElementById("sig-name").value.trim() || "Kridiya Travel";
-      const title = document.getElementById("sig-title").value.trim() || "Travel Consultant";
-      const html = buildSignatureHTML(name, title);
+      const html = buildEmailIdentityHTML();
       document.getElementById("sig-preview").innerHTML = html;
       document.getElementById("sig-preview-wrap").hidden = false;
     });
@@ -1104,17 +1156,35 @@
       try {
         const item = new ClipboardItem({ "text/html": new Blob([html], { type: "text/html" }) });
         await navigator.clipboard.write([item]);
-        toast("Signature copied — paste it into Outlook.");
+        toast("Email identity copied. Paste it into Outlook.");
       } catch (e) {
         try {
           await navigator.clipboard.writeText(html);
-          toast("Copied as HTML source — paste into an HTML editor if formatting is lost.");
+          toast("Copied as HTML source. Use the source copy if formatting is lost.");
         } catch (e2) {
-          toast("Could not copy automatically — select the signature above and copy manually.");
+          toast("Could not copy automatically. Select the preview and copy manually.");
         }
       }
     });
-
+    document.getElementById("sig-copy-source").addEventListener("click", async function () {
+      const html = document.getElementById("sig-preview").innerHTML;
+      try {
+        await navigator.clipboard.writeText(html);
+        toast("HTML source copied.");
+      } catch (e) {
+        toast("Could not copy source automatically.");
+      }
+    });
+    document.getElementById("sig-reset").addEventListener("click", function () {
+      document.getElementById("sig-name").value = "Indirani Alagarsamy";
+      document.getElementById("sig-title").value = "Founder";
+      document.getElementById("sig-phone").value = "+971 50 941 3873";
+      document.getElementById("sig-email").value = "info@kridiyatravel.com";
+      document.getElementById("sig-style").value = "full";
+      document.getElementById("sig-preview").innerHTML = buildEmailIdentityHTML();
+      document.getElementById("sig-preview-wrap").hidden = false;
+      toast("Email identity fields reset.");
+    });
     const p = new URLSearchParams(location.search);
     const enquiryId = p.get("enquiry");
     if (enquiryId) {

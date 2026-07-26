@@ -11,7 +11,7 @@
 <link rel="icon" href="https://kridiyatravel.com/assets/favicon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="https://kridiyatravel.com/assets/favicon-180.png">
 <link rel="stylesheet" href="https://kridiyatravel.com/css/styles.css">
-<link rel="stylesheet" href="css/staff.css?v=20260726j">
+<link rel="stylesheet" href="css/staff.css?v=20260726k">
 </head>
 <body data-page="documents">
 <header id="site-header" class="site-header"></header>
@@ -103,17 +103,24 @@
 
         <div class="account-main">
           <div class="account-section-head">
-            <div><h2>Email signature</h2><p>Built for Outlook — paste it into Outlook &rarr; Settings &rarr; Mail &rarr; Compose and reply &rarr; Signatures.</p></div>
+            <div><h2>Business email identity</h2><p>Outlook-ready signature, reply signature, and branded mail banner with Kridiya logo.</p></div>
           </div>
           <div class="field-row">
             <div class="field col-6"><label>YOUR NAME</label><input id="sig-name" value="Indirani Alagarsamy"></div>
             <div class="field col-6"><label>YOUR TITLE</label><input id="sig-title" value="Founder"></div>
+            <div class="field col-4"><label>DIRECT PHONE</label><input id="sig-phone" value="+971 50 941 3873"></div>
+            <div class="field col-4"><label>EMAIL</label><input id="sig-email" value="info@kridiyatravel.com"></div>
+            <div class="field col-4"><label>STYLE</label><select id="sig-style"><option value="full">Full signature</option><option value="reply">Compact reply signature</option><option value="banner">Business mail banner</option></select></div>
           </div>
-          <button type="button" id="sig-build" class="btn btn-primary section-follow-action">Build signature</button>
+          <button type="button" id="sig-build" class="btn btn-primary section-follow-action">Build email identity</button>
           <div id="sig-preview-wrap" hidden>
             <div id="sig-preview" class="signature-preview"></div>
-            <button type="button" id="sig-copy" class="btn btn-outline section-follow-action">Copy HTML to clipboard</button>
-            <p class="form-note">In Outlook: paste directly into the signature editor box (it keeps formatting). If pasting as plain text, use "Copy HTML" and paste into an HTML-aware editor first.</p>
+            <div class="section-actions section-follow-action">
+              <button type="button" id="sig-copy" class="btn btn-outline">Copy formatted HTML</button>
+              <button type="button" id="sig-copy-source" class="btn btn-outline">Copy HTML source</button>
+              <button type="button" id="sig-reset" class="btn btn-outline">Reset fields</button>
+            </div>
+            <p class="form-note">In Outlook: paste the formatted copy into Settings &rarr; Mail &rarr; Compose and reply &rarr; Signatures. Use the HTML source copy only if an editor asks for raw HTML.</p>
           </div>
         </div>
       </div>
@@ -125,6 +132,6 @@
 <script src="js/staff-common.js?v=20260726c" defer></script>
 <script src="js/airports.js" defer></script>
 <script src="js/airport-ac.js" defer></script>
-<script src="js/documents.js?v=20260726e" defer></script>
+<script src="js/documents.js?v=20260726f" defer></script>
 </body>
 </html>
