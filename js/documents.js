@@ -200,9 +200,9 @@
 
   const DOC_KINDS = [
     { id: "invoice", label: "Invoice", docType: "invoice" },
-    { id: "eticket_flight_oneway", label: "E-Ticket — Flight (one-way)", docType: "eticket", service: "flight", trip: "One-way", nameField: "passengers" },
-    { id: "eticket_flight_roundtrip", label: "E-Ticket — Flight (round-trip)", docType: "eticket", service: "flight", trip: "Round-trip", nameField: "passengers" },
-    { id: "eticket_flight_multicity", label: "E-Ticket — Flight (multi-city)", docType: "eticket", service: "flight", trip: "Multi-city", nameField: "passengers" },
+    { id: "eticket_flight_oneway", label: "Flight - One-way", docType: "eticket", service: "flight", trip: "One-way", nameField: "passengers" },
+    { id: "eticket_flight_roundtrip", label: "Flight - Round-trip", docType: "eticket", service: "flight", trip: "Round-trip", nameField: "passengers" },
+    { id: "eticket_flight_multicity", label: "Flight - Multi-city", docType: "eticket", service: "flight", trip: "Multi-city", nameField: "passengers" },
     { id: "eticket_hotel", label: "E-Ticket — Hotel voucher", docType: "eticket", service: "hotel", nameField: "guests" },
     { id: "eticket_visa", label: "E-Ticket — Visa confirmation", docType: "eticket", service: "visa", nameField: "applicants" },
     { id: "eticket_holiday", label: "E-Ticket — Holiday package", docType: "eticket", service: "holiday", nameField: "travellers" },
@@ -451,6 +451,10 @@
     const el = row.querySelector('[name="' + name + '"]');
     return el ? el.value.trim() : "";
   }
+  function namedVal(scope, name) {
+    const el = scope.querySelector('[name="' + name + '"]');
+    return el ? el.value.trim() : "";
+  }
   /* Safe numeric read: never returns NaN. */
   function num(v, fallback) {
     const n = parseFloat(v);
@@ -550,6 +554,7 @@
         '<div class="field col-4"><label>BASE FARE / PERSON</label><input data-field="base_fare" type="number" min="0" step="0.01" placeholder="0.00"></div>' +
         '<div class="field col-4"><label>TAXES / FEES / PERSON</label><input data-field="taxes" type="number" min="0" step="0.01" placeholder="0.00"></div>' +
         '<div class="field col-4"><label>PAYMENT DEADLINE</label><input data-field="payment_deadline" type="datetime-local"></div>' +
+        '<div class="field col-4"><label>CUSTOMER DECISION</label><select data-field="customer_decision"><option value="offered">Offered</option><option value="selected">Selected by customer</option><option value="not_selected">Not selected</option></select></div>' +
         '<div class="field col-12"><label>OPTIONAL EXTRAS INCLUDED</label><div class="doc-addon-checks">' +
           PRESET_ADDONS.map(function (extra) {
             return '<label class="doc-addon-check"><input type="checkbox" data-flight-extra value="' + esc(extra) + '"> ' + esc(extra) + "</label>";
@@ -567,6 +572,7 @@
         '<div class="field col-6"><label>OPTION LABEL</label><input data-field="label" placeholder="e.g. Best value / Flexible / Premium"></div>' +
         '<div class="field col-3"><label>PRICE</label><input data-field="price" type="number" min="0" step="0.01" placeholder="0.00"></div>' +
         '<div class="field col-3"><label>PRICE BASIS</label><select data-field="price_basis"><option value="total">Total</option><option value="per person">Per person</option><option value="per applicant">Per applicant</option><option value="per room">Per room</option><option value="per night">Per night</option><option value="per vehicle">Per vehicle</option><option value="per policy">Per policy</option></select></div>' +
+        '<div class="field col-4"><label>CUSTOMER DECISION</label><select data-field="customer_decision"><option value="offered">Offered</option><option value="selected">Selected by customer</option><option value="not_selected">Not selected</option></select></div>' +
         preset.fields.map(quoteFieldHTML).join("") +
       "</div>"
     );
@@ -682,7 +688,7 @@
     };
   }
   function gatherQuotation(form) {
-    const service = form.quote_service.value;
+    const service = namedVal(form, "quote_service") || "flight";
     const preset = QUOTE_SERVICE_PRESETS[service] || QUOTE_SERVICE_PRESETS.other;
     const options = Array.from(form.querySelectorAll(".doc-quote-option")).map(function (option, index) {
       const price = num(quoteOptionValue(option, "price"));
@@ -721,6 +727,7 @@
           base_fare: quoteOptionValue(option, "base_fare"),
           taxes: quoteOptionValue(option, "taxes"),
           payment_deadline: quoteOptionValue(option, "payment_deadline"),
+          customer_decision: quoteOptionValue(option, "customer_decision") || "offered",
           airline_rules: quoteOptionValue(option, "airline_rules"),
           extras: Array.from(option.querySelectorAll("[data-flight-extra]:checked")).map(function (input) { return input.value; }),
           journeys: journeys
@@ -733,20 +740,23 @@
         label: quoteOptionValue(option, "label") || fallback || preset.optionLabel + " " + (index + 1),
         price: price,
         price_basis: quoteOptionValue(option, "price_basis") || "total",
+        customer_decision: quoteOptionValue(option, "customer_decision") || "offered",
         details: details
       };
     }).sort(function (a, b) { return a.price - b.price; });
     if (!options.length) throw new Error("Add at least one quote option.");
     return {
-      customer_name: form.customer_name.value.trim(),
-      customer_email: form.customer_email.value.trim(),
-      customer_phone: form.customer_phone.value.trim(),
+      customer_name: namedVal(form, "customer_name"),
+      customer_email: namedVal(form, "customer_email"),
+      customer_phone: namedVal(form, "customer_phone"),
       service: service,
-      travellers: form.travellers.value.trim(),
-      currency: (form.currency.value || "AED").toUpperCase(),
-      valid_until: form.valid_until.value,
-      terms: form.terms.value.trim(),
+      travellers: namedVal(form, "travellers"),
+      currency: (namedVal(form, "currency") || "AED").toUpperCase(),
+      valid_until: namedVal(form, "valid_until"),
+      terms: namedVal(form, "terms"),
       reference: prefillRef(),
+      document_purpose: "quote",
+      document_type_override: "quotation",
       options: options,
       total: options[0].price
     };
@@ -762,6 +772,11 @@
     const minutes = Math.round((new Date(current.departure) - new Date(previous.arrival)) / 60000);
     if (!isFinite(minutes) || minutes < 0) return "";
     return Math.floor(minutes / 60) + "h " + (minutes % 60) + "m";
+  }
+  function quoteDecisionLabel(value) {
+    if (value === "selected") return "Selected by customer";
+    if (value === "not_selected") return "Not selected";
+    return "Offered";
   }
   function renderQuoteFlightOption(option, optionNumber) {
     const journeys = option.journeys.map(function (journey) {
@@ -786,6 +801,7 @@
       '<section class="print-quote-option">' +
         '<div class="print-quote-option-head"><div><span>Option ' + optionNumber + '</span><b>' + esc(option.label) + '</b></div><strong>' + money(option.price, option.currency) + " / person</strong></div>" +
         '<div class="kv quote-option-meta"><span class="k">Trip</span><span class="v">' + esc(option.trip_type === "oneway" ? "One way" : option.trip_type === "multicity" ? "Multi-city" : "Round trip") + "</span>" +
+          '<span class="k">Customer decision</span><span class="v">' + esc(quoteDecisionLabel(option.customer_decision)) + "</span>" +
           (option.cabin ? '<span class="k">Class</span><span class="v">' + esc(option.cabin) + "</span>" : "") +
           (option.fare_basis ? '<span class="k">Booking class / fare basis</span><span class="v">' + esc(option.fare_basis) + "</span>" : "") +
           (option.booking_status ? '<span class="k">Booking status</span><span class="v">' + esc(option.booking_status) + "</span>" : "") +
@@ -810,7 +826,7 @@
     return (
       '<section class="print-quote-option">' +
         '<div class="print-quote-option-head"><div><span>Option ' + optionNumber + '</span><b>' + esc(option.label) + '</b></div><strong>' + money(option.price, currency) + (option.price_basis && option.price_basis !== "total" ? " / " + esc(option.price_basis.replace(/^per /, "")) : " total") + "</strong></div>" +
-        '<div class="kv quote-option-meta">' + details + "</div>" +
+        '<div class="kv quote-option-meta"><span class="k">Customer decision</span><span class="v">' + esc(quoteDecisionLabel(option.customer_decision)) + "</span>" + details + "</div>" +
       "</section>"
     );
   }
@@ -840,6 +856,7 @@
       "<h2>Options at a glance</h2>" +
       "<table><thead><tr><th>Option</th><th>Provider / package</th><th>Position</th><th>Price</th></tr></thead><tbody>" + summary + "</tbody></table>" +
       detail +
+      '<div class="box"><p class="note" style="margin:0">This is a proposed itinerary/quote and not an issued ticket, voucher, visa approval, insurance policy, or supplier confirmation. Fare, seat, room, cabin, visa, insurance, package and service availability may change until payment and final supplier confirmation.</p></div>' +
       (data.terms ? "<h2>Important terms</h2><p class='note'>" + nl2br(data.terms) + "</p>" : "")
     );
   }
@@ -989,6 +1006,29 @@
   }
 
   /* ---- Flight e-ticket (one-way / round-trip / multi-city share the same builder, leg count differs) ---- */
+  function buildFormFlightDocument(mount, fixedTripType, legCount) {
+    mount.innerHTML =
+      '<div class="field-row">' +
+        '<div class="field col-6"><label>DOCUMENT PURPOSE</label><select name="document_purpose" id="flight-document-purpose"><option value="quote">Quote / Proposed itinerary</option><option value="issued">Issued e-ticket</option></select></div>' +
+      "</div>" +
+      '<div id="flight-document-fields"></div>';
+    const purposeSel = mount.querySelector('[name="document_purpose"]');
+    const inner = mount.querySelector("#flight-document-fields");
+    function renderPurposeForm() {
+      if (purposeSel.value === "issued") {
+        buildFormFlight(inner, legCount);
+      } else {
+        buildFormQuotation(inner, "flight", fixedTripType);
+      }
+    }
+    purposeSel.addEventListener("change", renderPurposeForm);
+    renderPurposeForm();
+  }
+  function gatherFlightDocument(form) {
+    const purpose = namedVal(form, "document_purpose") || "quote";
+    if (purpose === "issued") return gatherFlight(form);
+    return gatherQuotation(form);
+  }
   function buildFormFlight(mount, legCount) {
     mount.innerHTML =
       '<div id="rep-legs"></div>' +
@@ -1054,27 +1094,41 @@
         arrtime: fieldVal(row, "arrtime_" + idx)
       };
     }).filter(function (l) { return l.from || l.to; });
-    return {
+    const data = {
       legs: legs,
-      passengers: form.passengers.value.trim(),
-      cabin: form.cabin.value.trim(),
-      baggage: form.baggage.value.trim(),
-      pnr: form.pnr.value.trim(),
-      ticket_numbers: form.ticket_numbers.value.trim(),
-      issue_date: form.issue_date.value || todayISO(),
-      issuing_airline: form.issuing_airline.value.trim(),
-      booking_status: form.booking_status.value.trim(),
-      fare_basis: form.fare_basis.value.trim(),
-      base_fare: form.base_fare.value ? parseFloat(form.base_fare.value) : null,
-      taxes: form.taxes.value ? parseFloat(form.taxes.value) : null,
-      total_paid: form.total_paid.value ? parseFloat(form.total_paid.value) : null,
-      currency: (form.currency.value || "AED").toUpperCase(),
-      payment_status: form.payment_status.value.trim(),
-      payment_method: form.payment_method.value.trim(),
-      airline_locator: form.airline_locator.value.trim(),
-      airline_rules: form.airline_rules.value.trim(),
+      passengers: namedVal(form, "passengers"),
+      cabin: namedVal(form, "cabin"),
+      baggage: namedVal(form, "baggage"),
+      pnr: namedVal(form, "pnr"),
+      ticket_numbers: namedVal(form, "ticket_numbers"),
+      issue_date: namedVal(form, "issue_date") || todayISO(),
+      issuing_airline: namedVal(form, "issuing_airline"),
+      booking_status: namedVal(form, "booking_status"),
+      fare_basis: namedVal(form, "fare_basis"),
+      base_fare: namedVal(form, "base_fare") ? parseFloat(namedVal(form, "base_fare")) : null,
+      taxes: namedVal(form, "taxes") ? parseFloat(namedVal(form, "taxes")) : null,
+      total_paid: namedVal(form, "total_paid") ? parseFloat(namedVal(form, "total_paid")) : null,
+      currency: (namedVal(form, "currency") || "AED").toUpperCase(),
+      payment_status: namedVal(form, "payment_status"),
+      payment_method: namedVal(form, "payment_method"),
+      airline_locator: namedVal(form, "airline_locator"),
+      airline_rules: namedVal(form, "airline_rules"),
       extras: gatherAddonChecks(form, "flight_addon")
     };
+    const missing = [];
+    if (!data.passengers) missing.push("passenger name");
+    if (!data.pnr) missing.push("airline PNR / booking ref");
+    if (!data.ticket_numbers) missing.push("e-ticket number");
+    if (!data.issue_date) missing.push("issue date");
+    if (!data.issuing_airline) missing.push("issuing airline");
+    if (!data.legs.length) missing.push("at least one flight leg");
+    data.legs.forEach(function (leg, index) {
+      if (!leg.from || !leg.to || !leg.date || !leg.deptime) missing.push("complete route/date/time for leg " + (index + 1));
+    });
+    if (missing.length) throw new Error("Issued e-ticket needs: " + missing.join(", ") + ".");
+    data.document_purpose = "issued";
+    data.document_type_override = "eticket";
+    return data;
   }
   function renderFlight(data, docNumber, tripLabel) {
     const legRows = data.legs.map(function (l, i) {
@@ -1427,18 +1481,18 @@
     },
     invoice: { build: buildFormInvoice, gather: gatherInvoice, render: function (d, n) { return renderInvoice(d, n); } },
     eticket_flight_oneway: {
-      build: function (m) { buildFormQuotation(m, "flight", "oneway"); },
-      gather: gatherQuotation,
+      build: function (m) { buildFormFlightDocument(m, "oneway", 1); },
+      gather: gatherFlightDocument,
       render: function (d, n) { return Array.isArray(d.options) ? renderQuotation(d, n, "Flight Quote - One-way Proposed Itinerary") : renderIssuedFlight(d, n, "One-way"); }
     },
     eticket_flight_roundtrip: {
-      build: function (m) { buildFormQuotation(m, "flight", "roundtrip"); },
-      gather: gatherQuotation,
+      build: function (m) { buildFormFlightDocument(m, "roundtrip", "round"); },
+      gather: gatherFlightDocument,
       render: function (d, n) { return Array.isArray(d.options) ? renderQuotation(d, n, "Flight Quote - Round-trip Proposed Itinerary") : renderIssuedFlight(d, n, "Round-trip"); }
     },
     eticket_flight_multicity: {
-      build: function (m) { buildFormQuotation(m, "flight", "multicity"); },
-      gather: gatherQuotation,
+      build: function (m) { buildFormFlightDocument(m, "multicity", "multi"); },
+      gather: gatherFlightDocument,
       render: function (d, n) { return Array.isArray(d.options) ? renderQuotation(d, n, "Flight Quote - Multi-city Proposed Itinerary") : renderIssuedFlight(d, n, "Multi-city"); }
     },
     eticket_hotel: {
@@ -1623,7 +1677,7 @@
       const insertResult = await sb
         .from("documents")
         .insert({
-          document_type: kind.docType,
+          document_type: data.document_type_override || kind.docType,
           enquiry_id: linkedEnquiry ? linkedEnquiry.id : null,
           customer_name: customerName,
           customer_email: data.customer_email || prefillEmail() || null,
