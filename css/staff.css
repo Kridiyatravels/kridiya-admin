@@ -57,14 +57,16 @@ body { background: var(--bg); }
 .staff-logo img { border-radius: 8px; }
 .staff-logo span { font-family: var(--font); font-weight: 700; color: var(--ink); font-size: 1rem; letter-spacing: -0.01em; }
 .staff-logo b { font-family: var(--font); font-weight: 800; color: var(--brand-deep); }
-.staff-nav { grid-column: 1 / -1; grid-row: 2; justify-self: center; max-width: 100%; display: flex; flex-wrap: wrap; justify-content: center; gap: 0.2rem; background: var(--surface); padding: 0.32rem 0.45rem; border-radius: 999px; border: 1px solid var(--line); box-shadow: var(--staff-shadow-md); }
+/* Layout only. Appearance (padding/border/radius/shadow/background, wrap,
+   justify-content, gap) is set by the workspace layer below — see the single
+   `.staff-nav` appearance rule in "2026 workspace layout". */
+.staff-nav { grid-column: 1 / -1; grid-row: 2; justify-self: center; max-width: 100%; display: flex; }
 .staff-nav[hidden] { display: none; }
+/* Typography/colour only; size, padding, radius and transition come from the
+   shared header-control rule in the workspace layer. */
 .staff-nav a {
-  flex: 0 0 auto; font-weight: 700; font-size: 0.79rem; color: var(--ink-2); text-decoration: none;
-  padding: 0.36rem 0.6rem; border-radius: 999px; transition: background-color 0.15s, color 0.15s; white-space: nowrap;
+  flex: 0 0 auto; font-weight: 700; color: var(--ink-2); text-decoration: none; white-space: nowrap;
 }
-@media (min-width: 1420px) { .staff-nav a { font-size: 0.82rem; padding: 0.38rem 0.72rem; } }
-.staff-nav a[aria-current="page"] { color: #fff; background: var(--brand-deep); }
 .staff-nav a:not([aria-current="page"]):hover { background: var(--surface-tint); color: var(--brand-deep); }
 .staff-actions { grid-column: 2; grid-row: 1; display: flex; justify-self: end; gap: 0.5rem; align-items: center; position: relative; }
 .staff-actions .btn { min-height: 38px; padding: 0 0.9rem; font-size: 0.82rem; }
@@ -1253,7 +1255,8 @@ body { background: var(--bg); }
    Consolidated navigation: slim bar + All-tools menu +
    Jump palette + Dashboard hub
    ============================================================ */
-.staff-nav-primary { display: flex; flex-wrap: wrap; gap: 0.2rem; align-items: center; }
+/* Layout only — wrap, gap and align-items are set by the workspace layer. */
+.staff-nav-primary { display: flex; }
 
 .staff-tools { position: relative; display: inline-flex; }
 .staff-tools-btn {
@@ -1264,11 +1267,12 @@ body { background: var(--bg); }
 .staff-tools-btn:hover { background: var(--surface-tint); color: var(--brand-deep); }
 .staff-tools-btn[aria-expanded="true"] { background: var(--brand-deep); color: #fff; }
 .staff-tools-caret { width: 16px; height: 16px; fill: currentColor; }
+/* Base box only. Position, size, grid, padding, radius and shadow are owned by
+   the workspace/operations layers below (single source: the `.staff-tools-menu`
+   rule in "Quiet operations workspace"). */
 .staff-tools-menu {
-  position: absolute; top: calc(100% + 8px); right: 0; z-index: 40;
-  width: min(92vw, 620px); background: var(--surface); border: 1px solid var(--line);
-  border-radius: 16px; box-shadow: var(--staff-shadow-md); padding: 0.9rem;
-  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.9rem 1.1rem;
+  z-index: 40; background: var(--surface); border: 1px solid var(--line);
+  display: grid;
 }
 .staff-tools-menu[hidden] { display: none; }
 .tools-group { display: flex; flex-direction: column; gap: 0.15rem; }
@@ -1477,7 +1481,6 @@ main .container,
 
 .staff-nav {
   min-height: 42px;
-  gap: var(--sp-1);
 }
 
 .staff-nav-primary {
@@ -1591,27 +1594,12 @@ main .container,
   border-radius: 8px;
 }
 
-.staff-nav a[aria-current="page"] {
-  color: var(--brand-deep);
-  background: var(--brand-soft);
-}
-
 .staff-jump-btn {
   background: var(--surface);
 }
 
 .staff-tools-menu {
   position: fixed;
-  top: 72px;
-  right: max(1rem, calc((100vw - var(--staff-content)) / 2));
-  width: min(calc(100vw - 2rem), 540px);
-  max-height: calc(100vh - 88px);
-  overflow-y: auto;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem 1.25rem;
-  padding: 1rem;
-  border-radius: 12px;
-  box-shadow: 0 8px 18px oklch(0.2 0.02 40 / 0.13);
 }
 
 .staff-tools-menu a.tools-item {
