@@ -48,6 +48,15 @@
             </div>
             <label class="admin-filter-check"><input type="checkbox" id="flt-security-only"> Security only</label>
             <label class="admin-filter-check"><input type="checkbox" id="flt-event-today"> Today only</label>
+            <div class="booking-sort admin-list-sort" id="activity-sort">
+              <button type="button" class="booking-sort-btn" id="activity-sort-btn" aria-haspopup="true" aria-expanded="false" data-command-label="Sort activity" data-command-desc="Open activity sort menu" data-command-keys="F" data-command-action="focus-filter">Sort: <b>Newest first</b></button>
+              <div class="booking-sort-menu" id="activity-sort-menu" role="menu" hidden>
+                <button type="button" role="menuitemradio" aria-checked="true" class="booking-sort-item active" data-sort="created_desc"><span class="sort-dot"></span><span><b>Newest first</b><small>Latest events</small></span></button>
+                <button type="button" role="menuitemradio" aria-checked="false" class="booking-sort-item" data-sort="created_asc"><span class="sort-dot"></span><span><b>Oldest first</b><small>Earliest events</small></span></button>
+                <button type="button" role="menuitemradio" aria-checked="false" class="booking-sort-item" data-sort="security_first"><span class="sort-dot"></span><span><b>Security first</b><small>Sensitive actions first</small></span></button>
+                <button type="button" role="menuitemradio" aria-checked="false" class="booking-sort-item" data-sort="type_asc"><span class="sort-dot"></span><span><b>Event type</b><small>Grouped alphabetically</small></span></button>
+              </div>
+            </div>
           </div>
         </div>
 

@@ -1288,7 +1288,7 @@ body { background: var(--bg); }
 .cust-card { padding: 0; overflow: hidden; }
 .cust-head {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) 154px 112px 22px;
+  grid-template-columns: 44px minmax(0, 1fr) 96px 22px;
   align-items: center;
   gap: 0.85rem;
   padding: 1rem 1.15rem;
@@ -1301,7 +1301,7 @@ body { background: var(--bg); }
   color: var(--brand-deep, #a3480f); background: var(--brand-soft, #fdf1e4);
 }
 .cust-head-main { flex: 1 1 auto; min-width: 0; }
-.cust-name-line { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; min-width: 0; }
+.cust-name-line { display: flex; align-items: center; flex-wrap: wrap; gap: 0.35rem 0.55rem; min-width: 0; }
 .cust-name-line b { font-size: 1rem; }
 .cust-sub-line {
   max-width: 100%;
@@ -1312,25 +1312,35 @@ body { background: var(--bg); }
   white-space: normal;
   overflow-wrap: anywhere;
 }
+/* Account badges ride inline after the name, so they hug their text. */
 .cust-account-state {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: flex-start;
   gap: 0.35rem;
   min-width: 0;
 }
-.cust-head-meta { display: flex; flex-wrap: wrap; gap: 0.35rem; justify-content: flex-end; min-width: 0; }
+.cust-head-meta {
+  display: grid;
+  grid-auto-flow: row;
+  align-content: center;
+  justify-items: stretch;
+  gap: 0.35rem;
+  min-width: 0;
+}
+/* Chips stretch to their track so every row shares the same left/right edges. */
+.cust-head-meta > .cust-chip { width: 100%; }
 .cust-chip {
   display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 999px;
-  padding: 0.2rem 0.55rem; font-size: 0.72rem; font-weight: 700; color: var(--ink-2); background: var(--surface);
+  padding: 0 0.55rem; font-size: 0.72rem; font-weight: 700; line-height: 1; color: var(--ink-2); background: var(--surface);
   min-width: 86px;
+  min-height: 26px;
   white-space: nowrap;
 }
 .cust-chip-strong { border-color: var(--brand); color: var(--brand-deep, #a3480f); background: var(--brand-soft, #fdf1e4); }
 .cust-badge {
   display: inline-flex; align-items: center; justify-content: center; gap: 0.25rem; border-radius: 999px;
-  padding: 0.15rem 0.5rem; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.02em;
-  min-height: 24px;
+  padding: 0 0.55rem; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.02em; line-height: 1;
+  min-height: 26px;
   white-space: nowrap;
 }
 .cust-badge svg { width: 12px; height: 12px; fill: currentColor; }
@@ -1443,11 +1453,10 @@ body { background: var(--bg); }
 .customer-portal-metrics b { display: block; font-size: 0.9rem; line-height: 1; }
 .customer-portal-metrics small { display: block; margin-top: 0.2rem; color: var(--text-muted); font-size: 0.68rem; font-weight: 700; }
 @media (max-width: 640px) {
+  /* Chip column drops out, so drop its track too instead of leaving a 96px hole. */
+  .cust-head { grid-template-columns: 44px minmax(0, 1fr) 22px; }
   .cust-head-meta { display: none; }
   .cust-kv { grid-template-columns: 110px 1fr; }
-  .cust-account-state {
-    justify-content: flex-start;
-  }
   .cust-line {
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 0.55rem 0.65rem;
@@ -2577,6 +2586,336 @@ textarea,
   max-width: min(420px, calc(100vw - 2rem));
 }
 
+.jump-box {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  box-shadow: var(--staff-shadow-md);
+}
+
+.jump-input-wrap {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 0 var(--sp-4);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.jump-input-wrap svg {
+  width: 18px;
+  height: 18px;
+  fill: var(--text-muted);
+}
+
+.jump-input {
+  border-bottom: 0;
+  padding-inline: 0;
+}
+
+.jump-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.jump-item b,
+.jump-item small {
+  display: block;
+  min-width: 0;
+}
+
+.jump-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.jump-meta kbd {
+  min-width: 24px;
+  padding: 0.18rem 0.42rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--surface-tint);
+  color: var(--ink-2);
+  font: 800 0.68rem/1 var(--font);
+  text-align: center;
+}
+
+.jump-meta em {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.jump-help {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-3);
+  padding: 0.55rem var(--sp-4);
+  border-top: 1px solid var(--line);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.booking-command-bar {
+  display: grid;
+  grid-template-columns: minmax(240px, 1.2fr) minmax(260px, 1fr) auto auto;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+  padding: var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.booking-search-wrap {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: var(--control-md);
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-tint);
+}
+
+.booking-search-wrap svg {
+  width: 17px;
+  height: 17px;
+  fill: var(--text-muted);
+}
+
+.booking-search-wrap .admin-search {
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+}
+
+.booking-search-wrap .admin-search:focus {
+  outline: none;
+}
+
+.booking-filter-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.booking-filter-chip {
+  min-height: 34px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-2);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.booking-filter-chip:hover {
+  border-color: var(--brand);
+  color: var(--brand-deep);
+}
+
+.booking-filter-chip.active {
+  border-color: color-mix(in oklab, var(--brand) 44%, var(--line));
+  background: var(--brand-soft);
+  color: var(--brand-deep);
+}
+
+.booking-sort {
+  position: relative;
+}
+
+.booking-sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: var(--control-md);
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink-2);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.booking-sort-btn svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+.booking-sort-btn:hover,
+.booking-sort-btn[aria-expanded="true"] {
+  border-color: var(--brand);
+  color: var(--brand-deep);
+}
+
+.booking-sort-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: var(--z-dropdown);
+  width: 230px;
+  padding: var(--sp-2);
+  border: 1px solid rgb(255 255 255 / 0.08);
+  border-radius: 8px;
+  background: #2c2b29;
+  box-shadow: 0 14px 30px rgb(31 24 15 / 0.22);
+}
+
+.booking-sort-menu[hidden] {
+  display: none;
+}
+
+.booking-sort-item {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 0.48rem 0.55rem;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #f8f1e7;
+  cursor: pointer;
+  text-align: left;
+}
+
+.booking-sort-item:hover,
+.booking-sort-item.active {
+  background: rgb(255 255 255 / 0.11);
+}
+
+.booking-sort-item b,
+.booking-sort-item small {
+  display: block;
+}
+
+.booking-sort-item b {
+  font-size: 0.82rem;
+}
+
+.booking-sort-item small {
+  color: rgb(248 241 231 / 0.68);
+  font-size: 0.68rem;
+}
+
+.sort-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px rgb(248 241 231 / 0.55);
+}
+
+.booking-sort-item.active .sort-dot {
+  background: #ffffff;
+  box-shadow: 0 0 0 1px #ffffff;
+}
+
+.booking-sort-more {
+  display: block;
+  margin-top: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3) 0;
+  border-top: 1px solid rgb(255 255 255 / 0.22);
+  color: rgb(248 241 231 / 0.74);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.booking-result-note {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.admin-list-sort {
+  align-self: end;
+}
+
+.admin-filters .admin-list-sort {
+  min-height: var(--control-md);
+}
+
+.payment-command-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-top: var(--sp-3);
+}
+
+.payment-command-row .ops-kv {
+  margin-top: 0;
+}
+
+@media (max-width: 1080px) {
+  .booking-command-bar {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .booking-filter-strip,
+  .booking-result-note {
+    grid-column: 1 / -1;
+  }
+
+  .payment-command-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 620px) {
+  .jump-item {
+    grid-template-columns: 1fr;
+    gap: var(--sp-2);
+  }
+
+  .jump-help {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .booking-command-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .booking-sort,
+  .booking-sort-btn {
+    width: 100%;
+  }
+
+  .booking-sort-btn {
+    justify-content: space-between;
+  }
+
+  .booking-sort-menu {
+    left: 0;
+    right: auto;
+    width: 100%;
+  }
+}
+
 .account-head > :first-child,
 .account-section-head > :first-child {
   min-width: 0;
@@ -2815,6 +3154,12 @@ textarea,
   white-space: normal;
 }
 
+/* The name shrink-wraps its text so the account badge sits directly after it
+   rather than being pushed to the far edge of the column. */
+.cust-name-line b {
+  flex: 0 1 auto;
+}
+
 .enq-row-time,
 .cust-line-date,
 .cust-line-amount {
@@ -2963,6 +3308,13 @@ table tbody tr:hover {
     align-items: start;
   }
 
+  /* Stacked card: avatar | text + pills | chevron, so the chevron keeps the
+     name's baseline instead of dropping to a row of its own. */
+  .cust-head {
+    grid-template-columns: auto minmax(0, 1fr) 22px;
+    gap: 0.5rem 0.85rem;
+  }
+
   .enq-row-main .top-line {
     display: grid;
     grid-template-columns: 1fr;
@@ -2983,16 +3335,20 @@ table tbody tr:hover {
 
   .cust-head-meta {
     display: flex;
-  }
-
-  .cust-account-state {
+    flex-wrap: wrap;
+    align-items: center;
     grid-column: 2;
     justify-self: start;
   }
 
+  /* Stacked layout: chips hug their text rather than stretching to a track. */
+  .cust-head-meta > .cust-chip { width: auto; }
+
   .cust-chevron {
-    grid-column: 2;
+    grid-column: 3;
+    grid-row: 1;
     justify-self: end;
+    align-self: center;
   }
 
   .cust-line {

@@ -11,6 +11,7 @@
 
   let sb = null;
   let allEvents = [];
+  let activeSort = "created_desc";
 
   function fmtWhen(iso) {
     return new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -105,6 +106,34 @@
       /payment|refund|permission|pin|backup|export/i.test(row.event_type);
   }
 
+  function eventTime(row) {
+    const t = new Date(row.created_at || 0).getTime();
+    return isNaN(t) ? 0 : t;
+  }
+
+  function sortedEvents(rows) {
+    return rows.slice().sort(function (a, b) {
+      if (activeSort === "created_asc") return eventTime(a) - eventTime(b);
+      if (activeSort === "security_first") return Number(!isSecurityEvent(a)) - Number(!isSecurityEvent(b)) || eventTime(b) - eventTime(a);
+      if (activeSort === "type_asc") return String(a.event_type || "").localeCompare(String(b.event_type || "")) || eventTime(b) - eventTime(a);
+      return eventTime(b) - eventTime(a);
+    });
+  }
+
+  function syncActivitySort() {
+    const wrap = document.getElementById("activity-sort");
+    if (!wrap) return;
+    const active = wrap.querySelector('[data-sort="' + activeSort + '"]') || wrap.querySelector("[data-sort]");
+    wrap.querySelectorAll(".booking-sort-item").forEach(function (btn) {
+      const on = btn === active;
+      btn.classList.toggle("active", on);
+      btn.setAttribute("aria-checked", String(on));
+    });
+    const label = active && active.querySelector("b");
+    const text = document.querySelector("#activity-sort-btn b");
+    if (label && text) text.textContent = label.textContent;
+  }
+
   function renderSecurityPanel() {
     const panel = document.getElementById("activity-security-panel");
     if (!panel) return;
@@ -144,7 +173,8 @@
 
   function renderList() {
     const listEl = document.getElementById("activity-list");
-    const visible = allEvents.filter(matchesFilters);
+    const visible = sortedEvents(allEvents.filter(matchesFilters));
+    syncActivitySort();
     document.getElementById("activity-count").textContent = visible.length + " of " + allEvents.length + " events";
     renderSecurityPanel();
 
@@ -226,6 +256,30 @@
       document.getElementById(id).addEventListener("change", renderList);
     });
     document.getElementById("flt-event-search").addEventListener("input", renderList);
+    const sortBtn = document.getElementById("activity-sort-btn");
+    const sortMenu = document.getElementById("activity-sort-menu");
+    if (sortBtn && sortMenu) {
+      sortBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        const open = sortMenu.hidden;
+        sortMenu.hidden = !open;
+        sortBtn.setAttribute("aria-expanded", String(open));
+      });
+      sortMenu.addEventListener("click", function (e) {
+        const btn = e.target.closest(".booking-sort-item");
+        if (!btn) return;
+        activeSort = btn.dataset.sort || "created_desc";
+        sortMenu.hidden = true;
+        sortBtn.setAttribute("aria-expanded", "false");
+        renderList();
+      });
+      document.addEventListener("click", function (e) {
+        if (!sortMenu.hidden && !document.getElementById("activity-sort").contains(e.target)) {
+          sortMenu.hidden = true;
+          sortBtn.setAttribute("aria-expanded", "false");
+        }
+      });
+    }
     document.getElementById("activity-security-panel").addEventListener("click", function (e) {
       if (!e.target.closest("#show-security-events")) return;
       document.getElementById("flt-security-only").checked = true;

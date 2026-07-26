@@ -16,6 +16,7 @@
   let allGroups = [];
   let unlinkedBookings = [];
   let moneyVisible = false; // true once bookings could be read
+  let activeSort = "recent_desc";
 
   /* ---------- helpers ---------- */
   function esc(v) { return KridiyaAuth.escapeHTML(String(v == null ? "" : v)); }
@@ -283,6 +284,36 @@
     return true;
   }
 
+  function sortRank(g) {
+    if (needsPortalInvite(g)) return 0;
+    if (needsCleanup(g)) return 1;
+    if (!g.hasAccount) return 2;
+    return 3;
+  }
+
+  function sortedGroups(rows) {
+    return rows.slice().sort(function (a, b) {
+      if (activeSort === "name_asc") return String(a.name || a.email || "").localeCompare(String(b.name || b.email || ""));
+      if (activeSort === "bookings_desc") return b.bookings.length - a.bookings.length || (b.lastAt || 0) - (a.lastAt || 0);
+      if (activeSort === "portal_first") return sortRank(a) - sortRank(b) || (b.lastAt || 0) - (a.lastAt || 0);
+      return (b.lastAt || 0) - (a.lastAt || 0);
+    });
+  }
+
+  function syncCustomerSort() {
+    const wrap = document.getElementById("cust-sort");
+    if (!wrap) return;
+    const active = wrap.querySelector('[data-sort="' + activeSort + '"]') || wrap.querySelector("[data-sort]");
+    wrap.querySelectorAll(".booking-sort-item").forEach(function (btn) {
+      const on = btn === active;
+      btn.classList.toggle("active", on);
+      btn.setAttribute("aria-checked", String(on));
+    });
+    const label = active && active.querySelector("b");
+    const text = document.querySelector("#cust-sort-btn b");
+    if (label && text) text.textContent = label.textContent;
+  }
+
   function enquiryRowHTML(e) {
     return '<div class="cust-line">' +
       '<span class="status-badge" style="' + statusStyle(e.status) + '">' + esc(KridiyaAuth.statusLabel(e.status)) + "</span>" +
@@ -315,11 +346,12 @@
         '<div class="cust-head">' +
           '<div class="cust-avatar">' + esc(initialsOf(g.name, g.email)) + "</div>" +
           '<div class="cust-head-main">' +
-            '<div class="cust-name-line"><b>' + esc(g.name) + "</b></div>" +
+            '<div class="cust-name-line"><b>' + esc(g.name) + "</b>" +
+              '<span class="cust-account-state">' + accountBadge(g) +
+                (g.active === false ? '<span class="cust-badge cust-badge-guest">Archived</span>' : "") +
+              "</span>" +
+            "</div>" +
             '<div class="cust-sub-line">' + esc(g.email) + (g.phone ? " · " + esc(g.phone) : "") + "</div>" +
-          "</div>" +
-          '<div class="cust-account-state">' + accountBadge(g) +
-            (g.active === false ? '<span class="cust-badge cust-badge-guest">Archived</span>' : "") +
           "</div>" +
           '<div class="cust-head-meta">' +
             '<span class="cust-chip">' + g.enquiries.length + " enquir" + (g.enquiries.length === 1 ? "y" : "ies") + "</span>" +
@@ -368,7 +400,8 @@
     const listEl = document.getElementById("cust-list");
     const q = (document.getElementById("cust-search").value || "").trim().toLowerCase();
     const f = document.getElementById("cust-filter").value;
-    const visible = allGroups.filter(function (g) { return matchesFilter(g, f) && matchesQuery(g, q); });
+    const visible = sortedGroups(allGroups.filter(function (g) { return matchesFilter(g, f) && matchesQuery(g, q); }));
+    syncCustomerSort();
     renderCustomerControl(visible);
     document.getElementById("cust-count").textContent = visible.length + " of " + allGroups.length + " customers";
 
@@ -419,6 +452,30 @@
       searchTimer = setTimeout(renderList, 150);
     });
     document.getElementById("cust-filter").addEventListener("change", renderList);
+    const sortBtn = document.getElementById("cust-sort-btn");
+    const sortMenu = document.getElementById("cust-sort-menu");
+    if (sortBtn && sortMenu) {
+      sortBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        const open = sortMenu.hidden;
+        sortMenu.hidden = !open;
+        sortBtn.setAttribute("aria-expanded", String(open));
+      });
+      sortMenu.addEventListener("click", function (e) {
+        const btn = e.target.closest(".booking-sort-item");
+        if (!btn) return;
+        activeSort = btn.dataset.sort || "recent_desc";
+        sortMenu.hidden = true;
+        sortBtn.setAttribute("aria-expanded", "false");
+        renderList();
+      });
+      document.addEventListener("click", function (e) {
+        if (!sortMenu.hidden && !document.getElementById("cust-sort").contains(e.target)) {
+          sortMenu.hidden = true;
+          sortBtn.setAttribute("aria-expanded", "false");
+        }
+      });
+    }
     const control = document.getElementById("customer-control-panel");
     if (control) {
       control.addEventListener("click", function (e) {

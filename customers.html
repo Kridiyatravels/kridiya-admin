@@ -11,7 +11,7 @@
 <link rel="icon" href="https://kridiyatravel.com/assets/favicon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="https://kridiyatravel.com/assets/favicon-180.png">
 <link rel="stylesheet" href="https://kridiyatravel.com/css/styles.css">
-<link rel="stylesheet" href="css/staff.css?v=20260726n">
+<link rel="stylesheet" href="css/staff.css?v=20260726o">
 </head>
 <body data-page="customers">
 <header id="site-header" class="site-header"></header>
@@ -58,6 +58,15 @@
                 <option value="portal_needed">Needs portal invite</option>
                 <option value="cleanup">Needs cleanup</option>
               </select>
+            </div>
+            <div class="booking-sort admin-list-sort" id="cust-sort">
+              <button type="button" class="booking-sort-btn" id="cust-sort-btn" aria-haspopup="true" aria-expanded="false" data-command-label="Sort customers" data-command-desc="Open customer sort menu" data-command-keys="F" data-command-action="focus-filter">Sort: <b>Recent activity</b></button>
+              <div class="booking-sort-menu" id="cust-sort-menu" role="menu" hidden>
+                <button type="button" role="menuitemradio" aria-checked="true" class="booking-sort-item active" data-sort="recent_desc"><span class="sort-dot"></span><span><b>Recent activity</b><small>Latest contact first</small></span></button>
+                <button type="button" role="menuitemradio" aria-checked="false" class="booking-sort-item" data-sort="name_asc"><span class="sort-dot"></span><span><b>Name</b><small>A to Z</small></span></button>
+                <button type="button" role="menuitemradio" aria-checked="false" class="booking-sort-item" data-sort="bookings_desc"><span class="sort-dot"></span><span><b>Bookings</b><small>Most bookings first</small></span></button>
+                <button type="button" role="menuitemradio" aria-checked="false" class="booking-sort-item" data-sort="portal_first"><span class="sort-dot"></span><span><b>Portal action</b><small>Invite and cleanup first</small></span></button>
+              </div>
             </div>
           </div>
         </div>

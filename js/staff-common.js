@@ -78,6 +78,19 @@ const STAFF_NAV_MODEL = [
   ] }
 ];
 
+const STAFF_COMMAND_SHORTCUTS = [
+  { keys: "N", label: "New booking", action: "new-booking", desc: "Create an operations booking", page: "bookings" },
+  { keys: "S", label: "Focus search", action: "focus-search", desc: "Focus the current page search field" },
+  { keys: "F", label: "Open filters", action: "focus-filter", desc: "Focus the current page filter or sort control" },
+  { keys: "G D", label: "Dashboard", href: "dashboard.html", desc: "Go to operations overview" },
+  { keys: "G E", label: "Enquiries", href: "admin.html", desc: "Go to website enquiries" },
+  { keys: "G B", label: "Bookings", href: "bookings.html", desc: "Go to confirmed bookings" },
+  { keys: "G C", label: "Customers", href: "customers.html", desc: "Go to customer profiles" },
+  { keys: "?", label: "Shortcuts", action: "show-shortcuts", desc: "Open this command palette" }
+];
+let staffNavChord = "";
+let staffNavChordTimer = null;
+
 /* Permission attributes so a single pruning pass can hide/remove any
    gated element (nav link, menu item, hub card) it finds document-wide. */
 function navAccessAttr(item) {
@@ -113,8 +126,118 @@ function buildToolHubHTML(page) {
   }).join("");
 }
 
+function pageCommandEntries() {
+  return Array.prototype.slice.call(document.querySelectorAll("[data-command-label]")).map(function (el) {
+    return {
+      label: el.getAttribute("data-command-label") || "",
+      desc: el.getAttribute("data-command-desc") || "",
+      keys: el.getAttribute("data-command-keys") || "",
+      action: el.getAttribute("data-command-action") || "click",
+      element: el
+    };
+  }).filter(function (entry) { return entry.label; });
+}
+
+function searchText(parts) {
+  return parts.filter(Boolean).join(" ").toLowerCase();
+}
+
+function commandDataEntry(kind, label, desc, href) {
+  return { kind: kind, label: label, desc: desc, href: href, keys: "" };
+}
+
+function entryMatches(entry, q) {
+  return !q || searchText([entry.label, entry.desc, entry.keys, entry.kind]).indexOf(q) >= 0;
+}
+
+function compactDataResults(rows, q, fields, mapFn, limit) {
+  const hits = [];
+  (rows || []).some(function (row) {
+    const hay = searchText(fields.map(function (field) { return row[field]; }));
+    if (hay.indexOf(q) === -1) return false;
+    hits.push(mapFn(row));
+    return hits.length >= (limit || 5);
+  });
+  return hits;
+}
+
+async function searchAdminData(q) {
+  if (!q || q.length < 2 || !window.KridiyaAuth) return [];
+  let sb = null;
+  try { sb = await KridiyaAuth.client(); } catch (e) { return []; }
+  const safe = async function (promise) {
+    try {
+      const res = await promise;
+      if (res && res.error) return [];
+      return (res && res.data) || [];
+    } catch (e) {
+      return [];
+    }
+  };
+  const results = await Promise.all([
+    safe(sb.from("enquiries").select("id, reference, full_name, email, phone, service_type, status, summary, created_at").order("created_at", { ascending: false }).limit(120)),
+    safe(sb.rpc("list_operations_bookings", { limit_count: 200 })),
+    safe(sb.from("customers").select("id, full_name, email, phone, whatsapp, source, created_at").order("created_at", { ascending: false }).limit(120)),
+    safe(sb.rpc("list_operations_payments", { limit_count: 200 })),
+    safe(sb.from("documents").select("id, document_number, document_type, customer_name, customer_email, amount_total, currency, created_at").order("created_at", { ascending: false }).limit(80))
+  ]);
+  return []
+    .concat(compactDataResults(results[0], q, ["reference", "full_name", "email", "phone", "service_type", "status", "summary"], function (row) {
+      return commandDataEntry("Enquiry", row.reference || "Enquiry", [row.full_name, row.email, row.service_type, row.status].filter(Boolean).join(" - "), "admin.html?focus=" + encodeURIComponent(row.id));
+    }, 5))
+    .concat(compactDataResults(results[1], q, ["booking_reference", "title", "customer_name", "customer_email", "customer_phone", "corporate_company_name", "service_type", "status", "payment_status", "route_or_destination"], function (row) {
+      return commandDataEntry("Booking", row.booking_reference || "Booking", [row.title, row.customer_name || row.corporate_company_name, row.status, row.payment_status].filter(Boolean).join(" - "), "booking-detail.html?id=" + encodeURIComponent(row.id));
+    }, 5))
+    .concat(compactDataResults(results[2], q, ["full_name", "email", "phone", "whatsapp", "source"], function (row) {
+      return commandDataEntry("Customer", row.full_name || row.email || "Customer", [row.email, row.phone || row.whatsapp, row.source].filter(Boolean).join(" - "), "customers.html?email=" + encodeURIComponent(row.email || ""));
+    }, 5))
+    .concat(compactDataResults(results[3], q, ["payment_reference", "booking_reference", "booking_title", "customer_name", "corporate_company_name", "service_type", "method", "status"], function (row) {
+      return commandDataEntry("Payment", row.payment_reference || row.booking_reference || "Payment", [row.customer_name || row.corporate_company_name, row.method, row.status].filter(Boolean).join(" - "), row.booking_id ? "booking-detail.html?id=" + encodeURIComponent(row.booking_id) : "payments.html");
+    }, 4))
+    .concat(compactDataResults(results[4], q, ["document_number", "document_type", "customer_name", "customer_email"], function (row) {
+      return commandDataEntry("Document", row.document_number || "Document", [row.document_type, row.customer_name, row.customer_email].filter(Boolean).join(" - "), "documents.html");
+    }, 4));
+}
+
+function runCommand(entry) {
+  if (!entry) return;
+  if (entry.href) {
+    location.href = entry.href;
+    return;
+  }
+  if (entry.action === "focus-search") {
+    const target = document.querySelector("#bookings-search, #cust-search, #flt-search, #payments-search, #template-search, .admin-search, input[type='search']");
+    if (target) { target.focus(); if (target.select) target.select(); }
+    else toast("No search field on this page.");
+    return;
+  }
+  if (entry.action === "focus-filter") {
+    const target = document.querySelector("#booking-sort-btn, #admin-sort-btn, #cust-sort-btn, #payments-sort-btn, #activity-sort-btn, #cust-filter, #flt-status, #flt-service, select");
+    if (target) target.focus();
+    else toast("No filter control on this page.");
+    return;
+  }
+  if (entry.action === "new-booking") {
+    if (document.body.dataset.page === "bookings") {
+      const btn = document.getElementById("booking-new-toggle");
+      const card = document.getElementById("booking-form-card");
+      if (card && card.hidden && btn) btn.click();
+      const title = document.querySelector('#booking-form input[name="title"]');
+      if (title) title.focus();
+    } else {
+      location.href = "bookings.html#new";
+    }
+    return;
+  }
+  if (entry.action === "show-shortcuts") {
+    openJumpPalette("?");
+    return;
+  }
+  if (entry.element && typeof entry.element.click === "function") entry.element.click();
+}
+
 /* ---------- "Jump to" command palette (works on every page) ---------- */
-function openJumpPalette() {
+function openJumpPalette(seed) {
   let overlay = document.getElementById("jump-overlay");
   if (overlay) { overlay.hidden = false; }
   else {
@@ -123,8 +246,11 @@ function openJumpPalette() {
     overlay.className = "jump-overlay";
     overlay.innerHTML =
       '<div class="jump-box" role="dialog" aria-label="Jump to">' +
-        '<input id="jump-input" class="jump-input" type="text" placeholder="Jump to a page…" autocomplete="off" aria-label="Jump to a page">' +
+        '<div class="jump-input-wrap">' + icon("search") +
+          '<input id="jump-input" class="jump-input" type="text" placeholder="Search pages, actions, shortcuts..." autocomplete="off" aria-label="Search pages, actions, shortcuts">' +
+        "</div>" +
         '<ul id="jump-list" class="jump-list" role="listbox"></ul>' +
+        '<div class="jump-help"><span>Enter to open</span><span>Up/Down move</span><span>Esc close</span></div>' +
       "</div>";
     document.body.appendChild(overlay);
     overlay.addEventListener("click", function (e) { if (e.target === overlay) closeJumpPalette(); });
@@ -134,27 +260,69 @@ function openJumpPalette() {
   const anchors = Array.prototype.slice.call(document.querySelectorAll(".staff-nav a[href]"));
   const seen = {};
   const entries = [];
+  let dataEntries = [];
+  let dataLoading = false;
+  let dataTimer = null;
+  let dataToken = 0;
   anchors.forEach(function (a) {
     const href = a.getAttribute("href");
     if (!href || seen[href]) return;
     seen[href] = true;
     const b = a.querySelector("b");
     const small = a.querySelector("small");
-    entries.push({ href: href, label: (b ? b.textContent : a.textContent).trim(), desc: small ? small.textContent : "" });
+    entries.push({ href: href, label: (b ? b.textContent : a.textContent).trim(), desc: small ? small.textContent : "", kind: "Page" });
+  });
+  STAFF_COMMAND_SHORTCUTS.forEach(function (entry) {
+    entries.push({
+      href: entry.href,
+      label: entry.label,
+      desc: entry.desc,
+      keys: entry.keys,
+      action: entry.action,
+      kind: "Shortcut"
+    });
+  });
+  pageCommandEntries().forEach(function (entry) {
+    entry.kind = "This page";
+    entries.push(entry);
   });
   let active = 0;
   function render() {
     const q = input.value.trim().toLowerCase();
     const list = document.getElementById("jump-list");
-    const hits = entries.filter(function (e) { return !q || (e.label + " " + e.desc).toLowerCase().indexOf(q) >= 0; });
+    const hits = entries.concat(dataEntries).filter(function (e) { return entryMatches(e, q); });
     active = Math.max(0, Math.min(active, hits.length - 1));
     list.innerHTML = hits.length
       ? hits.map(function (e, i) {
           return '<li class="jump-item' + (i === active ? " active" : "") + '" role="option" data-href="' + e.href + '">' +
-            "<b>" + KridiyaAuth.escapeHTML(e.label) + "</b>" + (e.desc ? '<small>' + KridiyaAuth.escapeHTML(e.desc) + "</small>" : "") + "</li>";
+            '<span><b>' + KridiyaAuth.escapeHTML(e.label) + "</b>" +
+              (e.desc ? '<small>' + KridiyaAuth.escapeHTML(e.desc) + "</small>" : "") + "</span>" +
+            '<span class="jump-meta">' + (e.keys ? '<kbd>' + KridiyaAuth.escapeHTML(e.keys) + "</kbd>" : "") +
+              (e.kind ? "<em>" + KridiyaAuth.escapeHTML(e.kind) + "</em>" : "") + "</span></li>";
         }).join("")
-      : '<li class="jump-empty">No matches</li>';
+      : '<li class="jump-empty">' + (dataLoading ? "Searching records..." : "No matches") + "</li>";
     list._hits = hits;
+  }
+  function scheduleDataSearch() {
+    const q = input.value.trim().toLowerCase();
+    clearTimeout(dataTimer);
+    if (q.length < 2) {
+      dataEntries = [];
+      dataLoading = false;
+      render();
+      return;
+    }
+    dataLoading = true;
+    render();
+    const token = ++dataToken;
+    dataTimer = setTimeout(async function () {
+      const found = await searchAdminData(q);
+      if (token !== dataToken) return;
+      dataEntries = found;
+      dataLoading = false;
+      active = 0;
+      render();
+    }, 180);
   }
   input.value = "";
   render();
@@ -163,15 +331,17 @@ function openJumpPalette() {
     const hits = (document.getElementById("jump-list")._hits) || [];
     if (e.key === "ArrowDown") { e.preventDefault(); active = (active + 1) % Math.max(1, hits.length); render(); }
     else if (e.key === "ArrowUp") { e.preventDefault(); active = (active - 1 + hits.length) % Math.max(1, hits.length); render(); }
-    else if (e.key === "Enter") { e.preventDefault(); if (hits[active]) location.href = hits[active].href; }
+    else if (e.key === "Enter") { e.preventDefault(); runCommand(hits[active]); }
     else if (e.key === "Escape") { closeJumpPalette(); }
   };
-  input.oninput = function () { active = 0; render(); };
+  input.oninput = function () { active = 0; scheduleDataSearch(); };
   const list = document.getElementById("jump-list");
   list.onclick = function (e) {
     const li = e.target.closest(".jump-item");
-    if (li) location.href = li.dataset.href;
+    if (li) runCommand((list._hits || [])[Array.prototype.indexOf.call(list.children, li)]);
   };
+  input.value = seed || "";
+  scheduleDataSearch();
 }
 function closeJumpPalette() {
   const overlay = document.getElementById("jump-overlay");
@@ -297,6 +467,24 @@ function renderStaffChrome() {
       const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(tag) || (e.target && e.target.isContentEditable);
       if ((e.key === "k" || e.key === "K") && (e.metaKey || e.ctrlKey)) { e.preventDefault(); openJumpPalette(); }
       else if (e.key === "/" && !typing) { e.preventDefault(); openJumpPalette(); }
+      else if (e.key === "?" && !typing) { e.preventDefault(); openJumpPalette("?"); }
+      else if ((e.key === "s" || e.key === "S") && !typing) { e.preventDefault(); runCommand({ action: "focus-search" }); }
+      else if ((e.key === "f" || e.key === "F") && !typing) { e.preventDefault(); runCommand({ action: "focus-filter" }); }
+      else if ((e.key === "n" || e.key === "N") && !typing) { e.preventDefault(); runCommand({ action: "new-booking" }); }
+      else if ((e.key === "g" || e.key === "G") && !typing) {
+        e.preventDefault();
+        staffNavChord = "g";
+        clearTimeout(staffNavChordTimer);
+        staffNavChordTimer = setTimeout(function () { staffNavChord = ""; }, 900);
+      } else if (staffNavChord === "g" && !typing) {
+        const key = String(e.key || "").toLowerCase();
+        const routes = { d: "dashboard.html", e: "admin.html", b: "bookings.html", c: "customers.html" };
+        if (routes[key]) {
+          e.preventDefault();
+          staffNavChord = "";
+          location.href = routes[key];
+        }
+      }
     });
   }
   const footer = document.getElementById("site-footer");

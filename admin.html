@@ -52,6 +52,16 @@
               <input id="flt-search" type="search" placeholder="Name, email, phone, reference">
             </div>
             <label class="admin-filter-check"><input type="checkbox" id="flt-today"> Today only</label>
+            <div class="booking-sort admin-list-sort" id="admin-sort">
+              <button type="button" class="booking-sort-btn" id="admin-sort-btn" aria-haspopup="true" aria-expanded="false" data-command-label="Sort enquiries" data-command-desc="Open enquiry sort menu" data-command-keys="F" data-command-action="focus-filter">Sort: <b>Newest first</b></button>
+              <div class="booking-sort-menu" id="admin-sort-menu" role="menu" hidden>
+                <button type="button" role="menuitemradio" aria-checked="true" class="booking-sort-item active" data-sort="created_desc"><span class="sort-dot"></span><span><b>Newest first</b><small>Recently received</small></span></button>
+                <button type="button" role="menuitemradio" aria-checked="false" class="booking-sort-item" data-sort="created_asc"><span class="sort-dot"></span><span><b>Oldest first</b><small>Earliest enquiries</small></span></button>
+                <button type="button" role="menuitemradio" aria-checked="false" class="booking-sort-item" data-sort="name_asc"><span class="sort-dot"></span><span><b>Name</b><small>A to Z</small></span></button>
+                <button type="button" role="menuitemradio" aria-checked="false" class="booking-sort-item" data-sort="status_asc"><span class="sort-dot"></span><span><b>Status</b><small>Grouped pipeline</small></span></button>
+                <button type="button" role="menuitemradio" aria-checked="false" class="booking-sort-item" data-sort="attention_first"><span class="sort-dot"></span><span><b>Needs action</b><small>Stale and quote queue</small></span></button>
+              </div>
+            </div>
           </div>
         </div>
         <div class="account-main crm-control-card"><div class="account-section-head"><div><h2>Sales follow-up control</h2><p>Pipeline health and next action for enquiries.</p></div></div><div id="crm-control-panel"></div></div>

@@ -25,6 +25,7 @@
   let bookingByEnquiry = {};
   let canCreateBookings = false;
   let canEditCorporates = false;
+  let activeSort = "created_desc";
 
   function esc(v) {
     return KridiyaAuth.escapeHTML(String(v == null ? "" : v));
@@ -483,6 +484,44 @@
     return true;
   }
 
+  function attentionRank(enq) {
+    if (isStale(enq)) return 0;
+    if (needsQuote(enq)) return 1;
+    if (needsFollowUp(enq)) return 2;
+    if (isCorporateEnquiry(enq)) return 3;
+    if (bookingByEnquiry[enq.id]) return 5;
+    return 4;
+  }
+
+  function enquiryTime(enq) {
+    const t = new Date(enq.created_at || 0).getTime();
+    return isNaN(t) ? 0 : t;
+  }
+
+  function sortEnquiries(rows) {
+    return rows.slice().sort(function (a, b) {
+      if (activeSort === "created_asc") return enquiryTime(a) - enquiryTime(b);
+      if (activeSort === "name_asc") return String(a.full_name || a.email || "").localeCompare(String(b.full_name || b.email || ""));
+      if (activeSort === "status_asc") return String(a.status || "").localeCompare(String(b.status || "")) || enquiryTime(b) - enquiryTime(a);
+      if (activeSort === "attention_first") return attentionRank(a) - attentionRank(b) || enquiryTime(b) - enquiryTime(a);
+      return enquiryTime(b) - enquiryTime(a);
+    });
+  }
+
+  function syncSortMenu() {
+    const wrap = document.getElementById("admin-sort");
+    if (!wrap) return;
+    const active = wrap.querySelector('[data-sort="' + activeSort + '"]') || wrap.querySelector("[data-sort]");
+    wrap.querySelectorAll(".booking-sort-item").forEach(function (btn) {
+      const on = btn === active;
+      btn.classList.toggle("active", on);
+      btn.setAttribute("aria-checked", String(on));
+    });
+    const label = active && active.querySelector("b");
+    const text = document.querySelector("#admin-sort-btn b");
+    if (label && text) text.textContent = label.textContent;
+  }
+
   function renderStatTiles() {
     const row = document.getElementById("stat-row");
     if (!row) return;
@@ -505,7 +544,8 @@
   function renderList() {
     renderStatTiles();
     const listEl = document.getElementById("admin-list");
-    const visible = allEnquiries.filter(matchesFilters);
+    const visible = sortEnquiries(allEnquiries.filter(matchesFilters));
+    syncSortMenu();
     renderCrmControl(visible);
     const countEl = document.getElementById("admin-count");
     if (focusEmail) {
@@ -743,6 +783,30 @@
       document.getElementById(id).addEventListener("change", renderList);
     });
     document.getElementById("flt-search").addEventListener("input", renderList);
+    const sortBtn = document.getElementById("admin-sort-btn");
+    const sortMenu = document.getElementById("admin-sort-menu");
+    if (sortBtn && sortMenu) {
+      sortBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        const open = sortMenu.hidden;
+        sortMenu.hidden = !open;
+        sortBtn.setAttribute("aria-expanded", String(open));
+      });
+      sortMenu.addEventListener("click", function (e) {
+        const btn = e.target.closest(".booking-sort-item");
+        if (!btn) return;
+        activeSort = btn.dataset.sort || "created_desc";
+        sortMenu.hidden = true;
+        sortBtn.setAttribute("aria-expanded", "false");
+        renderList();
+      });
+      document.addEventListener("click", function (e) {
+        if (!sortMenu.hidden && !document.getElementById("admin-sort").contains(e.target)) {
+          sortMenu.hidden = true;
+          sortBtn.setAttribute("aria-expanded", "false");
+        }
+      });
+    }
 
     const listEl = document.getElementById("admin-list");
     const crmPanel = document.getElementById("crm-control-panel");

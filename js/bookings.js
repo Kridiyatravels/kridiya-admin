@@ -3,6 +3,19 @@
   if (document.body.dataset.page !== "bookings") return;
   let sb = null;
   let corporateAccounts = [];
+  let allBookings = [];
+  let activeSearch = "";
+  let activeFilter = "";
+  let activeSort = "created_desc";
+
+  const SORT_OPTIONS = [
+    { value: "created_desc", label: "Newest first", desc: "Recently created" },
+    { value: "created_asc", label: "Oldest first", desc: "Oldest records" },
+    { value: "travel_asc", label: "Travel date", desc: "Soonest departure" },
+    { value: "name_asc", label: "Name", desc: "A to Z" },
+    { value: "amount_desc", label: "Amount", desc: "High to low" },
+    { value: "payment_first", label: "Payment risk", desc: "Unpaid first" }
+  ];
 
   function esc(v) { return KridiyaAuth.escapeHTML(String(v == null ? "" : v)); }
   function label(v) { return String(v || "").replace(/_/g, " ").replace(/\b\w/g, function (c) { return c.toUpperCase(); }); }
@@ -25,6 +38,10 @@
     document.getElementById("booking-new-toggle").addEventListener("click", function () {
       const card = document.getElementById("booking-form-card");
       card.hidden = !card.hidden;
+      if (!card.hidden) {
+        form.title.focus();
+        history.replaceState(null, "", "bookings.html#new");
+      }
     });
     const form = document.getElementById("booking-form");
     form.addEventListener("submit", createBooking);
@@ -34,6 +51,10 @@
     await loadCorporateAccounts();
     syncCorporateFields();
     await loadBookings();
+    if (location.hash === "#new") {
+      document.getElementById("booking-form-card").hidden = false;
+      form.title.focus();
+    }
   }
 
   async function loadCorporateAccounts() {
@@ -130,12 +151,137 @@
   async function loadBookings() {
     const result = await sb.rpc("list_operations_bookings", { limit_count: 200 });
     if (result.error) { document.getElementById("bookings-list").innerHTML = '<p class="blocked-note">' + esc(result.error.message) + '</p>'; return; }
-    const rows = result.data || [];
-    document.getElementById("bookings-count").textContent = rows.length + " booking(s)";
-    document.getElementById("bookings-list").innerHTML = rows.length ? '<div class="ops-list">' + rows.map(function (b) {
+    allBookings = result.data || [];
+    renderBookings();
+  }
+
+  function sortMeta() {
+    return SORT_OPTIONS.find(function (o) { return o.value === activeSort; }) || SORT_OPTIONS[0];
+  }
+
+  function searchableBooking(b) {
+    return [
+      b.booking_reference, b.title, b.customer_name, b.customer_email, b.customer_phone,
+      b.corporate_company_name, b.corporate_contact_name, b.service_type, b.status,
+      b.payment_status, b.document_status, b.route_or_destination, b.supplier_name
+    ].filter(Boolean).join(" ").toLowerCase();
+  }
+
+  function riskRank(b) {
+    const payment = String(b.payment_status || "").toLowerCase();
+    const status = String(b.status || "").toLowerCase();
+    if (status === "confirmed" && payment !== "paid" && payment !== "received") return 0;
+    if (/pending|proof|partial|due/.test(payment)) return 1;
+    if (/missing|pending/.test(String(b.document_status || "").toLowerCase())) return 2;
+    return 3;
+  }
+
+  function bookingTime(b, key) {
+    const value = key === "travel" ? (b.travel_start || b.travel_end || b.created_at) : b.created_at;
+    const t = new Date(value || 0).getTime();
+    return isNaN(t) ? 0 : t;
+  }
+
+  function filteredBookings() {
+    return allBookings.filter(function (b) {
+      if (activeSearch && searchableBooking(b).indexOf(activeSearch) === -1) return false;
+      if (activeFilter === "payment_pending" && !/pending|proof|partial|due/.test(String(b.payment_status || "").toLowerCase())) return false;
+      if (activeFilter === "docs_pending" && !/pending|missing|not/.test(String(b.document_status || "").toLowerCase())) return false;
+      if (activeFilter === "corporate" && !(b.booking_kind === "corporate" || b.corporate_company_name)) return false;
+      if (activeFilter === "confirmed_unpaid" && !(String(b.status || "").toLowerCase() === "confirmed" && !/paid|received/.test(String(b.payment_status || "").toLowerCase()))) return false;
+      return true;
+    }).sort(function (a, b) {
+      if (activeSort === "created_asc") return bookingTime(a) - bookingTime(b);
+      if (activeSort === "travel_asc") return bookingTime(a, "travel") - bookingTime(b, "travel");
+      if (activeSort === "name_asc") return String(a.title || a.booking_reference || "").localeCompare(String(b.title || b.booking_reference || ""));
+      if (activeSort === "amount_desc") return Number(b.selling_price || 0) - Number(a.selling_price || 0);
+      if (activeSort === "payment_first") return riskRank(a) - riskRank(b) || bookingTime(b) - bookingTime(a);
+      return bookingTime(b) - bookingTime(a);
+    });
+  }
+
+  function toolbarHTML(rows) {
+    const sort = sortMeta();
+    const filters = [
+      ["", "All"],
+      ["payment_pending", "Payment pending"],
+      ["docs_pending", "Docs pending"],
+      ["confirmed_unpaid", "Confirmed unpaid"],
+      ["corporate", "Corporate"]
+    ];
+    return '<div class="booking-command-bar">' +
+      '<div class="booking-search-wrap">' + icon("search") +
+        '<input id="bookings-search" class="admin-search" type="search" placeholder="Search reference, customer, route, supplier..." value="' + esc(activeSearch) + '" autocomplete="off" data-command-label="Search bookings" data-command-desc="Find by reference, customer, route, payment or supplier" data-command-keys="S" data-command-action="focus-search">' +
+      "</div>" +
+      '<div class="booking-filter-strip">' + filters.map(function (f) {
+        return '<button type="button" class="booking-filter-chip' + (activeFilter === f[0] ? " active" : "") + '" data-filter="' + esc(f[0]) + '">' + esc(f[1]) + "</button>";
+      }).join("") + "</div>" +
+      '<div class="booking-sort" id="booking-sort">' +
+        '<button type="button" class="booking-sort-btn" id="booking-sort-btn" aria-haspopup="true" aria-expanded="false" data-command-label="Sort bookings" data-command-desc="Open booking sort menu" data-command-keys="F" data-command-action="focus-filter">Sort: <b>' + esc(sort.label) + '</b> ' + icon("chevron") + "</button>" +
+        '<div class="booking-sort-menu" id="booking-sort-menu" role="menu" hidden>' +
+          SORT_OPTIONS.map(function (o) {
+            return '<button type="button" role="menuitemradio" aria-checked="' + String(activeSort === o.value) + '" class="booking-sort-item' + (activeSort === o.value ? " active" : "") + '" data-sort="' + esc(o.value) + '"><span class="sort-dot"></span><span><b>' + esc(o.label) + '</b><small>' + esc(o.desc) + "</small></span></button>";
+          }).join("") +
+          '<span class="booking-sort-more">More shortcuts in Ctrl+K</span>' +
+        "</div>" +
+      "</div>" +
+      '<span class="booking-result-note">' + esc(rows.length) + " shown / " + esc(allBookings.length) + " total</span>" +
+    "</div>";
+  }
+
+  function rowHTML(b) {
       const corporate = b.corporate_company_name ? '<span class="ops-chip">Corporate: ' + esc(b.corporate_company_name) + (b.corporate_contact_name ? ' / ' + esc(b.corporate_contact_name) : '') + '</span>' : '';
       return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(b.booking_reference) + ' - ' + esc(b.title) + '</b><p>' + esc(label(b.service_type)) + ' - ' + esc(label(b.status)) + ' - ' + esc(b.route_or_destination || "No route/destination") + '</p><div class="ops-kv">' + corporate + '<span class="ops-chip">Payment: ' + esc(label(b.payment_status)) + '</span><span class="ops-chip">Docs: ' + esc(label(b.document_status)) + '</span><span class="ops-chip">Sell: ' + esc(money(b.selling_price, b.currency)) + '</span><span class="ops-chip">Cost: ' + esc(money(b.supplier_cost, b.currency)) + '</span><span class="ops-chip">Profit: ' + esc(money(b.gross_profit, b.currency)) + '</span></div></div><div class="ops-row-actions"><a class="btn btn-primary" href="booking-detail.html?id=' + esc(b.id) + '">Open</a><a class="btn btn-outline" href="documents.html">Document</a></div></div>';
-    }).join("") + '</div>' : '<p class="form-note">No bookings yet. Create the first one when a customer confirms interest.</p>';
+  }
+
+  function renderBookings() {
+    const rows = filteredBookings();
+    document.getElementById("bookings-count").textContent = rows.length + " shown / " + allBookings.length + " booking(s)";
+    document.getElementById("bookings-list").innerHTML = toolbarHTML(rows) + (rows.length ? '<div class="ops-list">' + rows.map(rowHTML).join("") + '</div>' : '<div class="account-main empty-state"><p>No bookings match these filters.</p></div>');
+    wireBookingToolbar();
+  }
+
+  function wireBookingToolbar() {
+    const search = document.getElementById("bookings-search");
+    const sortBtn = document.getElementById("booking-sort-btn");
+    const sortMenu = document.getElementById("booking-sort-menu");
+    let searchTimer = null;
+    if (search) {
+      search.addEventListener("input", function () {
+        activeSearch = search.value.trim().toLowerCase();
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(renderBookings, 150);
+      });
+    }
+    document.querySelectorAll(".booking-filter-chip").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        activeFilter = btn.dataset.filter || "";
+        renderBookings();
+      });
+    });
+    if (sortBtn && sortMenu) {
+      sortBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        const open = sortMenu.hidden;
+        sortMenu.hidden = !open;
+        sortBtn.setAttribute("aria-expanded", String(open));
+      });
+      sortMenu.querySelectorAll(".booking-sort-item").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          activeSort = btn.dataset.sort || "created_desc";
+          renderBookings();
+        });
+      });
+      document.addEventListener("click", function (e) {
+        const sort = document.getElementById("booking-sort");
+        const menu = document.getElementById("booking-sort-menu");
+        const button = document.getElementById("booking-sort-btn");
+        if (sort && menu && button && !sort.contains(e.target)) {
+          menu.hidden = true;
+          button.setAttribute("aria-expanded", "false");
+        }
+      }, { once: true });
+    }
   }
 
   document.addEventListener("DOMContentLoaded", boot);

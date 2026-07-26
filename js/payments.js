@@ -7,6 +7,7 @@
   let canApproveRefunds = false;
   let activeStatus = "all";
   let activeSearch = "";
+  let activeSort = "created_desc";
 
   function esc(v) { return KridiyaAuth.escapeHTML(String(v == null ? "" : v)); }
   function label(v) { return String(v || "").replace(/_/g, " ").replace(/\b\w/g, function (c) { return c.toUpperCase(); }); }
@@ -31,7 +32,36 @@
       }
       if (activeSearch && searchableText(p).indexOf(activeSearch) === -1) return false;
       return true;
+    }).sort(function (a, b) {
+      if (activeSort === "created_asc") return paymentTime(a) - paymentTime(b);
+      if (activeSort === "amount_desc") return num(b.amount) - num(a.amount);
+      if (activeSort === "refund_first") return refundRank(a) - refundRank(b) || paymentTime(b) - paymentTime(a);
+      if (activeSort === "method_asc") return String(a.method || "").localeCompare(String(b.method || "")) || paymentTime(b) - paymentTime(a);
+      return paymentTime(b) - paymentTime(a);
     });
+  }
+
+  function paymentTime(p) {
+    const t = new Date(p.received_at || p.created_at || 0).getTime();
+    return isNaN(t) ? 0 : t;
+  }
+
+  function refundRank(p) {
+    if (statusIs(p, "refund_pending")) return 0;
+    if (statusIs(p, "refund_approved")) return 1;
+    if (p.refund_requested_at) return 2;
+    return 3;
+  }
+
+  function sortLabel() {
+    const labels = {
+      created_desc: "Newest first",
+      created_asc: "Oldest first",
+      amount_desc: "Amount",
+      refund_first: "Refund risk",
+      method_asc: "Method"
+    };
+    return labels[activeSort] || labels.created_desc;
   }
   function chips(p) {
     const out = [];
@@ -67,9 +97,18 @@
       ["refund_queue", "Refund queue"],
       ["refunded", "Refunded"]
     ];
-    return '<div class="account-main" style="margin-bottom:1rem"><div class="account-section-head"><div><h2>Finance control center</h2><p>Search, monitor, approve refunds, and open connected bookings.</p></div><input id="payments-search" class="admin-search" placeholder="Search reference, booking, company, method..." value="' + esc(activeSearch) + '"></div><div class="ops-kv">' + filters.map(function (f) {
+    return '<div class="account-main" style="margin-bottom:1rem"><div class="account-section-head"><div><h2>Finance control center</h2><p>Search, monitor, approve refunds, and open connected bookings.</p></div><input id="payments-search" class="admin-search" placeholder="Search reference, booking, company, method..." value="' + esc(activeSearch) + '" data-command-label="Search payments" data-command-desc="Find finance records by reference, booking, company or method" data-command-keys="S" data-command-action="focus-search"></div><div class="payment-command-row"><div class="ops-kv">' + filters.map(function (f) {
       return '<button class="btn ' + (activeStatus === f[0] ? 'btn-primary' : 'btn-outline') + ' js-payment-filter" data-status="' + esc(f[0]) + '" type="button">' + esc(f[1]) + '</button>';
-    }).join("") + '</div></div>';
+    }).join("") + '</div><div class="booking-sort admin-list-sort" id="payments-sort"><button type="button" class="booking-sort-btn" id="payments-sort-btn" aria-haspopup="true" aria-expanded="false" data-command-label="Sort payments" data-command-desc="Open payment sort menu" data-command-keys="F" data-command-action="focus-filter">Sort: <b>' + esc(sortLabel()) + '</b></button><div class="booking-sort-menu" id="payments-sort-menu" role="menu" hidden>' +
+      [
+        ["created_desc", "Newest first", "Latest records"],
+        ["created_asc", "Oldest first", "Earliest records"],
+        ["amount_desc", "Amount", "High to low"],
+        ["refund_first", "Refund risk", "Refund queue first"],
+        ["method_asc", "Method", "Grouped by payment method"]
+      ].map(function (s) {
+        return '<button type="button" role="menuitemradio" aria-checked="' + String(activeSort === s[0]) + '" class="booking-sort-item' + (activeSort === s[0] ? " active" : "") + '" data-sort="' + esc(s[0]) + '"><span class="sort-dot"></span><span><b>' + esc(s[1]) + '</b><small>' + esc(s[2]) + "</small></span></button>";
+      }).join("") + '</div></div></div></div>';
   }
   function renderPayments() {
     const list = filteredRows();
@@ -157,6 +196,28 @@
       activeStatus = filter.dataset.status;
       renderPayments();
       return;
+    }
+    const sortBtn = event.target.closest("#payments-sort-btn");
+    if (sortBtn) {
+      event.stopPropagation();
+      const menu = document.getElementById("payments-sort-menu");
+      const open = menu && menu.hidden;
+      if (menu) menu.hidden = !open;
+      sortBtn.setAttribute("aria-expanded", String(open));
+      return;
+    }
+    const sortItem = event.target.closest("#payments-sort-menu .booking-sort-item");
+    if (sortItem) {
+      activeSort = sortItem.dataset.sort || "created_desc";
+      renderPayments();
+      return;
+    }
+    const sortWrap = document.getElementById("payments-sort");
+    const sortMenu = document.getElementById("payments-sort-menu");
+    const paymentsSortBtn = document.getElementById("payments-sort-btn");
+    if (sortWrap && sortMenu && paymentsSortBtn && !sortWrap.contains(event.target)) {
+      sortMenu.hidden = true;
+      paymentsSortBtn.setAttribute("aria-expanded", "false");
     }
     const req = event.target.closest(".js-refund-request");
     if (req) requestRefund(req.dataset.id, req.dataset.amount);
