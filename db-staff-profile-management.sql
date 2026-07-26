@@ -352,6 +352,62 @@ begin
 end;
 $$;
 
+create or replace function public.setup_staff_account_record(
+  target_user_id uuid,
+  full_name text,
+  department text default null,
+  role public.staff_role default 'staff'
+)
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'Only admins can set up staff accounts';
+  end if;
+  if char_length(trim(coalesce(full_name, ''))) < 2 then
+    raise exception 'Full name is required';
+  end if;
+
+  insert into public.staff_profiles (
+    user_id, full_name, department, active, created_by, deleted_at, hold_until, hold_reason
+  )
+  values (
+    target_user_id,
+    trim(full_name),
+    nullif(trim(coalesce(department, '')), ''),
+    true,
+    auth.uid(),
+    null,
+    null,
+    null
+  )
+  on conflict (user_id) do update set
+    full_name = excluded.full_name,
+    department = excluded.department,
+    active = true,
+    deleted_at = null,
+    hold_until = null,
+    hold_reason = null,
+    updated_at = now();
+
+  insert into public.staff_roles (user_id, role)
+  values (target_user_id, role)
+  on conflict (user_id) do update set role = excluded.role;
+
+  insert into public.staff_permissions (user_id)
+  values (target_user_id)
+  on conflict (user_id) do nothing;
+
+  insert into public.audit_events(actor_user_id, target_user_id, event_type, entity_type, entity_id, metadata)
+  values (auth.uid(), target_user_id, 'staff.created', 'user', target_user_id, jsonb_build_object('full_name', full_name, 'department', department, 'role', role));
+
+  return 'created';
+end;
+$$;
+
 create or replace function public.update_staff_permissions(target_user_id uuid, permissions jsonb)
 returns text
 language plpgsql
@@ -546,6 +602,7 @@ grant select, insert, update, delete on public.staff_permissions to authenticate
 
 revoke execute on function public.get_staff_management_profiles() from public, anon;
 revoke execute on function public.update_staff_profile(uuid, text, text, text, text, public.staff_role, boolean, text, timestamptz) from public, anon;
+revoke execute on function public.setup_staff_account_record(uuid, text, text, public.staff_role) from public, anon;
 revoke execute on function public.update_staff_permissions(uuid, jsonb) from public, anon;
 revoke execute on function public.hold_staff(uuid, timestamptz, text) from public, anon;
 revoke execute on function public.reactivate_staff(uuid) from public, anon;
@@ -554,6 +611,7 @@ revoke execute on function public.staff_management_admin_count(uuid) from public
 
 grant execute on function public.get_staff_management_profiles() to authenticated, service_role;
 grant execute on function public.update_staff_profile(uuid, text, text, text, text, public.staff_role, boolean, text, timestamptz) to authenticated, service_role;
+grant execute on function public.setup_staff_account_record(uuid, text, text, public.staff_role) to authenticated, service_role;
 grant execute on function public.update_staff_permissions(uuid, jsonb) to authenticated, service_role;
 grant execute on function public.hold_staff(uuid, timestamptz, text) to authenticated, service_role;
 grant execute on function public.reactivate_staff(uuid) to authenticated, service_role;
