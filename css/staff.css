@@ -319,6 +319,93 @@ body { background: var(--bg); }
 
 /* ---------- Staff control center ---------- */
 .staff-control-row { align-items: flex-start; }
+.staff-profile-card {
+  display: block;
+  padding: 0;
+  border-bottom: 1px solid var(--line);
+}
+.staff-profile-card:last-child { border-bottom: 0; }
+.staff-profile-summary {
+  min-height: 76px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 0.5rem;
+  cursor: pointer;
+  list-style: none;
+}
+.staff-profile-summary::-webkit-details-marker { display: none; }
+.staff-profile-summary:hover { background: var(--surface-tint); }
+.staff-profile-id {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.staff-profile-id b,
+.staff-profile-id p {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.staff-initial {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--brand-soft);
+  color: var(--brand-deep);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+.staff-profile-status {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+.staff-profile-body {
+  display: grid;
+  gap: 0.95rem;
+  padding: 0 0.5rem 1rem;
+}
+.staff-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+.staff-profile-grid .field {
+  grid-column: auto;
+  margin: 0;
+}
+.staff-profile-grid .field span {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: var(--ink-2);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+.staff-profile-grid input,
+.staff-profile-grid select,
+.staff-profile-grid textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+.staff-profile-wide { grid-column: span 2 !important; }
+.staff-profile-meta { margin-top: 0; }
+.staff-profile-actions {
+  justify-content: flex-start;
+  padding: 0;
+}
+.delete-staff {
+  color: var(--status-payment);
+  border-color: color-mix(in oklab, var(--status-payment) 32%, var(--line));
+}
 .staff-person-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.8rem; }
 .staff-risk {
   flex: 0 0 auto; display: inline-flex; align-items: center; border-radius: 999px;
@@ -347,7 +434,23 @@ body { background: var(--bg); }
 }
 .staff-work-grid b { display: block; color: var(--ink); font-size: 1rem; line-height: 1; font-variant-numeric: tabular-nums; }
 @media (max-width: 940px) { .staff-work-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (max-width: 560px) { .staff-person-head { flex-direction: column; } .staff-work-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 940px) { .staff-profile-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) {
+  .staff-person-head,
+  .staff-profile-summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .staff-profile-status,
+  .staff-profile-actions {
+    justify-content: flex-start;
+  }
+  .staff-work-grid,
+  .staff-profile-grid {
+    grid-template-columns: 1fr;
+  }
+  .staff-profile-wide { grid-column: 1 / -1 !important; }
+}
 
 /* ---------- IT & security review ---------- */
 .security-control-card { overflow: visible; }

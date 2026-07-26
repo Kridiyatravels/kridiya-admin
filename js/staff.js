@@ -3,6 +3,7 @@
   if (document.body.dataset.page !== "staff") return;
   let sb = null;
   let myId = null;
+  let advancedStaffBackendReady = true;
 
   async function callAdminEdge(name, body) {
     const session = await sb.auth.getSession();
@@ -33,6 +34,15 @@
   function label(v) { return String(v || "").replace(/_/g, " ").replace(/\b\w/g, function (c) { return c.toUpperCase(); }); }
   function whenText(v) { return v ? new Date(v).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "No activity"; }
   function num(v) { return Number(v || 0); }
+  function roleValue(v) {
+    const role = String(v || "staff").toLowerCase();
+    return ["owner", "admin", "staff", "support"].indexOf(role) >= 0 ? role : "staff";
+  }
+  function bool(v) { return v === true || v === "true"; }
+  function val(row, selector) {
+    const el = row.querySelector(selector);
+    return el ? el.value.trim() : "";
+  }
   function permissionCount(p) { return PERMS.filter(function (name) { return !!p[name]; }).length; }
   function daysSince(v) {
     const d = v ? new Date(v) : null;
@@ -75,6 +85,37 @@
     return { activeRows: activeRows, highAccess: highAccess, stale: stale, broad: broad, inactive: inactive, adminCount: adminCount };
   }
   function staffName(s) { return s.full_name || s.email || "Staff member"; }
+  function normalizePerms(row) {
+    const p = {};
+    PERMS.forEach(function (name) { p[name] = !!(row && row[name]); });
+    return p;
+  }
+  function profileValue(v, fallback) { return v == null || v === "" ? (fallback || "") : v; }
+  async function loadStaffProfiles() {
+    const rich = await sb.rpc("get_staff_management_profiles");
+    if (!rich.error) {
+      advancedStaffBackendReady = true;
+      return rich.data || [];
+    }
+    advancedStaffBackendReady = false;
+    const staffResult = await sb.rpc("list_staff");
+    if (staffResult.error) throw new Error("Could not load staff list.");
+    const permResult = await sb.from("staff_permissions").select("*");
+    const perms = {};
+    if (!permResult.error) {
+      (permResult.data || []).forEach(function (p) { perms[p.user_id] = normalizePerms(p); });
+    }
+    return (staffResult.data || []).map(function (s) {
+      return Object.assign({}, s, {
+        job_title: "",
+        phone: "",
+        notes: "",
+        hold_until: null,
+        hold_reason: "",
+        permissions: perms[s.user_id] || {}
+      });
+    });
+  }
   function renderPeople(list, emptyText) {
     if (!list.length) return '<p class="form-note">' + esc(emptyText) + '</p>';
     return list.slice(0, 5).map(function (s) {
@@ -109,11 +150,50 @@
       '</div>';
   }
   function renderPermissionGroups(p) {
+    p = normalizePerms(p);
     return PERM_GROUPS.map(function (group) {
       return '<details class="perm-control-group"><summary><b>' + esc(group.title) + '</b><span>' + esc(group.names.filter(function (name) { return p[name]; }).length) + '/' + esc(group.names.length) + '</span></summary><div class="permission-grid">' + group.names.map(function (name) {
         return '<label><input type="checkbox" data-perm="' + esc(name) + '" ' + (p[name] ? 'checked' : '') + '> ' + esc(label(name)) + '</label>';
       }).join("") + '</div></details>';
     }).join("");
+  }
+  function renderRoleOptions(current) {
+    return ["owner", "admin", "staff", "support"].map(function (role) {
+      return '<option value="' + esc(role) + '" ' + (roleValue(current) === role ? "selected" : "") + ">" + esc(label(role)) + "</option>";
+    }).join("");
+  }
+  function renderStaffControlRow(s) {
+    const p = normalizePerms(s.permissions || s);
+    const risk = riskLevel(s, null, p);
+    const holdUntil = s.hold_until ? new Date(s.hold_until).toISOString().slice(0, 16) : "";
+    const isHeld = s.hold_until && new Date(s.hold_until).getTime() > Date.now();
+    const state = !s.active ? "Inactive" : (isHeld ? "On hold" : "Active");
+    return '<details class="staff-profile-card ops-row staff-control-row" data-user-id="' + esc(s.user_id) + '">' +
+      '<summary class="staff-profile-summary">' +
+        '<div class="staff-profile-id"><span class="staff-initial">' + esc(staffName(s).slice(0, 2).toUpperCase()) + '</span><div><b>' + esc(staffName(s)) + '</b><p>' + esc(s.email || "No email") + ' - ' + esc(label(s.role)) + ' - ' + esc(profileValue(s.department, "No department")) + '</p></div></div>' +
+        '<div class="staff-profile-status"><span class="staff-risk ' + esc(risk.tone) + '">' + esc(risk.label) + '</span><span class="ops-chip">' + esc(state) + '</span></div>' +
+      '</summary>' +
+      '<div class="staff-profile-body">' +
+        '<div class="staff-profile-grid">' +
+          '<label class="field"><span>FULL NAME</span><input class="profile-full-name" value="' + esc(profileValue(s.full_name, s.email)) + '"></label>' +
+          '<label class="field"><span>JOB TITLE</span><input class="profile-job-title" value="' + esc(profileValue(s.job_title, "")) + '" placeholder="e.g. Visa consultant"></label>' +
+          '<label class="field"><span>DEPARTMENT</span><input class="profile-department" value="' + esc(profileValue(s.department, "")) + '" placeholder="e.g. Flights, Visa"></label>' +
+          '<label class="field"><span>PHONE / WHATSAPP</span><input class="profile-phone" value="' + esc(profileValue(s.phone, "")) + '" placeholder="+971 ..."></label>' +
+          '<label class="field"><span>ROLE</span><select class="profile-role">' + renderRoleOptions(s.role) + '</select></label>' +
+          '<label class="field"><span>STATUS</span><select class="profile-active"><option value="true" ' + (s.active ? "selected" : "") + '>Active</option><option value="false" ' + (!s.active ? "selected" : "") + '>Inactive</option></select></label>' +
+          '<label class="field"><span>HOLD UNTIL</span><input class="profile-hold-until" type="datetime-local" value="' + esc(holdUntil) + '"></label>' +
+          '<label class="field staff-profile-wide"><span>HOLD / ADMIN NOTES</span><textarea class="profile-notes" rows="3" placeholder="Reason for hold, handover note, access review note">' + esc(profileValue(s.hold_reason || s.notes, "")) + '</textarea></label>' +
+        '</div>' +
+        '<div class="ops-kv staff-profile-meta"><span class="ops-chip">' + esc(permissionCount(p)) + ' permission(s)</span><span class="ops-chip">Created ' + esc(whenText(s.created_at)) + '</span><span class="ops-chip">PIN reset only - no stored visible PIN</span></div>' +
+        '<div class="perm-control-stack">' + renderPermissionGroups(p) + '</div>' +
+        '<div class="ops-row-actions staff-profile-actions">' +
+          '<button type="button" class="btn btn-primary save-profile">Save profile</button>' +
+          '<button type="button" class="btn btn-primary save-perms">Save permissions</button>' +
+          '<button type="button" class="btn btn-outline reset-pin">Reset PIN</button>' +
+          (s.user_id === myId ? '' : '<button type="button" class="btn btn-outline hold-staff">Hold</button><button type="button" class="btn btn-outline reactivate-staff">Reactivate</button><button type="button" class="btn btn-outline revoke-staff">Remove access</button><button type="button" class="btn btn-outline delete-staff">Delete profile</button>') +
+        '</div>' +
+      '</div>' +
+    '</details>';
   }
 
   async function boot() {
@@ -189,18 +269,19 @@
   }
 
   async function loadStaff() {
-    const staffResult = await sb.rpc("list_staff");
-    const permResult = await sb.from("staff_permissions").select("*");
-    if (staffResult.error || permResult.error) { toast("Could not load staff permissions."); return; }
+    let rows = [];
+    try {
+      rows = await loadStaffProfiles();
+    } catch (err) {
+      toast(err.message || "Could not load staff permissions.");
+      return;
+    }
     const perms = {};
-    (permResult.data || []).forEach(function (p) { perms[p.user_id] = p; });
-    const rows = staffResult.data || [];
+    rows.forEach(function (s) { perms[s.user_id] = normalizePerms(s.permissions || s); });
     renderStaffStats(rows, [], perms);
-    document.getElementById("staff-control-list").innerHTML = rows.map(function (s) {
-      const p = perms[s.user_id] || {};
-      const risk = riskLevel(s, null, p);
-      return '<div class="ops-row staff-control-row" data-user-id="' + esc(s.user_id) + '"><div class="ops-row-main"><div class="staff-person-head"><div><b>' + esc(s.full_name || s.email) + '</b><p>' + esc(s.email) + ' - ' + esc(label(s.role)) + ' - ' + esc(s.department || "No department") + '</p></div><span class="staff-risk ' + esc(risk.tone) + '">' + esc(risk.label) + '</span></div><div class="ops-kv"><span class="ops-chip">' + esc(s.active ? "Active" : "Inactive") + '</span><span class="ops-chip">' + esc(permissionCount(p)) + ' permission(s)</span><span class="ops-chip">PIN reset only - no stored visible PIN</span></div><div class="perm-control-stack">' + renderPermissionGroups(p) + '</div></div><div class="ops-row-actions"><button type="button" class="btn btn-primary save-perms">Save</button><button type="button" class="btn btn-outline reset-pin">Reset PIN</button>' + (s.user_id === myId ? '' : '<button type="button" class="btn btn-outline revoke-staff">Remove</button>') + '</div></div>';
-    }).join("") || '<p class="form-note">No staff found.</p>';
+    renderSecurityPanel(rows, [], perms);
+    const backendNote = advancedStaffBackendReady ? "" : '<div class="form-banner warn staff-backend-note" role="status"><b>Advanced staff backend pending.</b> Run <code>db-staff-profile-management.sql</code> in Supabase to enable profile save, hold, reactivate, delete profile, and audited permission updates. Existing staff are still shown below.</div>';
+    document.getElementById("staff-control-list").innerHTML = backendNote + (rows.map(renderStaffControlRow).join("") || '<p class="form-note">No staff found.</p>');
   }
 
   function renderStaffStats(staffRows, monitoringRows, perms) {
@@ -252,10 +333,33 @@
     if (e.target.closest(".save-perms")) {
       const update = {};
       row.querySelectorAll("input[data-perm]").forEach(function (box) { update[box.dataset.perm] = box.checked; });
-      const result = await sb.from("staff_permissions").update(update).eq("user_id", userId);
-      if (result.error) { toast("Could not save permissions: " + result.error.message); return; }
-      await logActivity(sb, (await KridiyaAuth.currentUser()).id, "staff.permissions_updated", "user", userId, {});
+      const result = await sb.rpc("update_staff_permissions", { target_user_id: userId, permissions: update });
+      if (result.error) {
+        const fallback = await sb.from("staff_permissions").upsert(Object.assign({ user_id: userId }, update), { onConflict: "user_id" });
+        if (fallback.error) { toast("Could not save permissions: " + result.error.message); return; }
+        await logActivity(sb, (await KridiyaAuth.currentUser()).id, "staff.permissions_updated", "user", userId, {});
+      }
       toast("Permissions saved.");
+      await loadStaff();
+      await loadMonitoring();
+    }
+    if (e.target.closest(".save-profile")) {
+      const body = {
+        target_user_id: userId,
+        full_name: val(row, ".profile-full-name"),
+        department: val(row, ".profile-department"),
+        job_title: val(row, ".profile-job-title"),
+        phone: val(row, ".profile-phone"),
+        role: roleValue(val(row, ".profile-role")),
+        active: bool(val(row, ".profile-active")),
+        notes: val(row, ".profile-notes"),
+        hold_until: val(row, ".profile-hold-until") || null
+      };
+      if (!body.full_name) { toast("Enter the staff member's full name."); return; }
+      const result = await sb.rpc("update_staff_profile", body);
+      if (result.error) { toast("Could not save profile: " + result.error.message); return; }
+      toast("Staff profile saved.");
+      await loadStaff();
       await loadMonitoring();
     }
     if (e.target.closest(".reset-pin")) {
@@ -263,6 +367,23 @@
         const data = await callAdminEdge("reset-staff-pin", { user_id: userId });
         toast("New PIN: " + data.pin + " — give it to them now, it won't be shown again.");
       } catch (err) { toast(err.message); }
+    }
+    if (e.target.closest(".hold-staff")) {
+      const holdUntil = val(row, ".profile-hold-until");
+      const reason = val(row, ".profile-notes") || "Temporary staff hold";
+      if (!holdUntil) { toast("Choose a hold-until date and time first."); return; }
+      const result = await sb.rpc("hold_staff", { target_user_id: userId, hold_until: holdUntil, reason: reason });
+      if (result.error) { toast("Could not hold staff: " + result.error.message); return; }
+      toast("Staff access is on hold until the selected time.");
+      await loadStaff();
+      await loadMonitoring();
+    }
+    if (e.target.closest(".reactivate-staff")) {
+      const result = await sb.rpc("reactivate_staff", { target_user_id: userId });
+      if (result.error) { toast("Could not reactivate staff: " + result.error.message); return; }
+      toast("Staff access reactivated.");
+      await loadStaff();
+      await loadMonitoring();
     }
     if (e.target.closest(".revoke-staff")) {
       const revokeBtn = e.target.closest(".revoke-staff");
@@ -275,10 +396,20 @@
         await logActivity(sb, myId, "staff.revoked", "user", userId, {});
         toast("Access removed.");
         await loadStaff();
+        await loadMonitoring();
       } catch (err) {
         toast("Could not remove access: " + err.message);
         revokeBtn.disabled = false;
       }
+    }
+    if (e.target.closest(".delete-staff")) {
+      const name = row.querySelector(".staff-profile-id b") ? row.querySelector(".staff-profile-id b").textContent : "this staff profile";
+      if (!confirm("Delete " + name + "'s staff profile and permission record? This keeps business audit history but removes staff-management records.")) return;
+      const result = await sb.rpc("delete_staff_profile", { target_user_id: userId });
+      if (result.error) { toast("Could not delete staff profile: " + result.error.message); return; }
+      toast("Staff profile deleted.");
+      await loadStaff();
+      await loadMonitoring();
     }
   });
 
