@@ -1457,6 +1457,111 @@ main .container,
   }
 }
 
+/* ---------- Header alignment contract ---------- */
+.staff-topbar-inner {
+  min-height: 64px;
+  align-items: center;
+}
+
+.staff-logo,
+.staff-nav,
+.staff-nav-primary,
+.staff-tools,
+.staff-actions {
+  align-items: center;
+}
+
+.staff-logo {
+  min-height: 42px;
+}
+
+.staff-nav {
+  min-height: 42px;
+  gap: var(--sp-1);
+}
+
+.staff-nav-primary {
+  min-height: 42px;
+  gap: var(--sp-1);
+}
+
+.staff-nav a,
+.staff-tools-btn,
+.staff-jump-btn,
+.staff-profile-btn {
+  height: 42px;
+  min-height: 42px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+.staff-nav a {
+  padding: 0 0.65rem;
+  border: 1px solid transparent;
+}
+
+.staff-tools {
+  height: 42px;
+}
+
+.staff-tools-btn {
+  padding: 0 0.7rem;
+  border: 1px solid transparent;
+}
+
+.staff-jump-btn {
+  padding: 0 0.7rem;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.staff-actions {
+  min-height: 42px;
+}
+
+.staff-profile-btn {
+  min-width: 118px;
+  padding: 0 0.65rem 0 0.3rem;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.staff-profile-av {
+  width: 30px;
+  height: 30px;
+}
+
+.staff-topbar :where(a, button):focus-visible {
+  outline-width: 2px;
+  outline-offset: 1px;
+}
+
+@media (min-width: 1080px) {
+  .staff-topbar-inner {
+    column-gap: 1.25rem;
+  }
+}
+
+@media (max-width: 1079px) {
+  .staff-nav {
+    min-height: 42px;
+  }
+}
+
+@media (max-width: 520px) {
+  .staff-profile-btn {
+    min-width: 42px;
+    width: 42px;
+    padding: 0;
+  }
+}
+
 .staff-logo img {
   width: 34px;
   height: 34px;
