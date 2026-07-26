@@ -281,10 +281,11 @@
         '<div class="cust-head">' +
           '<div class="cust-avatar">' + esc(initialsOf(g.name, g.email)) + "</div>" +
           '<div class="cust-head-main">' +
-            '<div class="cust-name-line"><b>' + esc(g.name) + "</b>" + accountBadge(g) +
-              (g.active === false ? '<span class="cust-badge cust-badge-guest">Archived</span>' : "") +
-            "</div>" +
+            '<div class="cust-name-line"><b>' + esc(g.name) + "</b></div>" +
             '<div class="cust-sub-line">' + esc(g.email) + (g.phone ? " · " + esc(g.phone) : "") + "</div>" +
+          "</div>" +
+          '<div class="cust-account-state">' + accountBadge(g) +
+            (g.active === false ? '<span class="cust-badge cust-badge-guest">Archived</span>' : "") +
           "</div>" +
           '<div class="cust-head-meta">' +
             '<span class="cust-chip">' + g.enquiries.length + " enquir" + (g.enquiries.length === 1 ? "y" : "ies") + "</span>" +
