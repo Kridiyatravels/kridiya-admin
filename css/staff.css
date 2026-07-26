@@ -1114,7 +1114,9 @@ body { background: var(--bg); }
   border: 1px dashed var(--brand); background: var(--brand-soft, #fdf1e4); color: var(--brand-deep, #a3480f);
   border-radius: 999px; padding: 0.3rem 0.7rem; font: inherit; font-size: 0.8rem; font-weight: 700; cursor: pointer;
 }
-.chip-add:hover { background: var(--brand); color: #fff; }
+/* Subtle hover to match the neutral chip styling used across the portal —
+   tint + brand border, not a solid orange fill. */
+.chip-add:hover { background: var(--brand-soft); border-color: var(--brand); color: var(--brand-deep); }
 .doc-action-row { display: flex; flex-wrap: wrap; gap: 0.7rem; }
 @media (max-width: 520px) { .doc-action-row .btn { flex: 1 1 100%; } }
 
@@ -2699,6 +2701,17 @@ table tbody tr:hover {
 
 #doc-fields {
   gap: var(--sp-5);
+  /* The shared `.field` class carries `grid-column: span 12` from the public
+     stylesheet. Inside this single-column grid that silently creates implicit
+     columns, so non-.field children (the "Line items" heading, #rep-items, the
+     quick-add chip row, the add button) get auto-placed into narrow tracks and
+     collapse. Pin one column and make every direct child span the full row. */
+  grid-template-columns: minmax(0, 1fr);
+}
+
+#doc-fields > * {
+  grid-column: 1 / -1;
+  min-width: 0;
 }
 
 #doc-fields .field-row {
@@ -2843,6 +2856,33 @@ table tbody tr:hover {
 .doc-addon-check input {
   flex: 0 0 auto;
   margin: 0;
+}
+
+/* The extras tick-boxes sit inside a `.field`, so the generic
+   `.field label { display: block }` and `.field input { width: 100% !important;
+   min-height: ... !important }` rules would otherwise turn each label into a
+   stacked block and each checkbox into a full-size text input. Scope them back. */
+#doc-fields .field label.doc-addon-check {
+  display: flex;
+  align-items: center;
+  min-height: 46px;
+  margin-bottom: 0;
+  padding: 0 var(--sp-3);
+  color: var(--ink);
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+#doc-fields .field label.doc-addon-check input[type="checkbox"] {
+  width: 17px !important;
+  height: 17px;
+  min-height: 0 !important;
+  min-width: 0;
+  flex: 0 0 auto;
+  margin: 0;
+  accent-color: var(--brand);
 }
 
 .doc-action-row {
