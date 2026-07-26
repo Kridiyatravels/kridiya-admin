@@ -268,28 +268,28 @@
   /* ---- Invoice ---- */
   function buildFormInvoice(mount) {
     mount.innerHTML =
-      '<div class="field-row">' +
+      '<div class="field-row doc-invoice-customer-row">' +
         '<div class="field col-6"><label>BILL TO</label><input name="customer_name" required value="' + esc(prefillName()) + '"></div>' +
         '<div class="field col-6"><label>EMAIL</label><input name="customer_email" type="email" value="' + esc(prefillEmail()) + '"></div>' +
         '<div class="field col-6"><label>INVOICE DATE</label><input name="invoice_date" type="date" value="' + todayISO() + '"></div>' +
-        '<div class="field col-6"><label>CURRENCY</label><input name="currency" value="AED" maxlength="3" style="text-transform:uppercase"></div>' +
+        '<div class="field col-6"><label>CURRENCY</label><input class="currency-input" name="currency" value="AED" maxlength="3"></div>' +
       "</div>" +
-      '<h3 style="margin-top:1rem">Line items</h3>' +
+      '<h3 class="doc-subhead">Line items</h3>' +
       '<div id="rep-items"></div>' +
-      '<button type="button" id="add-item" class="btn btn-outline" style="margin-top:0.5rem">+ Add line item</button>' +
+      '<button type="button" id="add-item" class="btn btn-outline doc-add-repeat">+ Add line item</button>' +
       '<div class="doc-addon-chips" id="inv-addons"><span class="doc-addon-chips-label">Quick add:</span>' +
         INVOICE_EXTRAS.map(function (a) { return '<button type="button" class="chip-add" data-addon="' + esc(a) + '">+ ' + esc(a) + "</button>"; }).join("") +
       "</div>" +
-      '<div class="field-row" style="margin-top:1rem">' +
+      '<div class="field-row doc-money-row">' +
         '<div class="field col-4"><label>DISCOUNT (' + esc((settings && settings.default_currency) || "AED") + ')</label><input name="discount" type="number" min="0" step="0.01" placeholder="0.00"></div>' +
         '<div class="field col-4"><label>AMOUNT PAID / ADVANCE</label><input name="amount_paid" type="number" min="0" step="0.01" placeholder="0.00"></div>' +
         '<div class="field col-4"><label>VAT</label><input value="' + (isVatRegistered() ? "5% (VAT registered)" : "Not applied") + '" disabled></div>' +
       "</div>" +
-      '<div class="field" style="margin-top:0.4rem"><label>NOTES / TERMS</label><textarea name="notes">' + esc((settings && settings.invoice_footer_note) || "") + "</textarea></div>" +
+      '<div class="field"><label>NOTES / TERMS</label><textarea name="notes">' + esc((settings && settings.invoice_footer_note) || "") + "</textarea></div>" +
       '<div class="field"><label>STRIPE PAYMENT LINK (OPTIONAL)</label><input name="payment_link" placeholder="https://buy.stripe.com/..."></div>';
     renderRepeatable("rep-items", "add-item", function (i) {
       return (
-        '<div class="field-row" style="flex:1">' +
+        '<div class="field-row repeat-field-row">' +
         '<div class="field col-6"><label>DESCRIPTION</label><input name="desc_' + i + '" placeholder="e.g. Flight ticket, Dubai to Kochi"></div>' +
         '<div class="field col-2"><label>QTY</label><input name="qty_' + i + '" type="number" min="1" value="1"></div>' +
         '<div class="field col-4"><label>UNIT PRICE</label><input name="price_' + i + '" type="number" min="0" step="0.01" value="0"></div>' +
@@ -381,8 +381,8 @@
   function buildFormFlight(mount, legCount) {
     mount.innerHTML =
       '<div id="rep-legs"></div>' +
-      (legCount === "multi" ? '<button type="button" id="add-item" class="btn btn-outline" style="margin-top:0.5rem">+ Add flight leg</button>' : "") +
-      '<div class="field-row" style="margin-top:1rem">' +
+      (legCount === "multi" ? '<button type="button" id="add-item" class="btn btn-outline doc-add-repeat">+ Add flight leg</button>' : "") +
+      '<div class="field-row doc-ticket-passenger-row">' +
         '<div class="field col-6"><label>PASSENGER NAME(S), ONE PER LINE</label><textarea name="passengers">' + esc(prefillName()) + "</textarea></div>" +
         '<div class="field col-3"><label>CLASS</label><input name="cabin" value="Economy"></div>' +
         '<div class="field col-3"><label>BAGGAGE</label><input name="baggage" placeholder="e.g. 20kg checked + 7kg cabin"></div>' +
@@ -392,7 +392,7 @@
     const initial = legCount === "round" ? 2 : 1;
     renderRepeatable("rep-legs", "add-item", function (i) {
       return (
-        '<div class="field-row" style="flex:1">' +
+        '<div class="field-row repeat-field-row">' +
         '<div class="field col-3"><label>AIRLINE</label><input name="airline_' + i + '"></div>' +
         '<div class="field col-3"><label>FLIGHT NO.</label><input name="flightno_' + i + '"></div>' +
         '<div class="field col-3"><label>FROM</label><input name="from_' + i + '" data-airport placeholder="Dubai (DXB)"></div>' +
@@ -662,7 +662,7 @@
         '<div class="field col-12"><label>WHAT IS BEING CANCELLED</label><textarea name="what_cancelled" placeholder="e.g. Flight ticket DXB-COK-DXB, 2 adults"></textarea></div>' +
         '<div class="field col-4"><label>CANCELLATION DATE</label><input name="cancel_date" type="date" value="' + todayISO() + '"></div>' +
         '<div class="field col-4"><label>REFUND AMOUNT</label><input name="refund_amount" type="number" min="0" step="0.01"></div>' +
-        '<div class="field col-4"><label>CURRENCY</label><input name="currency" value="AED" maxlength="3" style="text-transform:uppercase"></div>' +
+        '<div class="field col-4"><label>CURRENCY</label><input class="currency-input" name="currency" value="AED" maxlength="3"></div>' +
         '<div class="field col-6"><label>REFUND METHOD</label><input name="refund_method" placeholder="e.g. Original payment method, bank transfer"></div>' +
         '<div class="field col-6"><label>EXPECTED REFUND TIMEFRAME</label><input name="refund_timeframe" placeholder="e.g. 7-14 business days"></div>' +
         '<div class="field col-6"><label>CANCELLATION FEE (IF ANY)</label><input name="cancel_fee" type="number" min="0" step="0.01"></div>' +
