@@ -409,7 +409,10 @@
   function renderDocumentRows(rows, canEdit) {
     if (!rows.length) return '<p class="form-note">No document records yet.</p>';
     return '<div class="ops-list payment-history">' + rows.map(function (r) {
-      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(label(r.document_type)) + '</b><p>' + esc(r.file_name) + (r.external_reference ? ' - ' + esc(r.external_reference) : '') + '</p><div class="ops-kv"><span class="ops-chip">' + (r.visible_to_customer ? 'Customer visible' : 'Internal only') + '</span>' + (r.storage_path ? '<span class="ops-chip">File saved</span>' : '') + '</div></div><div class="ops-row-actions">' + (r.storage_path ? '<button class="btn btn-outline js-view-booking-document" data-path="' + esc(r.storage_path) + '" type="button">View</button>' : '') + (canEdit ? '<button class="btn btn-outline js-delete-document" data-id="' + esc(r.id) + '" data-path="' + esc(r.storage_path || "") + '" type="button">Remove</button>' : '') + '</div></div>';
+      const releaseButton = canEdit && r.storage_path
+        ? '<button class="btn btn-outline js-toggle-document-release" data-id="' + esc(r.id) + '" data-visible="' + esc(r.visible_to_customer ? "false" : "true") + '" type="button">' + esc(r.visible_to_customer ? "Hide from customer" : "Release to customer") + '</button>'
+        : '';
+      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(label(r.document_type)) + '</b><p>' + esc(r.file_name) + (r.external_reference ? ' - ' + esc(r.external_reference) : '') + '</p><div class="ops-kv"><span class="ops-chip">' + (r.visible_to_customer ? 'Customer visible' : 'Internal only') + '</span>' + (r.storage_path ? '<span class="ops-chip">File saved</span>' : '<span class="ops-chip">No file attached</span>') + '</div></div><div class="ops-row-actions">' + (r.storage_path ? '<button class="btn btn-outline js-view-booking-document" data-path="' + esc(r.storage_path) + '" type="button">View</button>' : '') + releaseButton + (canEdit ? '<button class="btn btn-outline js-delete-document" data-id="' + esc(r.id) + '" data-path="' + esc(r.storage_path || "") + '" type="button">Remove</button>' : '') + '</div></div>';
     }).join("") + '</div>';
   }
 
@@ -483,6 +486,21 @@
       return;
     }
     window.open(result.data.signedUrl, "_blank", "noopener");
+  }
+
+  async function toggleDocumentRelease(id, visible) {
+    const result = await sb
+      .from("booking_documents")
+      .update({ visible_to_customer: visible })
+      .eq("id", id)
+      .select("id")
+      .single();
+    if (result.error) {
+      toast("Could not update document visibility: " + result.error.message);
+      return;
+    }
+    toast(visible ? "Document released to customer." : "Document hidden from customer.");
+    await loadDetail();
   }
 
   async function uploadPaymentProof(paymentId, file) {
@@ -720,6 +738,7 @@
     const taskButton = event.target.closest(".js-complete-task");
     const passengerButton = event.target.closest(".js-delete-passenger");
     const documentButton = event.target.closest(".js-delete-document");
+    const releaseDocumentButton = event.target.closest(".js-toggle-document-release");
     const receiptButton = event.target.closest(".js-print-receipt");
     const viewDocumentButton = event.target.closest(".js-view-booking-document");
     const requestButton = event.target.closest(".js-payment-request");
@@ -728,6 +747,7 @@
     if (taskButton) completeBookingTask(taskButton.dataset.id);
     if (passengerButton) deletePassenger(passengerButton.dataset.id);
     if (documentButton) deleteDocument(documentButton.dataset.id, documentButton.dataset.path);
+    if (releaseDocumentButton) toggleDocumentRelease(releaseDocumentButton.dataset.id, releaseDocumentButton.dataset.visible === "true");
     if (receiptButton) generateReceipt(receiptButton.dataset.id);
     if (viewDocumentButton) viewBookingDocument(viewDocumentButton.dataset.path);
     if (requestButton) generatePaymentRequest();
