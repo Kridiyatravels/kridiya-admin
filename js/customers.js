@@ -49,14 +49,25 @@
     } catch (e) { return fallback; }
   }
   async function loadAll() {
-    const [enquiries, profiles, customers, bookings] = await Promise.all([
+    const [enquiries, profiles, customers, bookings, staffProfiles, staffRoles, staffList] = await Promise.all([
       safe(sb.from("enquiries").select("id, reference, full_name, email, phone, service_type, status, summary, user_id, created_at").order("created_at", { ascending: false }), []),
       safe(sb.from("profiles").select("id, full_name, preferred_email, phone, whatsapp, nationality, created_at"), []),
       safe(sb.from("customers").select("id, auth_user_id, full_name, email, phone, whatsapp, nationality, notes, source, active, created_at"), []),
-      safe(sb.from("bookings").select("id, booking_reference, service_type, title, route_or_destination, travel_start, travel_end, amount, currency, status, enquiry_id, customer_id, user_id, created_at").order("created_at", { ascending: false }), null)
+      safe(sb.from("bookings").select("id, booking_reference, service_type, title, route_or_destination, travel_start, travel_end, amount, currency, status, enquiry_id, customer_id, user_id, created_at").order("created_at", { ascending: false }), null),
+      safe(sb.from("staff_profiles").select("user_id"), []),
+      safe(sb.from("staff_roles").select("user_id"), []),
+      safe(sb.rpc("list_staff"), [])
     ]);
     moneyVisible = Array.isArray(bookings);
-    return { enquiries: enquiries, profiles: profiles, customers: customers, bookings: bookings || [] };
+    return {
+      enquiries: enquiries,
+      profiles: profiles,
+      customers: customers,
+      bookings: bookings || [],
+      staffProfiles: staffProfiles,
+      staffRoles: staffRoles,
+      staffList: staffList
+    };
   }
 
   /* ---------- merge everything into one group per email ---------- */
@@ -84,10 +95,26 @@
 
   function buildGroups(data) {
     const map = new Map();
+    const staffUserIds = new Set();
+    const staffEmails = new Set();
+
+    (data.staffProfiles || []).forEach(function (s) { if (s.user_id) staffUserIds.add(s.user_id); });
+    (data.staffRoles || []).forEach(function (s) { if (s.user_id) staffUserIds.add(s.user_id); });
+    (data.staffList || []).forEach(function (s) {
+      if (s.user_id) staffUserIds.add(s.user_id);
+      if (s.email) staffEmails.add(normEmail(s.email));
+    });
+    data.profiles.forEach(function (p) {
+      if (p.id && staffUserIds.has(p.id) && p.preferred_email) staffEmails.add(normEmail(p.preferred_email));
+    });
+    function isStaffPerson(email, userId) {
+      return (userId && staffUserIds.has(userId)) || (email && staffEmails.has(normEmail(email)));
+    }
 
     // enquiries drive the base (staff can always read them). Iterated newest
     // first, so the first non-empty value we keep is the most recent.
     data.enquiries.forEach(function (e) {
+      if (isStaffPerson(e.email, e.user_id)) return;
       const g = getGroup(map, e.email);
       if (!g) return;
       if (e.full_name && !g.name) g.name = e.full_name;
@@ -99,6 +126,7 @@
 
     // website account profiles — may add people who never enquired
     data.profiles.forEach(function (p) {
+      if (isStaffPerson(p.preferred_email, p.id)) return;
       const g = getGroup(map, p.preferred_email);
       if (!g) return;
       g.hasAccount = true;
@@ -112,6 +140,7 @@
 
     // CRM customer records — notes, source, account link
     data.customers.forEach(function (c) {
+      if (isStaffPerson(c.email, c.auth_user_id)) return;
       const g = getGroup(map, c.email);
       if (!g) return;
       if (c.full_name && !g.name) g.name = c.full_name;
@@ -129,11 +158,16 @@
     // bookings — resolve to an email via enquiry / customer / account
     const enqEmail = {}, custEmail = {}, userEmail = {};
     data.enquiries.forEach(function (e) {
+      if (isStaffPerson(e.email, e.user_id)) return;
       enqEmail[e.id] = normEmail(e.email);
       if (e.user_id) userEmail[e.user_id] = normEmail(e.email);
     });
-    data.profiles.forEach(function (p) { if (p.id && p.preferred_email) userEmail[p.id] = normEmail(p.preferred_email); });
+    data.profiles.forEach(function (p) {
+      if (isStaffPerson(p.preferred_email, p.id)) return;
+      if (p.id && p.preferred_email) userEmail[p.id] = normEmail(p.preferred_email);
+    });
     data.customers.forEach(function (c) {
+      if (isStaffPerson(c.email, c.auth_user_id)) return;
       if (c.email) custEmail[c.id] = normEmail(c.email);
       if (c.auth_user_id && c.email) userEmail[c.auth_user_id] = normEmail(c.email);
     });
