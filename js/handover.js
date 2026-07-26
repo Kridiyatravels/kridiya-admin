@@ -79,8 +79,20 @@
       href: "backups.html",
       steps: [
         "Download the full backup pack at least monthly and before big system changes.",
-        "Keep files in a dated folder: Kridiya Travel/Finance/YYYY/MM.",
+        "Keep monthly exports in: Kridiya Travel/05 Staff and Security/Monthly Backups/YYYY-MM.",
         "If the system is unavailable, use exported bookings, payments, customers, documents, and activity files as the emergency operating record."
+      ]
+    },
+    {
+      title: "SharePoint archive",
+      owner: "Owner/admin",
+      href: "backups.html",
+      steps: [
+        "Use root folder: Kridiya Travel, with Company Records, Operations, Finance, Corporate Clients, Suppliers, Staff and Security, and Emergency Backups.",
+        "For every booking use: Operations/Bookings/YYYY/MM/BOOKING-REFERENCE - Customer Name.",
+        "Inside each booking keep: Customer Documents, Tickets and Vouchers, Invoices and Receipts, Payment Proofs, Supplier Invoices, Refunds and Cancellations, and Internal Notes.",
+        "Name files as: YYYY-MM-DD - BOOKING-REFERENCE - Customer Name - Document Type.ext.",
+        "Never share internal folders directly with customers; release customer-ready files through admin first."
       ]
     }
   ];
@@ -99,7 +111,7 @@
 
   function render() {
     document.getElementById("handover-summary").innerHTML =
-      '<div class="handover-summary"><div><b>8 operating areas</b><span>Use this as the company method for staff training, launch QA, monthly review, and emergency operation.</span></div><a class="btn btn-outline" href="dashboard.html">Open dashboard</a></div>';
+      '<div class="handover-summary"><div><b>' + esc(SECTIONS.length) + ' operating areas</b><span>Use this as the company method for staff training, launch QA, monthly review, and emergency operation.</span></div><a class="btn btn-outline" href="dashboard.html">Open dashboard</a></div>';
     document.getElementById("handover-sections").innerHTML = SECTIONS.map(function (section) {
       return '<article class="handover-card"><div class="handover-card-head"><div><h2>' + esc(section.title) + '</h2><p>' + esc(section.owner) + '</p></div><a class="btn btn-outline btn-sm" href="' + esc(section.href) + '">Open</a></div><ol>' + section.steps.map(function (step) {
         return '<li>' + esc(step) + '</li>';

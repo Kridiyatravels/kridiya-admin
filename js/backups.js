@@ -115,7 +115,9 @@
       '<div class="backup-ready-summary"><div><b>' + esc(ready) + '/' + esc(rows.length) + '</b><span>Backup areas ready</span><p>Monthly folder: Kridiya Travel/Finance/' + esc(stamp().slice(0, 7).replace("-", "/")) + '</p></div><a class="btn btn-outline" href="accounting.html">Accounting</a></div>' +
       '<div class="review-check-grid">' + rows.map(function (r) {
         return '<div class="review-check ' + (r[1] ? "done" : "todo") + '"><b>' + esc(r[0]) + '</b><p>' + esc(r[2]) + '</p></div>';
-      }).join("") + '</div>';
+      }).join("") + '</div>' +
+      '<div class="doc-control-next"><b>SharePoint filing path</b><span>Save monthly exports to Kridiya Travel/05 Staff and Security/Monthly Backups/' + esc(stamp().slice(0, 7)) + '. Save finance files to Kridiya Travel/02 Finance/' + esc(stamp().slice(0, 7).replace("-", "/")) + '/Accounting Export.</span></div>' +
+      '<div class="doc-control-next"><b>Booking folder rule</b><span>For each booking use Operations/Bookings/YYYY/MM/BOOKING-REFERENCE - Customer Name, then split files into Customer Documents, Tickets and Vouchers, Invoices and Receipts, Payment Proofs, Supplier Invoices, Refunds and Cancellations, and Internal Notes.</span></div>';
   }
 
   async function loadExports() {
