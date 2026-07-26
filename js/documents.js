@@ -181,7 +181,7 @@
   }
   function requirementListHTML(service) {
     const list = DOCUMENT_REQUIREMENTS[service] || DOCUMENT_REQUIREMENTS.flight;
-    return '<div class="doc-required-card"><div><b>Documents needed</b><span>' + esc((INVOICE_SERVICE_PRESETS[service] && INVOICE_SERVICE_PRESETS[service].label) || "Selected service") + '</span></div><ul>' +
+    return '<div class="doc-required-card"><div><b>Internal document checklist</b><span>' + esc((INVOICE_SERVICE_PRESETS[service] && INVOICE_SERVICE_PRESETS[service].label) || "Selected service") + ' - staff only, not printed on the customer invoice/PDF.</span></div><ul>' +
       list.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") +
       "</ul></div>";
   }

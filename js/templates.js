@@ -1,6 +1,8 @@
 "use strict";
 (function () {
   if (document.body.dataset.page !== "templates") return;
+  const LOGO_URL = "https://kridiyatravel.com/assets/logo.png";
+  const STORAGE_KEY = "kridiya_template_overrides_v1";
 
   const TEMPLATES = [
     { title: "New enquiry reply", category: "Enquiry", channel: "email", subject: "Your travel enquiry with Kridiya Travel", body: "Hi [Customer Name],\n\nThank you for contacting KRIDIYA Travel and Tourism.\n\nWe received your enquiry for:\n- Service: [Flight/Visa/Hotel/Package/etc.]\n- Destination/Route: [Destination or route]\n- Travel date: [Date]\n- Passengers: [Passenger count]\n\nWe are checking the best available options and will update you shortly.\n\nRegards,\nKRIDIYA Travel and Tourism FZ-LLC" },
@@ -32,10 +34,42 @@
     { title: "Staff daily closing", category: "Internal", channel: "internal", body: "Date: [Date]\nStaff: [Name]\n\nNew enquiries:\nQuotes sent:\nBookings confirmed:\nPayments received:\nSupplier payments pending:\nRefunds pending:\nDocuments issued:\nUrgent follow-up tomorrow:\nRisks/blockers:\nNotes for owner:" },
     { title: "Staff handover note", category: "Internal", channel: "internal", body: "Booking: [Booking Reference]\nCustomer/company: [Name]\nService: [Service]\nCurrent status: [Status]\nPayment status: [Status]\nSupplier status/ref: [Supplier status/ref]\nPending action: [What to do next]\nDeadline: [Date/time]\nImportant notes: [Notes]" }
   ];
+  const DEFAULT_TEMPLATES = TEMPLATES.map(function (t) { return Object.assign({}, t); });
 
   function esc(v) { return KridiyaAuth.escapeHTML(String(v == null ? "" : v)); }
   function label(v) { return String(v || "").replace(/_/g, " ").replace(/\b\w/g, function (c) { return c.toUpperCase(); }); }
   function fullText(t) { return (t.subject ? "Subject: " + t.subject + "\n\n" : "") + t.body; }
+  function loadOverrides() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+      Object.keys(saved).forEach(function (key) {
+        const index = Number(key);
+        if (!TEMPLATES[index] || !saved[key]) return;
+        ["subject", "body"].forEach(function (field) {
+          if (typeof saved[key][field] === "string") TEMPLATES[index][field] = saved[key][field];
+        });
+      });
+    } catch (err) {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  }
+  function readOverrides() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }
+    catch (err) { return {}; }
+  }
+  function saveOverride(index, values) {
+    const saved = readOverrides();
+    saved[index] = Object.assign(saved[index] || {}, values);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+  }
+  function clearOverride(index) {
+    const saved = readOverrides();
+    delete saved[index];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+  }
+  function hasOverride(index) {
+    return Object.prototype.hasOwnProperty.call(readOverrides(), String(index));
+  }
   function countBy(key) {
     return TEMPLATES.reduce(function (acc, t) {
       acc[t[key]] = (acc[t[key]] || 0) + 1;
@@ -61,11 +95,12 @@
         '<div><b>' + esc(Object.keys(byCategory).length) + '</b><span>Categories</span></div>' +
       '</div>' +
       '<div class="doc-control-next"><b>Covered categories</b><span>' + esc(Object.keys(byCategory).sort().join(", ")) + '</span></div>' +
-      '<div class="doc-control-next"><b>PDF-ready templates</b><span>Every template has Open PDF view. Use browser Print -> Save as PDF for a clean file.</span></div>';
+      '<div class="doc-control-next"><b>PDF-ready templates</b><span>Open PDF view uses Kridiya letterhead with logo. Use browser Print -> Save as PDF for a clean file.</span></div>' +
+      '<div class="doc-control-next"><b>Editable library</b><span>Edit and Save changes template wording on this browser. Reset restores the company default.</span></div>';
   }
   function templatePrintHTML(t) {
     const subject = t.subject ? "<h2>Subject</h2><p>" + esc(t.subject) + "</p>" : "";
-    return "<!doctype html><html><head><meta charset='utf-8'><title>" + esc(t.title) + "</title><style>body{font-family:Arial,sans-serif;margin:40px;color:#1f2933;line-height:1.55}h1{font-size:22px;margin:0 0 6px;color:#a3480f}h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:#8a4210;margin:22px 0 8px}.meta{font-size:12px;color:#667085;border-bottom:2px solid #c9601c;padding-bottom:14px;margin-bottom:22px}.body{white-space:pre-wrap;border:1px solid #ead7bf;background:#fff8ef;border-radius:10px;padding:18px}.foot{margin-top:28px;font-size:11px;color:#667085;border-top:1px solid #eee;padding-top:12px}@media print{body{margin:18mm}}</style></head><body><h1>" + esc(t.title) + "</h1><div class='meta'>KRIDIYA Travel and Tourism FZ-LLC / " + esc(t.category) + " / " + esc(label(t.channel)) + "</div>" + subject + "<h2>Template</h2><div class='body'>" + esc(t.body) + "</div><div class='foot'>Template generated from admin.kridiyatravel.com. Replace placeholders before sending.</div><script>setTimeout(function(){window.print()},250)</script></body></html>";
+    return "<!doctype html><html><head><meta charset='utf-8'><title>" + esc(t.title) + "</title><style>body{font-family:Arial,sans-serif;margin:0;padding:38px;color:#1f2933;line-height:1.55}.letterhead{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;border-bottom:3px solid #c9601c;padding-bottom:16px;margin-bottom:24px}.brand{display:flex;gap:12px;align-items:center}.brand img{width:54px;height:54px;object-fit:contain}.brand b{display:block;font-size:18px;color:#a3480f}.brand span{display:block;font-size:12px;color:#667085;margin-top:3px}.doc-label{text-align:right;font-size:12px;color:#667085}.doc-label b{display:block;color:#8a4210;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}h1{font-size:22px;margin:0 0 6px;color:#111827}h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:#8a4210;margin:22px 0 8px}.meta{font-size:12px;color:#667085;margin-bottom:22px}.body{white-space:pre-wrap;border:1px solid #ead7bf;background:#fff8ef;border-radius:10px;padding:18px}.foot{margin-top:28px;font-size:11px;color:#667085;border-top:1px solid #eee;padding-top:12px}@media print{body{padding:18mm}.body{background:#fff}}</style></head><body><div class='letterhead'><div class='brand'><img src='" + LOGO_URL + "' alt='Kridiya Travel logo'><div><b>KRIDIYA Travel and Tourism FZ-LLC</b><span>Your Journey, Our Passion. | info@kridiyatravel.com | +971 50 941 3873</span></div></div><div class='doc-label'><b>Business template</b><span>" + esc(t.category) + " / " + esc(label(t.channel)) + "</span></div></div><h1>" + esc(t.title) + "</h1><div class='meta'>Replace placeholders before sending to a customer, supplier, or internal team.</div>" + subject + "<h2>Template</h2><div class='body'>" + esc(t.body) + "</div><div class='foot'>Template generated from admin.kridiyatravel.com. This is a staff-prepared business communication draft.</div><script>setTimeout(function(){window.print()},250)</script></body></html>";
   }
   function openTemplatePDF(t) {
     const win = window.open("", "_blank");
@@ -90,6 +125,7 @@
     showStaffNav();
     gate.hidden = true;
     app.hidden = false;
+    loadOverrides();
     fillFilters();
     render();
     ["template-search", "template-channel", "template-category"].forEach(function (id) {
@@ -97,6 +133,7 @@
       document.getElementById(id).addEventListener("change", render);
     });
     document.getElementById("template-list").addEventListener("click", copyTemplate);
+    document.getElementById("template-list").addEventListener("submit", saveTemplateEdit);
   }
 
   function fillFilters() {
@@ -126,15 +163,26 @@
       '<div class="stat-tile"><div class="num">Email</div><div class="label">Outlook ready</div></div>' +
       '<div class="stat-tile"><div class="num">WA</div><div class="label">WhatsApp ready</div></div>';
     document.getElementById("template-list").innerHTML = rows.map(function (t, index) {
-      return '<article class="template-card"><div class="template-card-head"><div><h2>' + esc(t.title) + '</h2><div class="ops-kv"><span class="ops-chip">' + esc(t.category) + '</span><span class="ops-chip">' + esc(label(t.channel)) + '</span></div></div><div class="section-actions"><button class="btn btn-primary" type="button" data-template-index="' + esc(TEMPLATES.indexOf(t)) + '">Copy</button><button class="btn btn-outline" type="button" data-template-pdf="' + esc(TEMPLATES.indexOf(t)) + '">Open PDF view</button></div></div>' + (t.subject ? '<p class="template-subject"><b>Subject:</b> ' + esc(t.subject) + '</p>' : '') + '<pre>' + esc(t.body) + '</pre></article>';
+      const realIndex = TEMPLATES.indexOf(t);
+      return '<article class="template-card" data-template-card="' + esc(realIndex) + '"><div class="template-card-head"><div><h2>' + esc(t.title) + '</h2><div class="ops-kv"><span class="ops-chip">' + esc(t.category) + '</span><span class="ops-chip">' + esc(label(t.channel)) + '</span>' + (hasOverride(realIndex) ? '<span class="ops-chip">Saved edit</span>' : '') + '</div></div><div class="section-actions"><button class="btn btn-primary" type="button" data-template-index="' + esc(realIndex) + '">Copy</button><button class="btn btn-outline" type="button" data-template-pdf="' + esc(realIndex) + '">Open PDF view</button><button class="btn btn-outline" type="button" data-template-edit="' + esc(realIndex) + '">Edit</button><button class="btn btn-outline" type="button" data-template-reset="' + esc(realIndex) + '">Reset</button></div></div>' + (t.subject ? '<p class="template-subject"><b>Subject:</b> ' + esc(t.subject) + '</p>' : '') + '<pre>' + esc(t.body) + '</pre></article>';
     }).join("") || '<div class="account-main empty-state"><p>No templates match your filters.</p></div>';
   }
 
   async function copyTemplate(event) {
     const btn = event.target.closest("[data-template-index]");
     const pdfBtn = event.target.closest("[data-template-pdf]");
+    const editBtn = event.target.closest("[data-template-edit]");
+    const resetBtn = event.target.closest("[data-template-reset]");
     if (pdfBtn) {
       openTemplatePDF(TEMPLATES[Number(pdfBtn.dataset.templatePdf)]);
+      return;
+    }
+    if (editBtn) {
+      renderTemplateEditor(Number(editBtn.dataset.templateEdit));
+      return;
+    }
+    if (resetBtn) {
+      resetTemplate(Number(resetBtn.dataset.templateReset));
       return;
     }
     if (!btn) return;
@@ -145,6 +193,40 @@
     } catch (err) {
       toast("Could not copy automatically. Select the text and copy manually.");
     }
+  }
+  function renderTemplateEditor(index) {
+    const t = TEMPLATES[index];
+    const card = document.querySelector('[data-template-card="' + index + '"]');
+    if (!t || !card) return;
+    card.innerHTML = '<form class="template-edit-form" data-template-form="' + esc(index) + '">' +
+      '<div class="template-card-head"><div><h2>Edit template</h2><div class="ops-kv"><span class="ops-chip">' + esc(t.title) + '</span><span class="ops-chip">' + esc(t.category) + '</span></div></div><div class="section-actions"><button class="btn btn-primary" type="submit">Save</button><button class="btn btn-outline" type="button" data-template-cancel>Cancel</button><button class="btn btn-outline" type="button" data-template-reset="' + esc(index) + '">Reset</button></div></div>' +
+      '<div class="field-row">' +
+        '<div class="field col-12"><label>SUBJECT</label><input name="subject" value="' + esc(t.subject || "") + '" placeholder="Used for email templates"></div>' +
+        '<div class="field col-12"><label>BODY</label><textarea name="body" rows="12" required>' + esc(t.body) + '</textarea></div>' +
+      '</div>' +
+      '<p class="template-edit-note">Saved edits stay in this browser. Reset restores the company default.</p>' +
+    '</form>';
+    const cancel = card.querySelector("[data-template-cancel]");
+    if (cancel) cancel.addEventListener("click", render);
+  }
+  function saveTemplateEdit(event) {
+    const form = event.target.closest("[data-template-form]");
+    if (!form) return;
+    event.preventDefault();
+    const index = Number(form.dataset.templateForm);
+    if (!TEMPLATES[index]) return;
+    TEMPLATES[index].subject = form.subject.value.trim();
+    TEMPLATES[index].body = form.body.value.trim();
+    saveOverride(index, { subject: TEMPLATES[index].subject, body: TEMPLATES[index].body });
+    toast("Template saved.");
+    render();
+  }
+  function resetTemplate(index) {
+    if (!DEFAULT_TEMPLATES[index]) return;
+    TEMPLATES[index] = Object.assign({}, DEFAULT_TEMPLATES[index]);
+    clearOverride(index);
+    toast("Template reset to default.");
+    render();
   }
 
   document.addEventListener("DOMContentLoaded", boot);
