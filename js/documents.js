@@ -199,7 +199,6 @@
   };
 
   const DOC_KINDS = [
-    { id: "quotation", label: "Customer quote — multiple options", docType: "quotation", nameField: "customer_name" },
     { id: "invoice", label: "Invoice", docType: "invoice" },
     { id: "eticket_flight_oneway", label: "E-Ticket — Flight (one-way)", docType: "eticket", service: "flight", trip: "One-way", nameField: "passengers" },
     { id: "eticket_flight_roundtrip", label: "E-Ticket — Flight (round-trip)", docType: "eticket", service: "flight", trip: "Round-trip", nameField: "passengers" },
@@ -209,6 +208,9 @@
     { id: "eticket_holiday", label: "E-Ticket — Holiday package", docType: "eticket", service: "holiday", nameField: "travellers" },
     { id: "eticket_umrah", label: "E-Ticket — Umrah package", docType: "eticket", service: "umrah", nameField: "pilgrims" },
     { id: "eticket_cruise", label: "E-Ticket — Cruise package", docType: "eticket", service: "cruise", nameField: "guests" },
+    { id: "eticket_transfer", label: "E-Ticket — Transfer options", docType: "eticket", service: "transfer", nameField: "customer_name" },
+    { id: "eticket_insurance", label: "E-Ticket — Travel insurance options", docType: "eticket", service: "insurance", nameField: "customer_name" },
+    { id: "eticket_other", label: "E-Ticket — Other travel service", docType: "eticket", service: "other", nameField: "customer_name" },
     { id: "cancellation", label: "Cancellation notice", docType: "cancellation" },
     { id: "visa_rejection", label: "Visa rejection notice", docType: "visa_rejection", nameField: "applicants" }
   ];
@@ -292,14 +294,12 @@
     const panel = document.getElementById("doc-control-panel");
     if (!panel || !settings) return;
     const ready = docReadiness();
-    const quoteKinds = DOC_KINDS.filter(function (k) { return k.docType === "quotation"; }).length;
     const invoiceKinds = DOC_KINDS.filter(function (k) { return k.docType === "invoice"; }).length;
     const ticketKinds = DOC_KINDS.filter(function (k) { return k.docType === "eticket"; }).length;
-    const supportKinds = DOC_KINDS.length - quoteKinds - invoiceKinds - ticketKinds;
+    const supportKinds = DOC_KINDS.length - invoiceKinds - ticketKinds;
     panel.innerHTML =
       '<div class="doc-control-summary doc-' + esc(ready.tone) + '"><div><b>' + esc(ready.kind.label) + '</b><span>' + esc(ready.next) + '</span></div><span class="staff-risk ' + esc(ready.tone === "ok" ? "ok" : "warn") + '">' + esc(ready.tone === "ok" ? "Ready" : "Review") + '</span></div>' +
       '<div class="doc-control-grid">' +
-        '<div><b>' + esc(quoteKinds) + '</b><span>Quote types</span></div>' +
         '<div><b>' + esc(invoiceKinds) + '</b><span>Invoice types</span></div>' +
         '<div><b>' + esc(ticketKinds) + '</b><span>Ticket/voucher types</span></div>' +
         '<div><b>' + esc(supportKinds) + '</b><span>Support notices</span></div>' +
@@ -525,20 +525,30 @@
       "</section>"
     );
   }
-  function quoteFlightOptionBody() {
+  function quoteFlightOptionBody(fixedTripType) {
+    const tripType = fixedTripType || "roundtrip";
+    const tripLabel = tripType === "oneway" ? "One way" : tripType === "multicity" ? "Multi-city" : "Round trip";
+    const journeys = tripType === "roundtrip"
+      ? quoteJourneyHTML("onward", "Onward journey") + quoteJourneyHTML("return", "Return journey")
+      : tripType === "multicity"
+        ? quoteJourneyHTML("itinerary", "Flight itinerary")
+        : quoteJourneyHTML("onward", "Onward journey");
     return (
       '<div class="field-row quote-option-core">' +
         '<div class="field col-6"><label>OPTION NAME / AIRLINE</label><input data-field="option_name" placeholder="e.g. Air Arabia"></div>' +
-        '<div class="field col-3"><label>TRIP TYPE</label><select data-field="trip_type"><option value="roundtrip">Round trip</option><option value="oneway">One way</option></select></div>' +
+        '<div class="field col-3"><label>TRIP TYPE</label><input value="' + esc(tripLabel) + '" disabled><input data-field="trip_type" type="hidden" value="' + esc(tripType) + '"></div>' +
         '<div class="field col-3"><label>PRICE / PERSON</label><input data-field="price" type="number" min="0" step="0.01" placeholder="0.00"></div>' +
         '<div class="field col-4"><label>CLASS</label><input data-field="cabin" value="Economy"></div>' +
         '<div class="field col-4"><label>BAGGAGE</label><input data-field="baggage" placeholder="e.g. 30kg + 7kg cabin"></div>' +
         '<div class="field col-4"><label>FARE / BOOKING NOTE</label><input data-field="fare_note" placeholder="Refundable / changes allowed..."></div>' +
+        '<div class="field col-12"><label>AIRLINE PNR / BOOKING REF (OPTIONAL)</label><input data-field="pnr"></div>' +
+        '<div class="field col-12"><label>OPTIONAL EXTRAS INCLUDED</label><div class="doc-addon-checks">' +
+          PRESET_ADDONS.map(function (extra) {
+            return '<label class="doc-addon-check"><input type="checkbox" data-flight-extra value="' + esc(extra) + '"> ' + esc(extra) + "</label>";
+          }).join("") +
+        "</div></div>" +
       "</div>" +
-      '<div class="quote-journeys">' +
-        quoteJourneyHTML("onward", "Onward journey") +
-        quoteJourneyHTML("return", "Return journey") +
-      "</div>"
+      '<div class="quote-journeys">' + journeys + "</div>"
     );
   }
   function quoteGenericOptionBody(service) {
@@ -552,20 +562,23 @@
       "</div>"
     );
   }
-  function buildFormQuotation(mount) {
+  function buildFormQuotation(mount, fixedService, fixedTripType) {
+    const serviceControl = fixedService
+      ? '<div class="field col-4"><label>SERVICE</label><input value="' + esc((QUOTE_SERVICE_PRESETS[fixedService] || QUOTE_SERVICE_PRESETS.other).label) + '" disabled><input name="quote_service" type="hidden" value="' + esc(fixedService) + '"></div>'
+      : '<div class="field col-4"><label>SERVICE</label><select name="quote_service" id="quote-service">' +
+          Object.keys(QUOTE_SERVICE_PRESETS).map(function (key) { return '<option value="' + esc(key) + '">' + esc(QUOTE_SERVICE_PRESETS[key].label) + "</option>"; }).join("") +
+        "</select></div>";
     mount.innerHTML =
       '<div class="field-row doc-quote-customer-row">' +
         '<div class="field col-6"><label>CUSTOMER NAME</label><input name="customer_name" required value="' + esc(prefillName()) + '"></div>' +
         '<div class="field col-6"><label>EMAIL</label><input name="customer_email" type="email" value="' + esc(prefillEmail()) + '"></div>' +
         '<div class="field col-4"><label>PHONE / WHATSAPP</label><input name="customer_phone" value="' + esc(prefillPhone()) + '"></div>' +
-        '<div class="field col-4"><label>SERVICE</label><select name="quote_service" id="quote-service">' +
-          Object.keys(QUOTE_SERVICE_PRESETS).map(function (key) { return '<option value="' + esc(key) + '">' + esc(QUOTE_SERVICE_PRESETS[key].label) + "</option>"; }).join("") +
-        "</select></div>" +
+        serviceControl +
         '<div class="field col-2"><label>CURRENCY</label><input name="currency" class="currency-input" value="AED" maxlength="3"></div>' +
         '<div class="field col-2"><label>VALID UNTIL</label><input name="valid_until" type="datetime-local"></div>' +
         '<div class="field col-12"><label>TRAVELLERS / GUESTS</label><textarea name="travellers" placeholder="Names or traveller count">' + esc(prefillName()) + "</textarea></div>" +
       "</div>" +
-      '<div class="doc-quote-builder-head"><div><h3>Quote options</h3><p>Each option is a complete alternative. Saved and printed options are automatically ordered by price.</p></div>' +
+      '<div class="doc-quote-builder-head"><div><h3>Service options</h3><p>Add complete alternatives for this service. Saved and printed options are automatically ordered by price.</p></div>' +
         '<button type="button" class="btn btn-outline quote-add-option">+ Add another option</button></div>' +
       '<div id="quote-options" class="doc-quote-options"></div>' +
       '<button type="button" class="btn btn-outline doc-quote-add-bottom quote-add-option">+ Add another option</button>' +
@@ -596,7 +609,7 @@
       option.innerHTML =
         '<div class="doc-quote-option-head"><div><span class="doc-quote-option-number"></span><b>' + esc(preset.optionLabel) + '</b></div>' +
           '<button type="button" class="btn btn-outline doc-quote-remove-option">Remove option</button></div>' +
-        '<div class="doc-quote-option-body">' + (service === "flight" ? quoteFlightOptionBody() : quoteGenericOptionBody(service)) + "</div>";
+        '<div class="doc-quote-option-body">' + (service === "flight" ? quoteFlightOptionBody(fixedTripType) : quoteGenericOptionBody(service)) + "</div>";
       optionsMount.appendChild(option);
       renumberOptions();
       initQuoteAirports(option);
@@ -637,7 +650,7 @@
       const returnJourney = option.querySelector('[data-direction="return"]');
       returnJourney.hidden = event.target.value === "oneway";
     });
-    if (linkedEnquiry && QUOTE_SERVICE_PRESETS[linkedEnquiry.service_type]) {
+    if (!fixedService && linkedEnquiry && QUOTE_SERVICE_PRESETS[linkedEnquiry.service_type]) {
       serviceSel.value = linkedEnquiry.service_type;
     }
     resetForService();
@@ -690,6 +703,8 @@
           cabin: quoteOptionValue(option, "cabin"),
           baggage: quoteOptionValue(option, "baggage"),
           fare_note: quoteOptionValue(option, "fare_note"),
+          pnr: quoteOptionValue(option, "pnr"),
+          extras: Array.from(option.querySelectorAll("[data-flight-extra]:checked")).map(function (input) { return input.value; }),
           journeys: journeys
         };
       }
@@ -742,16 +757,19 @@
           "</td><td>" + esc(segment.from) + " &rarr; " + esc(segment.to) + "</td><td>" + esc(fmtDateTime(segment.departure)) +
           "</td><td>" + esc(fmtDateTime(segment.arrival)) + "</td></tr>";
       }).join("");
-      return '<h3 class="quote-journey-title">' + esc(journey.direction === "return" ? "Return journey" : "Onward journey") + "</h3>" +
+      const journeyLabel = journey.direction === "return" ? "Return journey" : journey.direction === "itinerary" ? "Flight itinerary" : "Onward journey";
+      return '<h3 class="quote-journey-title">' + esc(journeyLabel) + "</h3>" +
         "<table><thead><tr><th>Leg</th><th>Flight</th><th>Route</th><th>Departure</th><th>Arrival</th></tr></thead><tbody>" + rows + "</tbody></table>";
     }).join("");
     return (
       '<section class="print-quote-option">' +
         '<div class="print-quote-option-head"><div><span>Option ' + optionNumber + '</span><b>' + esc(option.label) + '</b></div><strong>' + money(option.price, option.currency) + " / person</strong></div>" +
-        '<div class="kv quote-option-meta"><span class="k">Trip</span><span class="v">' + esc(option.trip_type === "oneway" ? "One way" : "Round trip") + "</span>" +
+        '<div class="kv quote-option-meta"><span class="k">Trip</span><span class="v">' + esc(option.trip_type === "oneway" ? "One way" : option.trip_type === "multicity" ? "Multi-city" : "Round trip") + "</span>" +
           (option.cabin ? '<span class="k">Class</span><span class="v">' + esc(option.cabin) + "</span>" : "") +
           (option.baggage ? '<span class="k">Baggage</span><span class="v">' + esc(option.baggage) + "</span>" : "") +
           (option.fare_note ? '<span class="k">Fare note</span><span class="v">' + esc(option.fare_note) + "</span>" : "") +
+          (option.pnr ? '<span class="k">Airline PNR</span><span class="v">' + esc(option.pnr) + "</span>" : "") +
+          (option.extras && option.extras.length ? '<span class="k">Extras included</span><span class="v">' + esc(option.extras.join(", ")) + "</span>" : "") +
         "</div>" + journeys +
       "</section>"
     );
@@ -769,7 +787,7 @@
       "</section>"
     );
   }
-  function renderQuotation(data, docNumber) {
+  function renderQuotation(data, docNumber, documentLabel) {
     const servicePreset = QUOTE_SERVICE_PRESETS[data.service] || QUOTE_SERVICE_PRESETS.other;
     const options = (data.options || []).slice().sort(function (a, b) { return num(a.price) - num(b.price); });
     const summary = options.map(function (option, index) {
@@ -784,7 +802,7 @@
       return renderQuoteGenericOption(option, index + 1, data.service, data.currency);
     }).join("");
     return (
-      letterheadHTML("Customer Quote — " + servicePreset.label, docNumber, todayISO()) +
+      letterheadHTML(documentLabel || (servicePreset.label + " Options"), docNumber, todayISO()) +
       '<div class="kv"><span class="k">Prepared for</span><span class="v">' + esc(data.customer_name) + "</span>" +
         (data.customer_email ? '<span class="k">Email</span><span class="v">' + esc(data.customer_email) + "</span>" : "") +
         (data.customer_phone ? '<span class="k">Phone / WhatsApp</span><span class="v">' + esc(data.customer_phone) + "</span>" : "") +
@@ -1309,16 +1327,65 @@
 
   /* ================= Kind registry: form builder + gather + render ================= */
   const HANDLERS = {
-    quotation: { build: buildFormQuotation, gather: gatherQuotation, render: renderQuotation },
+    quotation: {
+      render: function (d, n) { return renderQuotation(d, n, "Customer Quote — " + ((QUOTE_SERVICE_PRESETS[d.service] || QUOTE_SERVICE_PRESETS.other).label)); }
+    },
     invoice: { build: buildFormInvoice, gather: gatherInvoice, render: function (d, n) { return renderInvoice(d, n); } },
-    eticket_flight_oneway: { build: function (m) { buildFormFlight(m, "one"); }, gather: gatherFlight, render: function (d, n) { return renderFlight(d, n, "One-way"); } },
-    eticket_flight_roundtrip: { build: function (m) { buildFormFlight(m, "round"); }, gather: gatherFlight, render: function (d, n) { return renderFlight(d, n, "Round-trip"); } },
-    eticket_flight_multicity: { build: function (m) { buildFormFlight(m, "multi"); }, gather: gatherFlight, render: function (d, n) { return renderFlight(d, n, "Multi-city"); } },
-    eticket_hotel: { build: buildFormHotel, gather: gatherHotel, render: renderHotel },
-    eticket_visa: { build: buildFormVisa, gather: gatherVisa, render: renderVisa },
-    eticket_holiday: { build: buildFormHoliday, gather: gatherHoliday, render: renderHoliday },
-    eticket_umrah: { build: buildFormUmrah, gather: gatherUmrah, render: renderUmrah },
-    eticket_cruise: { build: buildFormCruise, gather: gatherCruise, render: renderCruise },
+    eticket_flight_oneway: {
+      build: function (m) { buildFormQuotation(m, "flight", "oneway"); },
+      gather: gatherQuotation,
+      render: function (d, n) { return Array.isArray(d.options) ? renderQuotation(d, n, "E-Ticket — One-way Flight Options") : renderFlight(d, n, "One-way"); }
+    },
+    eticket_flight_roundtrip: {
+      build: function (m) { buildFormQuotation(m, "flight", "roundtrip"); },
+      gather: gatherQuotation,
+      render: function (d, n) { return Array.isArray(d.options) ? renderQuotation(d, n, "E-Ticket — Round-trip Flight Options") : renderFlight(d, n, "Round-trip"); }
+    },
+    eticket_flight_multicity: {
+      build: function (m) { buildFormQuotation(m, "flight", "multicity"); },
+      gather: gatherQuotation,
+      render: function (d, n) { return Array.isArray(d.options) ? renderQuotation(d, n, "E-Ticket — Multi-city Flight Options") : renderFlight(d, n, "Multi-city"); }
+    },
+    eticket_hotel: {
+      build: function (m) { buildFormQuotation(m, "hotel"); },
+      gather: gatherQuotation,
+      render: function (d, n) { return Array.isArray(d.options) ? renderQuotation(d, n, "E-Ticket — Hotel Options") : renderHotel(d, n); }
+    },
+    eticket_visa: {
+      build: function (m) { buildFormQuotation(m, "visa"); },
+      gather: gatherQuotation,
+      render: function (d, n) { return Array.isArray(d.options) ? renderQuotation(d, n, "E-Ticket — Visa Options") : renderVisa(d, n); }
+    },
+    eticket_holiday: {
+      build: function (m) { buildFormQuotation(m, "holiday"); },
+      gather: gatherQuotation,
+      render: function (d, n) { return Array.isArray(d.options) ? renderQuotation(d, n, "E-Ticket — Holiday Package Options") : renderHoliday(d, n); }
+    },
+    eticket_umrah: {
+      build: function (m) { buildFormQuotation(m, "umrah"); },
+      gather: gatherQuotation,
+      render: function (d, n) { return Array.isArray(d.options) ? renderQuotation(d, n, "E-Ticket — Umrah Package Options") : renderUmrah(d, n); }
+    },
+    eticket_cruise: {
+      build: function (m) { buildFormQuotation(m, "cruise"); },
+      gather: gatherQuotation,
+      render: function (d, n) { return Array.isArray(d.options) ? renderQuotation(d, n, "E-Ticket — Cruise Package Options") : renderCruise(d, n); }
+    },
+    eticket_transfer: {
+      build: function (m) { buildFormQuotation(m, "transfer"); },
+      gather: gatherQuotation,
+      render: function (d, n) { return renderQuotation(d, n, "E-Ticket — Transfer Options"); }
+    },
+    eticket_insurance: {
+      build: function (m) { buildFormQuotation(m, "insurance"); },
+      gather: gatherQuotation,
+      render: function (d, n) { return renderQuotation(d, n, "E-Ticket — Travel Insurance Options"); }
+    },
+    eticket_other: {
+      build: function (m) { buildFormQuotation(m, "other"); },
+      gather: gatherQuotation,
+      render: function (d, n) { return renderQuotation(d, n, "E-Ticket — Travel Service Options"); }
+    },
     cancellation: { build: buildFormCancellation, gather: gatherCancellation, render: renderCancellation },
     visa_rejection: { build: buildFormRejection, gather: gatherRejection, render: renderRejection }
   };
@@ -1391,9 +1458,8 @@
   function renderArchivedDocument(row) {
     const data = row.payload || {};
     const kindId = data.kind;
-    const kind = findKind(kindId);
     const handler = HANDLERS[kindId];
-    if (!kind || !handler) {
+    if (!handler) {
       toast("This archived document type cannot be reopened yet.");
       return;
     }

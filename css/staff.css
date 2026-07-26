@@ -1096,7 +1096,7 @@ body { background: var(--bg); }
 .doc-control-summary b { display: block; color: var(--ink); font-size: 1.15rem; line-height: 1.1; font-weight: 800; }
 .doc-control-summary span { display: block; margin-top: 0.25rem; color: var(--ink-2); font-size: 0.86rem; }
 .doc-control-grid {
-  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.65rem; margin-top: 0.75rem;
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.65rem; margin-top: 0.75rem;
 }
 .doc-control-grid div { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 0.72rem 0.8rem; }
 .doc-control-grid b { display: block; color: var(--ink); font-size: 1.05rem; line-height: 1; font-weight: 800; }
