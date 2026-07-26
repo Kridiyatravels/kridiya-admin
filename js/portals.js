@@ -40,7 +40,14 @@
       password_location: form.password_location.value.trim() || "Password manager",
       owner_notes: form.owner_notes.value.trim() || null
     };
-    const result = await sb.from("b2b_portals").insert(row);
+    const result = await sb.rpc("create_b2b_portal", {
+      p_portal_name: row.portal_name,
+      p_website_url: row.website_url,
+      p_service_scope: row.service_scope,
+      p_username_hint: row.username_hint,
+      p_password_location: row.password_location,
+      p_owner_notes: row.owner_notes
+    });
     if (result.error) { toast("Could not save portal: " + result.error.message); return; }
     toast("Portal saved.");
     form.reset();
@@ -49,7 +56,7 @@
   }
 
   async function loadPortals() {
-    const result = await sb.from("b2b_portals").select("*").order("portal_name");
+    const result = await sb.rpc("list_b2b_portals");
     if (result.error) { toast("Could not load portals: " + result.error.message); return; }
     const rows = result.data || [];
     document.getElementById("portals-count").textContent = rows.length + " portal(s)";
