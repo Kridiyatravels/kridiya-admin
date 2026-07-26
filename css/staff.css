@@ -51,8 +51,10 @@
 body { background: var(--bg); }
 
 /* ---------- Top bar ---------- */
-.staff-topbar { border-bottom: 1px solid var(--line); background: var(--surface); position: sticky; top: 0; z-index: 20; box-shadow: var(--staff-shadow-sm); }
-.staff-topbar-inner { display: grid; grid-template-columns: 1fr auto; align-items: center; column-gap: 0.9rem; row-gap: 0.5rem; padding: 0.55rem 0; }
+/* box-shadow and z-index are owned by the layers below (single source). */
+.staff-topbar { border-bottom: 1px solid var(--line); background: var(--surface); position: sticky; top: 0; }
+/* align-items and padding are owned by the header alignment rules below. */
+.staff-topbar-inner { display: grid; grid-template-columns: 1fr auto; column-gap: 0.9rem; row-gap: 0.5rem; }
 .staff-logo { grid-column: 1; grid-row: 1; display: flex; align-items: center; gap: 0.6rem; text-decoration: none; }
 .staff-logo img { border-radius: 8px; }
 .staff-logo span { font-family: var(--font); font-weight: 700; color: var(--ink); font-size: 1rem; letter-spacing: -0.01em; }
@@ -68,14 +70,17 @@ body { background: var(--bg); }
   flex: 0 0 auto; font-weight: 700; color: var(--ink-2); text-decoration: none; white-space: nowrap;
 }
 .staff-nav a:not([aria-current="page"]):hover { background: var(--surface-tint); color: var(--brand-deep); }
-.staff-actions { grid-column: 2; grid-row: 1; display: flex; justify-self: end; gap: 0.5rem; align-items: center; position: relative; }
+/* align-items is set by the shared header alignment rule below. */
+.staff-actions { grid-column: 2; grid-row: 1; display: flex; justify-self: end; gap: 0.5rem; position: relative; }
 .staff-actions .btn { min-height: 38px; padding: 0 0.9rem; font-size: 0.82rem; }
 
 /* ---------- Header profile menu ---------- */
+/* Typography/colour only. Box (display, align-items, border, background,
+   border-radius, padding) is owned by the shared header-control rule and the
+   profile-button override in the workspace layer below. */
 .staff-profile-btn {
-  display: flex; align-items: center; gap: 0.45rem; cursor: pointer;
-  border: 1px solid var(--line); background: var(--surface); color: var(--ink);
-  border-radius: 999px; padding: 0.24rem 0.6rem 0.24rem 0.24rem; font: inherit; font-size: 0.82rem; font-weight: 700;
+  gap: 0.45rem; cursor: pointer; color: var(--ink);
+  font: inherit; font-size: 0.82rem; font-weight: 700;
 }
 .staff-profile-btn:hover { border-color: var(--brand); }
 .staff-profile-av {
@@ -1289,10 +1294,12 @@ body { background: var(--bg); }
 .tools-item-text b { font-size: 0.85rem; font-weight: 700; }
 .tools-item-text small { font-size: 0.72rem; color: var(--text-muted); }
 
+/* Typography/colour only. Box (display, align-items, padding, border,
+   border-radius, background) is owned by the shared header-control rules
+   and the jump-button overrides in the workspace layers below. */
 .staff-jump-btn {
-  display: inline-flex; align-items: center; gap: 0.35rem; font: inherit; font-weight: 700; font-size: 0.78rem;
-  color: var(--ink-2); background: var(--surface-tint); border: 1px solid var(--line); cursor: pointer;
-  padding: 0.32rem 0.6rem; border-radius: 999px; white-space: nowrap;
+  gap: 0.35rem; font: inherit; font-weight: 700; font-size: 0.78rem;
+  color: var(--ink-2); cursor: pointer; white-space: nowrap;
 }
 .staff-jump-btn svg { width: 15px; height: 15px; fill: currentColor; }
 .staff-jump-btn:hover { color: var(--brand-deep); border-color: var(--brand); }
@@ -1433,7 +1440,6 @@ main .container,
 }
 
 .staff-topbar-inner {
-  min-height: 64px;
   padding: 0;
 }
 
@@ -1463,7 +1469,6 @@ main .container,
 
 /* ---------- Header alignment contract ---------- */
 .staff-topbar-inner {
-  min-height: 64px;
   align-items: center;
 }
 
@@ -1519,9 +1524,7 @@ main .container,
 }
 
 .staff-jump-btn {
-  padding: 0 0.7rem;
   border: 1px solid var(--line);
-  background: var(--surface);
 }
 
 .staff-actions {
