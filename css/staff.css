@@ -1005,6 +1005,29 @@ body { background: var(--bg); }
   .doc-control-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 460px) { .doc-control-grid { grid-template-columns: 1fr; } }
+.doc-required-card {
+  display: grid;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+  padding: var(--sp-4);
+  border: 1px solid color-mix(in oklab, var(--brand) 24%, var(--line));
+  border-radius: 10px;
+  background: var(--brand-soft);
+}
+.doc-required-card b { display: block; color: var(--ink); font-size: 0.95rem; }
+.doc-required-card span { display: block; margin-top: 0.18rem; color: var(--ink-2); font-size: 0.82rem; }
+.doc-required-card ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem 1rem;
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--ink-2);
+  font-size: 0.84rem;
+}
+@media (max-width: 620px) {
+  .doc-required-card ul { grid-template-columns: 1fr; }
+}
 
 /* ---------- My profile panel (dashboard) ---------- */
 .profile-card { margin-bottom: 1.1rem; }

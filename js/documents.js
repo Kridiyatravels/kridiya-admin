@@ -17,6 +17,61 @@
      tick-boxes on e-tickets and as quick-add chips on invoices. */
   const PRESET_ADDONS = ["Extra baggage", "Seat selection", "Meal", "Travel insurance"];
   const INVOICE_EXTRAS = ["Extra baggage", "Seat selection", "Meal", "Travel insurance", "Visa fee", "Service charge", "Airport transfer"];
+  const INVOICE_SERVICE_PRESETS = {
+    flight: {
+      label: "Flight",
+      items: ["Flight ticket", "Service charge"],
+      extras: ["Extra baggage", "Seat selection", "Meal", "Travel insurance", "Airport transfer"],
+      note: "Payment before ticketing. Fare, seat, baggage, change, cancellation and no-show rules are subject to airline policy."
+    },
+    visa: {
+      label: "Visa",
+      items: ["Visa fee", "Visa service charge"],
+      extras: ["Travel insurance", "Document typing", "Appointment assistance", "Courier / delivery"],
+      note: "Embassy/government fees and visa decisions are controlled by the relevant authority. Submission starts after payment and complete documents."
+    },
+    hotel: {
+      label: "Hotel",
+      items: ["Hotel booking", "Service charge"],
+      extras: ["Breakfast / meal plan", "Extra bed", "Airport transfer", "Tourism tax / city tax"],
+      note: "Hotel rates, check-in rules, cancellation policy and city/tourism taxes are subject to hotel or supplier policy."
+    },
+    holiday: {
+      label: "Holiday package",
+      items: ["Holiday package", "Service charge"],
+      extras: ["Tours / activities", "Airport transfer", "Travel insurance", "Visa assistance"],
+      note: "Package components are subject to supplier availability. Any changes, cancellation or refunds follow airline, hotel and supplier rules."
+    },
+    umrah: {
+      label: "Umrah",
+      items: ["Umrah package", "Service charge"],
+      extras: ["Ziyarat", "Transport upgrade", "Meal plan", "Travel insurance"],
+      note: "Umrah package, visa, transport and hotel rules are subject to Saudi authority and supplier conditions."
+    },
+    cruise: {
+      label: "Cruise",
+      items: ["Cruise package", "Service charge"],
+      extras: ["Port charges", "Gratuities", "Travel insurance", "Shore excursion"],
+      note: "Cruise booking, cancellation, port, visa and onboard rules are subject to cruise line policy."
+    },
+    other: {
+      label: "Other",
+      items: ["Travel service", "Service charge"],
+      extras: INVOICE_EXTRAS,
+      note: "Supplier rules, payment terms, changes, cancellations and refunds apply as per the relevant service provider."
+    }
+  };
+  const DOCUMENT_REQUIREMENTS = {
+    flight: ["Passport copy", "Visa/residence permit if required", "Passenger name exactly as passport", "Travel dates and route", "Mobile number and email"],
+    visa: ["Passport copy valid at least 6 months", "UAE visa / Emirates ID copy if applicable", "Passport-size photo", "Travel dates", "Employment/NOC or salary certificate if required", "Bank statement if required", "Hotel/flight booking if required", "Previous visa/refusal copy if applicable"],
+    hotel: ["Guest full name", "Passport/ID copy if required by hotel", "Check-in and check-out dates", "Room type and occupancy", "Special requests"],
+    holiday: ["Passport copies for all travellers", "Travel dates", "Passenger ages", "Rooming list", "Visa status if applicable", "Meal/tour/transfer preferences"],
+    umrah: ["Passport copy valid at least 6 months", "UAE visa / Emirates ID copy if applicable", "Passport-size photo", "Vaccination certificate if required", "Mahram/family documents if required", "Travel dates"],
+    cruise: ["Passport copy valid at least 6 months", "Visa/residence permit if required", "Passenger date of birth", "Emergency contact", "Dining/cabin preference", "Travel insurance if required"],
+    insurance: ["Passport copy", "Travel dates", "Destination countries", "Date of birth", "Contact details"],
+    corporate: ["Company trade licence", "Authorized requester details", "Billing email", "LPO or written approval if required", "Traveller details", "Payment proof or credit approval"],
+    cancellation_refund: ["Booking reference", "Customer cancellation request in writing", "Original ticket/voucher/invoice", "Payment proof", "Customer bank details for refund", "Supplier/airline refund rule"]
+  };
 
   const DOC_KINDS = [
     { id: "invoice", label: "Invoice", docType: "invoice" },
@@ -123,6 +178,12 @@
         '<div><b>' + esc(linkedEnquiry ? "Yes" : "No") + '</b><span>Enquiry linked</span></div>' +
       '</div>' +
       '<div class="doc-control-next"><b>Readiness checks</b><span>' + esc(ready.missing.length ? ready.missing.join(", ") : "Business settings, document type, and audit trail are ready.") + '</span></div>';
+  }
+  function requirementListHTML(service) {
+    const list = DOCUMENT_REQUIREMENTS[service] || DOCUMENT_REQUIREMENTS.flight;
+    return '<div class="doc-required-card"><div><b>Documents needed</b><span>' + esc((INVOICE_SERVICE_PRESETS[service] && INVOICE_SERVICE_PRESETS[service].label) || "Selected service") + '</span></div><ul>' +
+      list.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") +
+      "</ul></div>";
   }
 
   /* ---------- Print document shell (shared by every kind) ---------- */
@@ -245,6 +306,10 @@
       if (container.children.length <= 1) return;
       btn.closest(".repeat-row").remove();
     });
+    return {
+      addRow: addRow,
+      clear: function () { container.innerHTML = ""; count = 0; }
+    };
   }
   function rowsOf(containerId) {
     return Array.from(document.getElementById(containerId).children);
@@ -296,7 +361,11 @@
         '<div class="field col-6"><label>EMAIL</label><input name="customer_email" type="email" value="' + esc(prefillEmail()) + '"></div>' +
         '<div class="field col-6"><label>INVOICE DATE</label><input name="invoice_date" type="date" value="' + todayISO() + '"></div>' +
         '<div class="field col-6"><label>CURRENCY</label><input class="currency-input" name="currency" value="AED" maxlength="3"></div>' +
+        '<div class="field col-12"><label>SERVICE / INVOICE TYPE</label><select name="invoice_service" id="invoice-service">' +
+          Object.keys(INVOICE_SERVICE_PRESETS).map(function (k) { return '<option value="' + esc(k) + '">' + esc(INVOICE_SERVICE_PRESETS[k].label) + "</option>"; }).join("") +
+        "</select></div>" +
       "</div>" +
+      '<div id="invoice-doc-requirements"></div>' +
       '<h3 class="doc-subhead">Line items</h3>' +
       '<div id="rep-items"></div>' +
       '<button type="button" id="add-item" class="btn btn-outline doc-add-repeat">+ Add line item</button>' +
@@ -310,7 +379,7 @@
       "</div>" +
       '<div class="field"><label>NOTES / TERMS</label><textarea name="notes">' + esc((settings && settings.invoice_footer_note) || "") + "</textarea></div>" +
       '<div class="field"><label>STRIPE PAYMENT LINK (OPTIONAL)</label><input name="payment_link" placeholder="https://buy.stripe.com/..."></div>';
-    renderRepeatable("rep-items", "add-item", function (i) {
+    const repeat = renderRepeatable("rep-items", "add-item", function (i) {
       return (
         '<div class="field-row repeat-field-row">' +
         '<div class="field col-6"><label>DESCRIPTION</label><input name="desc_' + i + '" placeholder="e.g. Flight ticket, Dubai to Kochi"></div>' +
@@ -319,6 +388,32 @@
         "</div>"
       );
     }, 1);
+    function applyInvoicePreset(service) {
+      const preset = INVOICE_SERVICE_PRESETS[service] || INVOICE_SERVICE_PRESETS.other;
+      repeat.clear();
+      preset.items.forEach(function (item) {
+        repeat.addRow();
+        const rows = rowsOf("rep-items");
+        const last = rows[rows.length - 1];
+        const descEl = last && last.querySelector('input[name^="desc_"]');
+        if (descEl) descEl.value = item;
+      });
+      const notesEl = mount.querySelector('textarea[name="notes"]');
+      if (notesEl) notesEl.value = preset.note;
+      const reqEl = document.getElementById("invoice-doc-requirements");
+      if (reqEl) reqEl.innerHTML = requirementListHTML(service);
+      const chips = document.getElementById("inv-addons");
+      if (chips) {
+        chips.innerHTML = '<span class="doc-addon-chips-label">Quick add:</span>' +
+          preset.extras.map(function (a) { return '<button type="button" class="chip-add" data-addon="' + esc(a) + '">+ ' + esc(a) + "</button>"; }).join("");
+      }
+    }
+    const serviceSel = document.getElementById("invoice-service");
+    if (linkedEnquiry && linkedEnquiry.service_type && INVOICE_SERVICE_PRESETS[linkedEnquiry.service_type]) {
+      serviceSel.value = linkedEnquiry.service_type;
+    }
+    applyInvoicePreset(serviceSel.value);
+    serviceSel.addEventListener("change", function () { applyInvoicePreset(serviceSel.value); });
     /* Quick-add chips append a pre-labelled line item, ready for its price. */
     const chips = document.getElementById("inv-addons");
     const addBtn = document.getElementById("add-item");
@@ -358,6 +453,7 @@
     return {
       customer_name: form.customer_name.value.trim(),
       customer_email: form.customer_email.value.trim(),
+      invoice_service: form.invoice_service ? form.invoice_service.value : "flight",
       invoice_date: form.invoice_date.value || todayISO(),
       currency: currency,
       items: items,
@@ -381,6 +477,7 @@
       letterheadHTML("Invoice", docNumber, data.invoice_date) +
       '<div class="kv"><span class="k">Bill to</span><span class="v">' + esc(data.customer_name) + "</span>" +
         (data.customer_email ? '<span class="k">Email</span><span class="v">' + esc(data.customer_email) + "</span>" : "") +
+        '<span class="k">Service</span><span class="v">' + esc((INVOICE_SERVICE_PRESETS[data.invoice_service] && INVOICE_SERVICE_PRESETS[data.invoice_service].label) || data.invoice_service) + "</span>" +
         (linkedEnquiry ? '<span class="k">Reference</span><span class="v">' + esc(linkedEnquiry.reference) + "</span>" : "") +
       "</div>" +
       "<h2>Charges</h2>" +
