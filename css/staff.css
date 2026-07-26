@@ -1468,8 +1468,11 @@ main .container,
 }
 
 @media (min-width: 1080px) {
+  /* Equal flexible side columns so the nav sits on the true page centre.
+     With `auto | 1fr | auto` the nav can never be centred, because the logo
+     is much wider than the account button. */
   .staff-topbar-inner {
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     grid-template-rows: 1fr;
     column-gap: 1.5rem;
   }
@@ -1477,12 +1480,13 @@ main .container,
   .staff-logo {
     grid-column: 1;
     grid-row: 1;
+    justify-self: start;
   }
 
   .staff-nav {
     grid-column: 2;
     grid-row: 1;
-    justify-self: end;
+    justify-self: center;
   }
 
   .staff-actions {
