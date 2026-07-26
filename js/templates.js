@@ -3,6 +3,10 @@
   if (document.body.dataset.page !== "templates") return;
   const LOGO_URL = "https://kridiyatravel.com/assets/logo.png";
   const STORAGE_KEY = "kridiya_template_overrides_v1";
+  const TEMPLATE_TABLE = "staff_template_overrides";
+  let supabaseClient = null;
+  let currentUserId = null;
+  let sharedTemplateKeys = {};
 
   const TEMPLATES = [
     { title: "New enquiry reply", category: "Enquiry", channel: "email", subject: "Your travel enquiry with Kridiya Travel", body: "Hi [Customer Name],\n\nThank you for contacting KRIDIYA Travel and Tourism.\n\nWe received your enquiry for:\n- Service: [Flight/Visa/Hotel/Package/etc.]\n- Destination/Route: [Destination or route]\n- Travel date: [Date]\n- Passengers: [Passenger count]\n\nWe are checking the best available options and will update you shortly.\n\nRegards,\nKRIDIYA Travel and Tourism FZ-LLC" },
@@ -39,19 +43,42 @@
   function esc(v) { return KridiyaAuth.escapeHTML(String(v == null ? "" : v)); }
   function label(v) { return String(v || "").replace(/_/g, " ").replace(/\b\w/g, function (c) { return c.toUpperCase(); }); }
   function fullText(t) { return (t.subject ? "Subject: " + t.subject + "\n\n" : "") + t.body; }
-  function loadOverrides() {
+  function templateKey(index) {
+    const t = TEMPLATES[index] || {};
+    return String(index) + "-" + String(t.title || "template").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  }
+  function applyTemplateOverride(index, row) {
+    if (!TEMPLATES[index] || !row) return;
+    ["subject", "body"].forEach(function (field) {
+      if (typeof row[field] === "string") TEMPLATES[index][field] = row[field];
+    });
+  }
+  function loadLocalOverrides() {
     try {
       const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
       Object.keys(saved).forEach(function (key) {
         const index = Number(key);
         if (!TEMPLATES[index] || !saved[key]) return;
-        ["subject", "body"].forEach(function (field) {
-          if (typeof saved[key][field] === "string") TEMPLATES[index][field] = saved[key][field];
-        });
+        applyTemplateOverride(index, saved[key]);
       });
     } catch (err) {
       localStorage.removeItem(STORAGE_KEY);
     }
+  }
+  async function loadSharedOverrides(sb) {
+    sharedTemplateKeys = {};
+    const res = await sb.from(TEMPLATE_TABLE).select("template_key, subject, body, updated_at");
+    if (res.error) {
+      toast("Shared templates unavailable. Using this browser's saved edits.");
+      return false;
+    }
+    res.data.forEach(function (row) {
+      const index = TEMPLATES.findIndex(function (_t, i) { return templateKey(i) === row.template_key; });
+      if (index < 0) return;
+      sharedTemplateKeys[index] = true;
+      applyTemplateOverride(index, row);
+    });
+    return true;
   }
   function readOverrides() {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }
@@ -68,7 +95,30 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
   }
   function hasOverride(index) {
-    return Object.prototype.hasOwnProperty.call(readOverrides(), String(index));
+    return !!sharedTemplateKeys[index] || Object.prototype.hasOwnProperty.call(readOverrides(), String(index));
+  }
+  async function persistTemplate(index, values) {
+    saveOverride(index, values);
+    if (!supabaseClient || !currentUserId) return "local";
+    const payload = {
+      template_key: templateKey(index),
+      subject: values.subject || null,
+      body: values.body || "",
+      updated_by: currentUserId,
+      updated_at: new Date().toISOString()
+    };
+    const res = await supabaseClient.from(TEMPLATE_TABLE).upsert(payload, { onConflict: "template_key" });
+    if (res.error) return "local";
+    sharedTemplateKeys[index] = true;
+    clearOverride(index);
+    return "shared";
+  }
+  async function deleteSharedTemplate(index) {
+    clearOverride(index);
+    delete sharedTemplateKeys[index];
+    if (!supabaseClient) return "local";
+    const res = await supabaseClient.from(TEMPLATE_TABLE).delete().eq("template_key", templateKey(index));
+    return res.error ? "local" : "shared";
   }
   function countBy(key) {
     return TEMPLATES.reduce(function (acc, t) {
@@ -96,7 +146,7 @@
       '</div>' +
       '<div class="doc-control-next"><b>Covered categories</b><span>' + esc(Object.keys(byCategory).sort().join(", ")) + '</span></div>' +
       '<div class="doc-control-next"><b>PDF-ready templates</b><span>Open PDF view uses Kridiya letterhead with logo. Use browser Print -> Save as PDF for a clean file.</span></div>' +
-      '<div class="doc-control-next"><b>Editable library</b><span>Edit and Save changes template wording on this browser. Reset restores the company default.</span></div>';
+      '<div class="doc-control-next"><b>Shared editable library</b><span>Edit and Save updates the approved wording for all staff. Reset restores the company default.</span></div>';
   }
   function templatePrintHTML(t) {
     const subject = t.subject ? "<h2>Subject</h2><p>" + esc(t.subject) + "</p>" : "";
@@ -117,6 +167,8 @@
     const user = await KridiyaAuth.currentUser();
     if (!user) { renderLoginForm(gate, boot); return; }
     const sb = await KridiyaAuth.client();
+    supabaseClient = sb;
+    currentUserId = user.id;
     const staffCheck = await sb.rpc("is_staff");
     if (staffCheck.error || staffCheck.data !== true) {
       gate.innerHTML = '<div class="account-main empty-state"><p><b>You do not have access.</b><br>Templates are for staff only.</p></div>';
@@ -125,7 +177,8 @@
     showStaffNav();
     gate.hidden = true;
     app.hidden = false;
-    loadOverrides();
+    loadLocalOverrides();
+    await loadSharedOverrides(sb);
     fillFilters();
     render();
     ["template-search", "template-channel", "template-category"].forEach(function (id) {
@@ -204,12 +257,12 @@
         '<div class="field col-12"><label>SUBJECT</label><input name="subject" value="' + esc(t.subject || "") + '" placeholder="Used for email templates"></div>' +
         '<div class="field col-12"><label>BODY</label><textarea name="body" rows="12" required>' + esc(t.body) + '</textarea></div>' +
       '</div>' +
-      '<p class="template-edit-note">Saved edits stay in this browser. Reset restores the company default.</p>' +
+      '<p class="template-edit-note">Save updates the shared staff template library. If the database is unavailable, the edit is kept in this browser until the next save.</p>' +
     '</form>';
     const cancel = card.querySelector("[data-template-cancel]");
     if (cancel) cancel.addEventListener("click", render);
   }
-  function saveTemplateEdit(event) {
+  async function saveTemplateEdit(event) {
     const form = event.target.closest("[data-template-form]");
     if (!form) return;
     event.preventDefault();
@@ -217,15 +270,15 @@
     if (!TEMPLATES[index]) return;
     TEMPLATES[index].subject = form.subject.value.trim();
     TEMPLATES[index].body = form.body.value.trim();
-    saveOverride(index, { subject: TEMPLATES[index].subject, body: TEMPLATES[index].body });
-    toast("Template saved.");
+    const mode = await persistTemplate(index, { subject: TEMPLATES[index].subject, body: TEMPLATES[index].body });
+    toast(mode === "shared" ? "Template saved for all staff." : "Template saved in this browser only. Shared database was unavailable.");
     render();
   }
-  function resetTemplate(index) {
+  async function resetTemplate(index) {
     if (!DEFAULT_TEMPLATES[index]) return;
     TEMPLATES[index] = Object.assign({}, DEFAULT_TEMPLATES[index]);
-    clearOverride(index);
-    toast("Template reset to default.");
+    const mode = await deleteSharedTemplate(index);
+    toast(mode === "shared" ? "Template reset for all staff." : "Template reset in this browser. Shared database was unavailable.");
     render();
   }
 
