@@ -18,6 +18,34 @@
 
   function esc(v) { return KridiyaAuth.escapeHTML(String(v == null ? "" : v)); }
   function label(v) { return String(v || "").replace(/_/g, " ").replace(/\b\w/g, function (c) { return c.toUpperCase(); }); }
+  function eventLabel(v) {
+    const key = String(v || "").toLowerCase();
+    const known = {
+      "auth.login": "Staff login",
+      "auth.logout": "Staff logout",
+      "staff.login": "Staff login",
+      "staff.logout": "Staff logout",
+      "enquiry.quote_sent": "Quote sent",
+      "enquiry.status_updated": "Enquiry status updated",
+      "enquiry.note_added": "Enquiry note added",
+      "enquiry.converted_to_booking": "Enquiry converted to booking",
+      "enquiry.converted_to_corporate_booking": "Corporate enquiry converted",
+      "booking.created": "Booking created",
+      "booking.status_updated": "Booking status updated",
+      "booking.task_created": "Booking task created",
+      "booking.task_completed": "Booking task completed",
+      "payment.recorded": "Payment recorded",
+      "payment.proof_uploaded": "Payment proof uploaded",
+      "payment.refund_requested": "Refund requested",
+      "payment.refund_approved": "Refund approved",
+      "payment.refund_completed": "Refund completed",
+      "supplier.invoice_uploaded": "Supplier invoice uploaded",
+      "document.generated": "Document generated",
+      "backup.pack_exported": "Backup exported"
+    };
+    if (known[key]) return known[key];
+    return key.split(".").map(label).join(" / ");
+  }
   function whenText(v) { return v ? new Date(v).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "No due date"; }
   function num(v) { return Number(v || 0); }
   function money(v) { return "AED " + num(v).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
@@ -100,7 +128,7 @@
 
     const activity = d.recent_activity || [];
     document.getElementById("dashboard-activity").innerHTML = activity.length ? '<div class="ops-list">' + activity.map(function (a) {
-      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(label(a.event_type)) + '</b><p>' + esc(a.entity_type || "system") + ' - ' + new Date(a.created_at).toLocaleString("en-GB") + '</p></div></div>';
+      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(eventLabel(a.event_type)) + '</b><p>' + esc(label(a.entity_type || "system")) + ' - ' + new Date(a.created_at).toLocaleString("en-GB") + '</p></div></div>';
     }).join("") + '</div>' : '<p class="form-note">No recent activity yet.</p>';
   }
 

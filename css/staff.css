@@ -225,6 +225,7 @@ body { background: var(--bg); }
 /* ---------- Enquiry rows (collapsible) ---------- */
 .admin-enq { padding: 0 !important; overflow: hidden; }
 .enq-row-head {
+  min-width: 0;
   display: flex; align-items: center; gap: 0.9rem; padding: 0.9rem 1.1rem; cursor: pointer; user-select: none;
 }
 .enq-row-head:hover { background: var(--surface-tint); }
@@ -235,7 +236,15 @@ body { background: var(--bg); }
 .enq-row-main { flex: 1; min-width: 0; }
 .enq-row-main .top-line { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
 .enq-row-main b { color: var(--ink); }
-.enq-row-main .sub-line { font-size: 0.82rem; color: var(--text-muted); margin-top: 0.15rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.enq-row-main .sub-line {
+  max-width: 100%;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+  line-height: 1.45;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 .enq-row-time { font-size: 0.76rem; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
 .enq-chevron { width: 18px; height: 18px; flex-shrink: 0; fill: var(--text-muted) !important; transition: transform 0.15s; }
 .admin-enq.expanded .enq-chevron { transform: rotate(180deg); }
@@ -1159,7 +1168,15 @@ body { background: var(--bg); }
 .cust-head-main { flex: 1 1 auto; min-width: 0; }
 .cust-name-line { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
 .cust-name-line b { font-size: 1rem; }
-.cust-sub-line { font-size: 0.83rem; color: var(--text-muted); margin-top: 0.15rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cust-sub-line {
+  max-width: 100%;
+  font-size: 0.83rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+  line-height: 1.45;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 .cust-head-meta { display: flex; flex-wrap: wrap; gap: 0.35rem; justify-content: flex-end; }
 .cust-chip {
   display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px;

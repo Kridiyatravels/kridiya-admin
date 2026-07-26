@@ -32,6 +32,20 @@
     { id: "visa_rejection", label: "Visa rejection notice", docType: "visa_rejection", nameField: "applicants" }
   ];
 
+  const DEFAULT_BUSINESS_SETTINGS = {
+    legal_name: "KRIDIYA Travel and Tourism FZ-LLC",
+    trade_license_no: "5033347",
+    vat_registered: false,
+    trn: "",
+    bank_name: "Wio Bank",
+    bank_account_name: "KRIDIYA Travel and Tourism FZ-LLC",
+    bank_iban: "AE540860000009813682904",
+    bank_swift: "WIOBAEADXXX",
+    bank_address: "Etihad Airways Centre 5th Floor, Abu Dhabi, UAE",
+    cancellation_policy: "Supplier, airline, hotel, visa authority, payment provider, and fare/package rules apply. Refunds, changes, penalties, and timelines depend on the relevant supplier or authority.",
+    invoice_footer_note: "Payment before booking. Bank address: Etihad Airways Centre 5th Floor, Abu Dhabi, UAE."
+  };
+
   let sb = null;
   let currentUserId = null;
   let settings = null;
@@ -64,6 +78,15 @@
   }
   function findKind(id) {
     return DOC_KINDS.find(function (k) { return k.id === id; });
+  }
+  function withBusinessDefaults(row) {
+    const out = Object.assign({}, DEFAULT_BUSINESS_SETTINGS, row || {});
+    Object.keys(DEFAULT_BUSINESS_SETTINGS).forEach(function (key) {
+      if (typeof out[key] === "string" && !out[key].trim()) out[key] = DEFAULT_BUSINESS_SETTINGS[key];
+      if (out[key] == null) out[key] = DEFAULT_BUSINESS_SETTINGS[key];
+    });
+    out.vat_registered = out.vat_registered === true || out.vat_registered === "true";
+    return out;
   }
   function settingReady(name) {
     return !!(settings && String(settings[name] || "").trim());
@@ -760,7 +783,7 @@
   async function loadSettings() {
     const result = await sb.from("business_settings").select("*").eq("id", true).single();
     if (result.error) throw result.error;
-    settings = result.data;
+    settings = withBusinessDefaults(result.data);
   }
 
   function populateSettingsForm() {
@@ -783,22 +806,22 @@
     const btn = document.getElementById("settings-save");
     btn.disabled = true;
     const update = {
-      legal_name: form.legal_name.value.trim() || "Kridiya Travel and Tourism FZ-LLC",
-      trade_license_no: form.trade_license_no.value.trim() || "5033347",
+      legal_name: form.legal_name.value.trim() || DEFAULT_BUSINESS_SETTINGS.legal_name,
+      trade_license_no: form.trade_license_no.value.trim() || DEFAULT_BUSINESS_SETTINGS.trade_license_no,
       vat_registered: form.vat_registered.value === "true",
       trn: form.trn.value.trim() || null,
-      bank_name: form.bank_name.value.trim() || null,
-      bank_account_name: form.bank_account_name.value.trim() || null,
-      bank_iban: form.bank_iban.value.trim() || null,
-      bank_swift: form.bank_swift.value.trim() || null,
-      bank_address: form.bank_address.value.trim() || null,
-      cancellation_policy: form.cancellation_policy.value.trim() || null,
-      invoice_footer_note: form.invoice_footer_note.value.trim() || null
+      bank_name: form.bank_name.value.trim() || DEFAULT_BUSINESS_SETTINGS.bank_name,
+      bank_account_name: form.bank_account_name.value.trim() || DEFAULT_BUSINESS_SETTINGS.bank_account_name,
+      bank_iban: form.bank_iban.value.trim() || DEFAULT_BUSINESS_SETTINGS.bank_iban,
+      bank_swift: form.bank_swift.value.trim() || DEFAULT_BUSINESS_SETTINGS.bank_swift,
+      bank_address: form.bank_address.value.trim() || DEFAULT_BUSINESS_SETTINGS.bank_address,
+      cancellation_policy: form.cancellation_policy.value.trim() || DEFAULT_BUSINESS_SETTINGS.cancellation_policy,
+      invoice_footer_note: form.invoice_footer_note.value.trim() || DEFAULT_BUSINESS_SETTINGS.invoice_footer_note
     };
     const result = await sb.from("business_settings").update(update).eq("id", true).select("*").single();
     btn.disabled = false;
     if (result.error) { toast("Could not save settings: " + result.error.message); return; }
-    settings = result.data;
+    settings = withBusinessDefaults(result.data);
     logActivity(sb, currentUserId, "settings.updated", "business_settings", null, {});
     toast("Business settings saved.");
     renderDocControl();
