@@ -936,6 +936,48 @@
     const sel = document.getElementById("doc-kind");
     sel.innerHTML = DOC_KINDS.map(function (k) { return '<option value="' + k.id + '">' + esc(k.label) + "</option>"; }).join("");
   }
+  function docArchiveTitle(row) {
+    const kind = (row.payload && row.payload.kind) || "";
+    const def = findKind(kind);
+    return (def ? def.label : label(row.document_type)) + " " + row.document_number;
+  }
+  function renderArchivedDocument(row) {
+    const data = row.payload || {};
+    const kindId = data.kind;
+    const kind = findKind(kindId);
+    const handler = HANDLERS[kindId];
+    if (!kind || !handler) {
+      toast("This archived document type cannot be reopened yet.");
+      return;
+    }
+    const bodyHTML = handler.render(data, row.document_number);
+    openPrintWindow(docArchiveTitle(row), bodyHTML);
+  }
+  async function loadDocumentArchive() {
+    const mount = document.getElementById("doc-archive-list");
+    if (!mount || !sb) return;
+    mount.innerHTML = '<p class="form-note">Loading document archive...</p>';
+    const result = await sb
+      .from("documents")
+      .select("id, document_number, document_type, enquiry_id, customer_name, customer_email, amount_total, currency, payload, created_at")
+      .order("created_at", { ascending: false })
+      .limit(30);
+    if (result.error) {
+      mount.innerHTML = '<div class="form-banner error">Could not load archive: ' + esc(result.error.message) + "</div>";
+      return;
+    }
+    const rows = result.data || [];
+    if (!rows.length) {
+      mount.innerHTML = '<p class="form-note">No issued documents yet.</p>';
+      return;
+    }
+    window.__kridiyaDocArchive = rows;
+    mount.innerHTML = rows.map(function (row, index) {
+      const created = row.created_at ? new Date(row.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "No date";
+      const amount = row.amount_total != null ? money(row.amount_total, row.currency || "AED") : "No amount";
+      return '<div class="ops-row doc-archive-row"><div class="ops-row-main"><b>' + esc(docArchiveTitle(row)) + '</b><p>' + esc(row.customer_name || "No customer") + (row.customer_email ? " - " + esc(row.customer_email) : "") + " - " + esc(created) + '</p><div class="ops-kv"><span class="ops-chip">' + esc(label(row.document_type)) + '</span><span class="ops-chip">' + esc(amount) + '</span>' + (row.enquiry_id ? '<span class="ops-chip">Linked enquiry</span>' : "") + '</div></div><div class="ops-row-actions"><button class="btn btn-outline js-open-archive-doc" data-index="' + esc(index) + '" type="button">Open PDF view</button></div></div>';
+    }).join("");
+  }
 
   function rebuildForm() {
     const kindId = document.getElementById("doc-kind").value;
@@ -987,6 +1029,7 @@
       document.getElementById("doc-preview-number").textContent = doc.document_number;
       openPrintWindow(title, bodyHTML);
       logActivity(sb, currentUserId, "document.generated", "document", doc.id, { number: doc.document_number, kind: kindId, customer: customerName });
+      loadDocumentArchive();
       toast(title + " saved.");
     } catch (err) {
       toast("Could not save document: " + err.message);
@@ -1136,6 +1179,7 @@
     app.hidden = false;
     renderKindOptions();
     renderDocControl();
+    loadDocumentArchive();
 
     document.getElementById("settings-toggle").addEventListener("click", function () {
       const form = document.getElementById("settings-form");
@@ -1145,6 +1189,7 @@
       this.textContent = opening ? "Hide" : "Edit";
     });
     document.getElementById("settings-save").addEventListener("click", saveSettings);
+    document.getElementById("doc-archive-refresh").addEventListener("click", loadDocumentArchive);
 
     document.getElementById("sig-build").addEventListener("click", function () {
       const html = buildEmailIdentityHTML();
@@ -1184,6 +1229,12 @@
       document.getElementById("sig-preview").innerHTML = buildEmailIdentityHTML();
       document.getElementById("sig-preview-wrap").hidden = false;
       toast("Email identity fields reset.");
+    });
+    document.getElementById("doc-archive-list").addEventListener("click", function (e) {
+      const btn = e.target.closest(".js-open-archive-doc");
+      if (!btn) return;
+      const row = (window.__kridiyaDocArchive || [])[Number(btn.dataset.index)];
+      if (row) renderArchivedDocument(row);
     });
     const p = new URLSearchParams(location.search);
     const enquiryId = p.get("enquiry");

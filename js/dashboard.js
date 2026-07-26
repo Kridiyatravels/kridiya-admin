@@ -334,6 +334,81 @@
       slot.classList.add("has");
     });
   }
+  function taskDue(hours) {
+    const d = new Date();
+    d.setHours(d.getHours() + hours);
+    return d.toISOString();
+  }
+  function existingTaskKeys() {
+    return (dashboardTasks || []).reduce(function (acc, t) {
+      acc[String(t.entity_id || "") + "::" + String(t.task_type || "") + "::" + String(t.title || "").toLowerCase()] = true;
+      return acc;
+    }, {});
+  }
+  function taskExists(keys, bookingId, taskType, title) {
+    return !!keys[String(bookingId || "") + "::" + String(taskType || "") + "::" + String(title || "").toLowerCase()];
+  }
+  function suggestedTasksForBooking(b, keys) {
+    const out = [];
+    function add(title, type, priority, hours, notes) {
+      if (taskExists(keys, b.id, type, title)) return;
+      out.push({ booking: b, title: title, task_type: type, priority: priority, due_at: taskDue(hours), notes: notes });
+    }
+    if (["confirmed", "booked", "ticketed"].indexOf(String(b.status || "")) !== -1 && ["paid", "supplier_paid", "refunded"].indexOf(String(b.payment_status || "")) === -1) {
+      add("Collect or verify customer payment", "payment", "urgent", 4, "Automation: booking is active but payment is not fully controlled.");
+    }
+    if (["confirmed", "paid", "booked", "ticketed"].indexOf(String(b.status || "")) !== -1 && ["generated", "sent", "archived"].indexOf(String(b.document_status || "")) === -1) {
+      add("Prepare and send customer documents", "documents", "high", 12, "Automation: booking needs invoice/ticket/voucher/document progress.");
+    }
+    if (String(b.payment_status || "") === "refund_pending") {
+      add("Review and complete refund queue item", "payment", "urgent", 2, "Automation: refund is pending approval or completion.");
+    }
+    if (Number(b.supplier_cost || 0) > 0 && ["supplier_paid", "paid"].indexOf(String(b.payment_status || "")) === -1) {
+      add("Check supplier payment/control", "supplier_check", "normal", 24, "Automation: supplier cost exists; confirm supplier deadline/reference/payment control.");
+    }
+    if (b.follow_up_at && new Date(b.follow_up_at) <= new Date(Date.now() + 7 * 86400000)) {
+      add("Customer follow-up due", "follow_up", "normal", 6, "Automation: booking follow-up date is due or coming soon.");
+    }
+    return out;
+  }
+  async function createMissingWorkflowTasks(button) {
+    button.disabled = true;
+    button.textContent = "Scanning...";
+    const list = await sb.rpc("list_operations_bookings", { limit_count: 200 });
+    if (list.error) {
+      button.disabled = false;
+      button.textContent = "Create missing tasks";
+      toast("Could not scan bookings: " + list.error.message);
+      return;
+    }
+    const keys = existingTaskKeys();
+    const candidates = (list.data || []).reduce(function (acc, b) {
+      return acc.concat(suggestedTasksForBooking(b, keys));
+    }, []).slice(0, 40);
+    if (!candidates.length) {
+      button.disabled = false;
+      button.textContent = "Create missing tasks";
+      toast("No missing workflow tasks found.");
+      return;
+    }
+    button.textContent = "Creating...";
+    let created = 0;
+    for (const item of candidates) {
+      const result = await sb.rpc("create_booking_task", {
+        p_booking_id: item.booking.id,
+        p_title: item.title,
+        p_task_type: item.task_type,
+        p_due_at: item.due_at,
+        p_priority: item.priority,
+        p_notes: item.notes
+      });
+      if (!result.error) created++;
+    }
+    button.disabled = false;
+    button.textContent = "Create missing tasks";
+    toast(created + " workflow task(s) created.");
+    await loadDashboard();
+  }
 
   function renderReminders() {
     const panel = document.getElementById("dashboard-reminders");
@@ -378,6 +453,11 @@
       } else {
         window.prompt("Copy workflow test report", text);
       }
+      return;
+    }
+    const autoTasks = event.target.closest("#workflow-auto-tasks");
+    if (autoTasks) {
+      await createMissingWorkflowTasks(autoTasks);
       return;
     }
     const doneButton = event.target.closest(".js-dashboard-task-done");
