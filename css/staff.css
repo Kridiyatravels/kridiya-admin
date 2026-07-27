@@ -3714,6 +3714,7 @@ table tbody tr:hover {
 
 .doc-quote-add-bottom {
   justify-self: start;
+  margin: var(--sp-2) 0 var(--sp-5);
 }
 
 .doc-quote-option {
