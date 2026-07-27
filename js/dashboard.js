@@ -98,11 +98,6 @@
     const d = result.data || {};
     renderDashboardChrome(d);
     renderCommandCenter(d);
-    renderPipeline(d);
-    const stats = dashboardStats(d);
-    document.getElementById("dashboard-stats").innerHTML = stats.map(function (s) {
-      return '<div class="stat-tile" style="--tile-accent:' + s[2] + '"><div class="num">' + s[1] + '</div><div class="label">' + esc(s[0]) + '</div></div>';
-    }).join("");
 
     renderOperationsQa(d);
     renderLaunchReadiness(d);
@@ -147,8 +142,10 @@
     if (activitySubtitle) activitySubtitle.textContent = dashboardIsAdmin ? "Latest staff and system actions." : "Recent work visible to your account.";
     const qa = document.querySelector(".ops-qa-card");
     const readiness = document.querySelector(".launch-readiness-card");
+    const system = document.querySelector(".dashboard-system");
     if (qa) qa.hidden = !dashboardIsAdmin;
     if (readiness) readiness.hidden = !dashboardIsAdmin;
+    if (system) system.hidden = !dashboardIsAdmin;
     renderQuickActions(d);
   }
 
@@ -178,28 +175,6 @@
     if (typeof pruneStaffAccess === "function") pruneStaffAccess(box);
   }
 
-  function dashboardStats(d) {
-    if (dashboardIsAdmin) {
-      return [
-        ["New enquiries today", d.enquiries_today || 0, "var(--status-checking)"],
-        ["Open bookings", d.bookings_open || 0, "var(--status-quoted)"],
-        ["Pending payments", d.payments_pending || 0, "var(--status-payment)"],
-        ["Refund queue", d.refunds_pending || 0, "var(--status-payment)"],
-        ["Tasks due", d.tasks_due || 0, "var(--status-docs)"],
-        ["Documents pending", d.documents_pending || 0, "var(--status-docs)"]
-      ];
-    }
-    const myTasks = staffVisibleTasks();
-    return [
-      ["My open tasks", myTasks.length, "var(--status-docs)"],
-      ["Due today", countTasks("today"), "var(--status-checking)"],
-      ["Overdue", countTasks("overdue"), "var(--status-payment)"],
-      ["Open enquiries", d.enquiries_open || 0, "var(--status-quoted)"],
-      ["Open bookings", d.bookings_open || 0, "var(--status-quoted)"],
-      ["Docs pending", d.documents_pending || 0, "var(--status-docs)"]
-    ];
-  }
-
   function staffVisibleTasks() {
     if (dashboardIsAdmin) return dashboardTasks || [];
     return (dashboardTasks || []).filter(function (t) { return !t.assigned_to || t.assigned_to === dashboardUser.id; });
@@ -207,6 +182,14 @@
 
   function countTasks(bucket) {
     return staffVisibleTasks().filter(function (t) { return t.due_bucket === bucket; }).length;
+  }
+
+  function staffHealthScore() {
+    let score = 100;
+    score -= Math.min(45, countTasks("overdue") * 15);
+    score -= Math.min(30, countTasks("today") * 6);
+    score -= Math.min(15, Math.max(0, staffVisibleTasks().length - 5) * 3);
+    return Math.max(0, score);
   }
 
   function priorityRows(d) {
@@ -229,7 +212,7 @@
   }
 
   function renderCommandCenter(d) {
-    const score = healthScore(d);
+    const score = dashboardIsAdmin ? healthScore(d) : staffHealthScore();
     const tone = healthTone(score);
     const riskActions = dashboardIsAdmin ? [
       { title: "Collect or verify payment", text: (d.bookings_confirmed_unpaid || 0) + " confirmed booking(s) need payment control", href: "bookings.html" },
@@ -263,48 +246,10 @@
       }).join("") + '</div>';
   }
 
-  function renderPipeline(d) {
-    const panel = document.getElementById("dashboard-pipeline");
-    if (!panel) return;
-    const stages = dashboardIsAdmin
-      ? [
-          ["New enquiries", d.enquiries_today || 0, "admin.html"],
-          ["Sales queue", d.enquiries_open || 0, "admin.html"],
-          ["Open bookings", d.bookings_open || 0, "bookings.html"],
-          ["Payment risk", d.payments_pending || 0, "payments.html"],
-          ["Supplier control", d.supplier_payments_pending || 0, "payments.html"],
-          ["Documents", d.documents_pending || 0, "documents.html"],
-          ["Refunds", d.refunds_pending || 0, "payments.html"]
-        ]
-      : [
-          ["Enquiries", d.enquiries_open || 0, "admin.html"],
-          ["Quotes", d.quotes_sent_30d || 0, "admin.html"],
-          ["Bookings", d.bookings_open || 0, "bookings.html"],
-          ["Tasks", staffVisibleTasks().length, "bookings.html"],
-          ["Docs", d.documents_pending || 0, "documents.html"]
-        ];
-    panel.innerHTML = '<div class="dashboard-pipeline-track">' + stages.map(function (s, index) {
-      return '<a class="dashboard-stage" href="' + esc(s[2]) + '"><span>' + esc(index + 1) + '</span><b>' + esc(s[1]) + '</b><small>' + esc(s[0]) + '</small></a>';
-    }).join("") + '</div>';
-  }
-
   function renderAdminSections(d) {
     const grid = document.getElementById("dashboard-admin-grid");
     if (grid) grid.hidden = !dashboardIsAdmin;
     if (!dashboardIsAdmin) return;
-    const finance = document.getElementById("dashboard-finance-detail");
-    if (finance) {
-      const rows = [
-        ["Open sales value", money(d.sales_value_open), "bookings.html"],
-        ["Customer payment pending", d.payments_pending || 0, "payments.html"],
-        ["Supplier cost pending", money(d.supplier_cost_open), "payments.html"],
-        ["Expected gross profit", money(d.gross_profit_open), "accounting.html"],
-        ["Refund value pending", money(d.refund_value_pending || 0), "payments.html"]
-      ];
-      finance.innerHTML = '<div class="ops-list">' + rows.map(function (r) {
-        return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(r[0]) + '</b><p>' + esc(r[1]) + '</p></div><a class="btn btn-outline" href="' + esc(r[2]) + '">Open</a></div>';
-      }).join("") + '</div>';
-    }
     const accountability = document.getElementById("dashboard-accountability");
     if (accountability) {
       const unassigned = (dashboardTasks || []).filter(function (t) { return !t.assigned_to; }).length;

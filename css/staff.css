@@ -686,68 +686,8 @@ body { background: var(--bg); }
 .command-action:hover { background: var(--surface-tint); }
 .command-action b { display: block; font-size: 0.9rem; }
 
-.dashboard-pipeline {
-  margin: 0 0 1.1rem;
-}
-
-.dashboard-pipeline-track {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(142px, 1fr);
-  overflow-x: auto;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--surface);
-}
-
-.dashboard-stage {
-  min-width: 0;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  column-gap: 0.55rem;
-  row-gap: 0.12rem;
-  padding: 0.85rem 0.95rem;
-  color: var(--ink);
-  text-decoration: none;
-  border-right: 1px solid var(--line);
-}
-
-.dashboard-stage:last-child {
-  border-right: 0;
-}
-
-.dashboard-stage:hover {
-  background: var(--surface-tint);
-}
-
-.dashboard-stage span {
-  width: 24px;
-  height: 24px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  grid-row: 1 / span 2;
-  border-radius: 999px;
-  background: var(--brand-soft);
-  color: var(--brand-deep);
-  font-size: 0.72rem;
-  font-weight: 800;
-}
-
-.dashboard-stage b {
-  color: var(--ink);
-  font-size: 1rem;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-
-.dashboard-stage small {
-  min-width: 0;
-  color: var(--text-muted);
-  font-size: 0.76rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+#dashboard-admin-grid {
+  margin-top: 1rem;
 }
 
 @media (max-width: 980px) {
