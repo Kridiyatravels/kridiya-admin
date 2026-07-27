@@ -75,9 +75,9 @@
         ["location", "Location", "text", "City / area"],
         ["checkin", "Check-in", "date", ""],
         ["checkout", "Check-out", "date", ""],
-        ["room_type", "Room type", "text", "e.g. Deluxe King"],
+        ["room_type", "Room type", "text", "e.g. Deluxe King", "room_type"],
         ["rooms_guests", "Rooms / guests", "text", "e.g. 1 room, 2 adults"],
-        ["meal_plan", "Meal plan", "text", "Room only / breakfast / half board"],
+        ["meal_plan", "Meal plan", "text", "Room only / breakfast / half board", "meal_plan"],
         ["cancellation", "Cancellation terms", "text", "Refundable until..."]
       ],
       terms: "Hotel rates and room availability are subject to confirmation. Check-in rules, cancellation conditions and tourism or city taxes follow the selected hotel and supplier."
@@ -122,7 +122,7 @@
         ["transport", "Transport", "text", "Flight / bus / private transfer"],
         ["hotel_makkah", "Makkah hotel", "text", ""],
         ["hotel_madinah", "Madinah hotel", "text", ""],
-        ["room_type", "Room type", "text", "Double / triple / quad"],
+        ["room_type", "Room type", "text", "Double / triple / quad", "room_type"],
         ["inclusions", "Inclusions", "textarea", "Visa, hotels, transport, ziyarat..."]
       ],
       terms: "Umrah visa, transport, hotel and permit conditions are subject to Saudi authority and supplier rules. Availability must be reconfirmed before payment."
@@ -136,7 +136,7 @@
         ["sail_date", "Sailing date", "date", ""],
         ["return_date", "Return date", "date", ""],
         ["itinerary", "Itinerary / ports", "textarea", ""],
-        ["cabin_type", "Cabin type", "text", "Interior / ocean view / balcony"],
+        ["cabin_type", "Cabin type", "text", "Interior / ocean view / balcony", "cruise_cabin"],
         ["occupancy", "Occupancy", "text", "e.g. 2 adults"],
         ["inclusions", "Inclusions", "textarea", "Meals, port charges, gratuities..."]
       ],
@@ -496,9 +496,10 @@
     const labelText = field[1];
     const type = field[2];
     const placeholder = field[3] || "";
+    const preset = field[4] ? ' data-preset="' + esc(field[4]) + '"' : "";
     const control = type === "textarea"
       ? '<textarea data-field="' + esc(key) + '" placeholder="' + esc(placeholder) + '"></textarea>'
-      : '<input data-field="' + esc(key) + '" type="' + esc(type) + '" placeholder="' + esc(placeholder) + '">';
+      : '<input data-field="' + esc(key) + '" type="' + esc(type) + '" placeholder="' + esc(placeholder) + '"' + preset + '>';
     return '<div class="field ' + (type === "textarea" ? "col-12" : "col-6") + '"><label>' + esc(labelText.toUpperCase()) + "</label>" + control + "</div>";
   }
   function quoteOptionValue(option, key) {
@@ -509,7 +510,7 @@
     return (
       '<div class="quote-flight-segment">' +
         '<div class="field-row quote-flight-segment-grid">' +
-          '<div class="field col-3"><label>AIRLINE</label><input data-segment-field="airline"></div>' +
+          '<div class="field col-3"><label>AIRLINE</label><input data-segment-field="airline" data-preset="airline"></div>' +
           '<div class="field col-3"><label>OPERATED BY</label><input data-segment-field="operated_by" placeholder="If different"></div>' +
           '<div class="field col-3"><label>FLIGHT NO.</label><input data-segment-field="flightno" placeholder="e.g. G9 401"></div>' +
           '<div class="field col-3"><label>FROM</label><input data-segment-field="from" data-airport placeholder="Dubai (DXB)"></div>' +
@@ -542,12 +543,12 @@
         : quoteJourneyHTML("onward", "Onward journey");
     return (
       '<div class="field-row quote-option-core">' +
-        '<div class="field col-6"><label>OPTION NAME / AIRLINE</label><input data-field="option_name" placeholder="e.g. Air Arabia"></div>' +
+        '<div class="field col-6"><label>OPTION NAME / AIRLINE</label><input data-field="option_name" data-preset="airline" placeholder="e.g. Air Arabia"></div>' +
         '<div class="field col-3"><label>TRIP TYPE</label><input value="' + esc(tripLabel) + '" disabled><input data-field="trip_type" type="hidden" value="' + esc(tripType) + '"></div>' +
         '<div class="field col-3"><label>PRICE / PERSON</label><input data-field="price" type="number" min="0" step="0.01" placeholder="0.00"></div>' +
-        '<div class="field col-4"><label>CLASS</label><input data-field="cabin" value="Economy"></div>' +
+        '<div class="field col-4"><label>CLASS</label><input data-field="cabin" data-preset="cabin" value="Economy"></div>' +
         '<div class="field col-4"><label>BOOKING CLASS / FARE BASIS</label><input data-field="fare_basis" placeholder="e.g. V / Saver"></div>' +
-        '<div class="field col-4"><label>BOOKING STATUS</label><input data-field="booking_status" placeholder="e.g. Available / On request"></div>' +
+        '<div class="field col-4"><label>BOOKING STATUS</label><input data-field="booking_status" data-preset="booking_status" placeholder="e.g. Available / On request"></div>' +
         '<div class="field col-4"><label>BAGGAGE</label><input data-field="baggage" placeholder="e.g. 30kg + 7kg cabin"></div>' +
         '<div class="field col-4"><label>FARE / BOOKING NOTE</label><input data-field="fare_note" placeholder="Refundable / changes allowed..."></div>' +
         '<div class="field col-4"><label>QUOTE / RESERVATION REF (OPTIONAL)</label><input data-field="pnr"></div>' +
@@ -615,6 +616,9 @@
     function initQuoteAirports(scope) {
       if (typeof initAirportAC === "function") initAirportAC(scope);
     }
+    function initQuotePresets(scope) {
+      if (typeof initPresetAC === "function") initPresetAC(scope);
+    }
     function addOption() {
       const service = serviceSel.value;
       const preset = QUOTE_SERVICE_PRESETS[service] || QUOTE_SERVICE_PRESETS.other;
@@ -628,6 +632,7 @@
       optionsMount.appendChild(option);
       renumberOptions();
       initQuoteAirports(option);
+      initQuotePresets(option);
     }
     function resetForService() {
       optionsMount.innerHTML = "";
@@ -645,6 +650,7 @@
         const segments = journey.querySelector(".quote-flight-segments");
         segments.insertAdjacentHTML("beforeend", quoteFlightSegmentHTML());
         initQuoteAirports(segments.lastElementChild);
+        initQuotePresets(segments.lastElementChild);
         return;
       }
       const removeSegment = event.target.closest(".quote-remove-segment");
@@ -1035,20 +1041,20 @@
       (legCount === "multi" ? '<button type="button" id="add-item" class="btn btn-outline doc-add-repeat">+ Add flight leg</button>' : "") +
       '<div class="field-row doc-ticket-passenger-row">' +
         '<div class="field col-6"><label>PASSENGER NAME(S), ONE PER LINE</label><textarea name="passengers">' + esc(prefillName()) + "</textarea></div>" +
-        '<div class="field col-3"><label>CLASS</label><input name="cabin" value="Economy"></div>' +
+        '<div class="field col-3"><label>CLASS</label><input name="cabin" data-preset="cabin" value="Economy"></div>' +
         '<div class="field col-3"><label>BAGGAGE</label><input name="baggage" placeholder="e.g. 20kg checked + 7kg cabin"></div>' +
         '<div class="field col-6"><label>AIRLINE PNR / BOOKING REF</label><input name="pnr"></div>' +
         '<div class="field col-6"><label>E-TICKET NUMBER(S), ONE PER PASSENGER</label><textarea name="ticket_numbers" placeholder="13-digit airline ticket number(s)"></textarea></div>' +
         '<div class="field col-3"><label>ISSUE DATE</label><input name="issue_date" type="date" value="' + todayISO() + '"></div>' +
-        '<div class="field col-3"><label>ISSUING AIRLINE</label><input name="issuing_airline"></div>' +
-        '<div class="field col-3"><label>BOOKING STATUS</label><input name="booking_status" placeholder="Confirmed / Ticketed"></div>' +
+        '<div class="field col-3"><label>ISSUING AIRLINE</label><input name="issuing_airline" data-preset="airline"></div>' +
+        '<div class="field col-3"><label>BOOKING STATUS</label><input name="booking_status" data-preset="booking_status" placeholder="Confirmed / Ticketed"></div>' +
         '<div class="field col-3"><label>BOOKING CLASS / FARE BASIS</label><input name="fare_basis" placeholder="e.g. V / Saver"></div>' +
         '<div class="field col-3"><label>BASE FARE</label><input name="base_fare" type="number" min="0" step="0.01"></div>' +
         '<div class="field col-3"><label>TAXES / FEES</label><input name="taxes" type="number" min="0" step="0.01"></div>' +
         '<div class="field col-3"><label>TOTAL PAID</label><input name="total_paid" type="number" min="0" step="0.01"></div>' +
         '<div class="field col-3"><label>CURRENCY</label><input class="currency-input" name="currency" value="AED" maxlength="3"></div>' +
         '<div class="field col-4"><label>PAYMENT STATUS</label><input name="payment_status" placeholder="Paid / Balance due"></div>' +
-        '<div class="field col-4"><label>PAYMENT METHOD</label><input name="payment_method" placeholder="Cash / bank transfer / card"></div>' +
+        '<div class="field col-4"><label>PAYMENT METHOD</label><input name="payment_method" data-preset="payment_method" placeholder="Cash / bank transfer / card"></div>' +
         '<div class="field col-4"><label>AIRLINE RECORD LOCATOR</label><input name="airline_locator" placeholder="If different from PNR"></div>' +
         '<div class="field col-12"><label>CHANGE / CANCELLATION / NO-SHOW RULES</label><textarea name="airline_rules" placeholder="Paste the airline fare rules or the key rule summary."></textarea></div>' +
         addonChecksHTML("flight_addon") +
@@ -1057,7 +1063,7 @@
     renderRepeatable("rep-legs", "add-item", function (i) {
       return (
         '<div class="field-row repeat-field-row">' +
-        '<div class="field col-3"><label>AIRLINE</label><input name="airline_' + i + '"></div>' +
+        '<div class="field col-3"><label>AIRLINE</label><input name="airline_' + i + '" data-preset="airline"></div>' +
         '<div class="field col-3"><label>OPERATED BY</label><input name="operated_by_' + i + '" placeholder="If different"></div>' +
         '<div class="field col-3"><label>FLIGHT NO.</label><input name="flightno_' + i + '"></div>' +
         '<div class="field col-3"><label>FROM</label><input name="from_' + i + '" data-airport placeholder="Dubai (DXB)"></div>' +
@@ -1076,6 +1082,11 @@
       initAirportAC(mount);
       const legAddBtn = document.getElementById("add-item");
       if (legAddBtn) legAddBtn.addEventListener("click", function () { setTimeout(function () { initAirportAC(mount); }, 0); });
+    }
+    if (typeof initPresetAC === "function") {
+      initPresetAC(mount);
+      const legAddBtn = document.getElementById("add-item");
+      if (legAddBtn) legAddBtn.addEventListener("click", function () { setTimeout(function () { initPresetAC(mount); }, 0); });
     }
   }
   function gatherFlight(form) {
@@ -1196,8 +1207,8 @@
         '<div class="field col-6"><label>HOTEL ADDRESS / CITY</label><input name="hotel_address"></div>' +
         '<div class="field col-3"><label>CHECK-IN</label><input name="checkin" type="date"></div>' +
         '<div class="field col-3"><label>CHECK-OUT</label><input name="checkout" type="date"></div>' +
-        '<div class="field col-3"><label>ROOM TYPE</label><input name="room_type"></div>' +
-        '<div class="field col-3"><label>MEAL PLAN</label><input name="meal_plan" placeholder="e.g. Breakfast included"></div>' +
+        '<div class="field col-3"><label>ROOM TYPE</label><input name="room_type" data-preset="room_type"></div>' +
+        '<div class="field col-3"><label>MEAL PLAN</label><input name="meal_plan" data-preset="meal_plan" placeholder="e.g. Breakfast included"></div>' +
         '<div class="field col-6"><label>GUEST NAME(S), ONE PER LINE</label><textarea name="guests">' + esc(prefillName()) + "</textarea></div>" +
         '<div class="field col-6"><label>HOTEL CONFIRMATION NUMBER</label><input name="confirmation_no"></div>' +
       "</div>";
@@ -1320,7 +1331,7 @@
         '<div class="field col-3"><label>TRAVEL END</label><input name="date_to" type="date"></div>' +
         '<div class="field col-3"><label>HOTEL — MAKKAH</label><input name="hotel_makkah"></div>' +
         '<div class="field col-3"><label>HOTEL — MADINAH</label><input name="hotel_madinah"></div>' +
-        '<div class="field col-6"><label>ROOM TYPE</label><input name="room_type" placeholder="Quad / Triple / Double"></div>' +
+        '<div class="field col-6"><label>ROOM TYPE</label><input name="room_type" data-preset="room_type" placeholder="Quad / Triple / Double"></div>' +
         '<div class="field col-12"><label>PILGRIM NAME(S), ONE PER LINE</label><textarea name="pilgrims">' + esc(prefillName()) + "</textarea></div>" +
       "</div>";
   }
@@ -1357,7 +1368,7 @@
         '<div class="field col-6"><label>CRUISE LINE</label><input name="cruise_line"></div>' +
         '<div class="field col-6"><label>SHIP NAME</label><input name="ship_name"></div>' +
         '<div class="field col-3"><label>SAILING DATE</label><input name="sail_date" type="date"></div>' +
-        '<div class="field col-3"><label>CABIN TYPE</label><input name="cabin_type"></div>' +
+        '<div class="field col-3"><label>CABIN TYPE</label><input name="cabin_type" data-preset="cruise_cabin"></div>' +
         '<div class="field col-12"><label>ITINERARY / PORTS</label><input name="itinerary"></div>' +
         '<div class="field col-12"><label>GUEST NAME(S), ONE PER LINE</label><textarea name="guests">' + esc(prefillName()) + "</textarea></div>" +
       "</div>";
@@ -1396,7 +1407,7 @@
         '<div class="field col-4"><label>CANCELLATION DATE</label><input name="cancel_date" type="date" value="' + todayISO() + '"></div>' +
         '<div class="field col-4"><label>REFUND AMOUNT</label><input name="refund_amount" type="number" min="0" step="0.01"></div>' +
         '<div class="field col-4"><label>CURRENCY</label><input class="currency-input" name="currency" value="AED" maxlength="3"></div>' +
-        '<div class="field col-6"><label>REFUND METHOD</label><input name="refund_method" placeholder="e.g. Original payment method, bank transfer"></div>' +
+        '<div class="field col-6"><label>REFUND METHOD</label><input name="refund_method" data-preset="payment_method" placeholder="e.g. Original payment method, bank transfer"></div>' +
         '<div class="field col-6"><label>EXPECTED REFUND TIMEFRAME</label><input name="refund_timeframe" placeholder="e.g. 7-14 business days"></div>' +
         '<div class="field col-6"><label>CANCELLATION FEE (IF ANY)</label><input name="cancel_fee" type="number" min="0" step="0.01"></div>' +
         '<div class="field col-12"><label>NOTES</label><textarea name="notes"></textarea></div>' +
@@ -1646,6 +1657,7 @@
     const handler = HANDLERS[kindId];
     const mount = document.getElementById("doc-fields");
     handler.build(mount);
+    if (typeof initPresetAC === "function") initPresetAC(mount);
     document.getElementById("doc-preview").innerHTML = "";
     document.getElementById("save-print-btn").disabled = false;
     renderDocControl();
