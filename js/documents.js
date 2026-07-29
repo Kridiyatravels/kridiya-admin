@@ -1655,6 +1655,37 @@
     form.invoice_footer_note.value = settings.invoice_footer_note || "";
   }
 
+  function settingsSummaryItem(labelText, value) {
+    return '<button type="button" class="business-settings-item js-settings-edit"><span>' + esc(labelText) + '</span><b>' + esc(value || "Not set") + "</b></button>";
+  }
+
+  function renderSettingsSummary() {
+    const mount = document.getElementById("settings-summary");
+    if (!mount || !settings) return;
+    mount.innerHTML =
+      '<div class="business-settings-status"><div><b>Saved company profile</b><span>These details are shared by all staff and printed on generated documents.</span></div><span class="staff-risk ok">Saved for all</span></div>' +
+      '<div class="business-settings-grid">' +
+        settingsSummaryItem("Legal name", settings.legal_name) +
+        settingsSummaryItem("Trade licence", settings.trade_license_no) +
+        settingsSummaryItem("VAT / TRN", settings.vat_registered ? (settings.trn || "VAT registered") : "Not VAT registered") +
+        settingsSummaryItem("Bank", settings.bank_name) +
+        settingsSummaryItem("Account name", settings.bank_account_name) +
+        settingsSummaryItem("IBAN", settings.bank_iban) +
+        settingsSummaryItem("SWIFT / BIC", settings.bank_swift) +
+        settingsSummaryItem("Cancellation policy", settings.cancellation_policy) +
+      "</div>" +
+      '<p class="form-note business-settings-hint">Click any saved item or Edit to change it. Reset removes your custom text and restores the default company settings.</p>';
+  }
+
+  function setSettingsEditing(open) {
+    const form = document.getElementById("settings-form");
+    const btn = document.getElementById("settings-toggle");
+    if (!form || !btn) return;
+    if (open) populateSettingsForm();
+    form.hidden = !open;
+    btn.textContent = open ? "Close" : "Edit";
+  }
+
   async function saveSettings() {
     const form = document.getElementById("settings-form");
     const btn = document.getElementById("settings-save");
@@ -1678,7 +1709,25 @@
     settings = withBusinessDefaults(result.data);
     logActivity(sb, currentUserId, "settings.updated", "business_settings", null, {});
     toast("Business settings saved.");
+    renderSettingsSummary();
     renderDocControl();
+    setSettingsEditing(false);
+  }
+
+  async function resetSettingsToDefaults() {
+    if (!confirm("Reset business settings to the default Kridiya company details for all staff?")) return;
+    const btn = document.getElementById("settings-reset");
+    if (btn) btn.disabled = true;
+    const update = Object.assign({}, DEFAULT_BUSINESS_SETTINGS);
+    const result = await sb.from("business_settings").update(update).eq("id", true).select("*").single();
+    if (btn) btn.disabled = false;
+    if (result.error) { toast("Could not reset settings: " + result.error.message); return; }
+    settings = withBusinessDefaults(result.data);
+    populateSettingsForm();
+    renderSettingsSummary();
+    renderDocControl();
+    logActivity(sb, currentUserId, "settings.reset", "business_settings", null, {});
+    toast("Business settings reset to defaults.");
   }
 
   async function searchEnquiries(query) {
@@ -1944,16 +1993,15 @@
     app.hidden = false;
     renderKindOptions();
     renderDocControl();
+    renderSettingsSummary();
     loadDocumentArchive();
 
-    document.getElementById("settings-toggle").addEventListener("click", function () {
-      const form = document.getElementById("settings-form");
-      const opening = form.hidden;
-      if (opening) populateSettingsForm();
-      form.hidden = !opening;
-      this.textContent = opening ? "Hide" : "Edit";
+    document.getElementById("settings-toggle").addEventListener("click", function () { setSettingsEditing(document.getElementById("settings-form").hidden); });
+    document.getElementById("settings-summary").addEventListener("click", function (e) {
+      if (e.target.closest(".js-settings-edit")) setSettingsEditing(true);
     });
     document.getElementById("settings-save").addEventListener("click", saveSettings);
+    document.getElementById("settings-reset").addEventListener("click", resetSettingsToDefaults);
     document.getElementById("doc-archive-refresh").addEventListener("click", loadDocumentArchive);
 
     document.getElementById("sig-build").addEventListener("click", function () {

@@ -11,7 +11,7 @@
 <link rel="icon" href="https://kridiyatravel.com/assets/favicon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="https://kridiyatravel.com/assets/favicon-180.png">
 <link rel="stylesheet" href="https://kridiyatravel.com/css/styles.css">
-<link rel="stylesheet" href="css/staff.css?v=20260726o">
+<link rel="stylesheet" href="css/staff.css?v=20260729b">
 </head>
 <body data-page="documents">
 <header id="site-header" class="site-header"></header>
@@ -44,6 +44,7 @@
             <div><h2>Business settings</h2><p>Used on every document. Update this once, not per document.</p></div>
             <button type="button" id="settings-toggle" class="btn btn-outline">Edit</button>
           </div>
+          <div id="settings-summary" class="business-settings-summary"></div>
           <form id="settings-form" class="form-grid" hidden onsubmit="return false">
             <div class="field-row">
               <div class="field col-6"><label>LEGAL NAME</label><input name="legal_name"></div>
@@ -60,7 +61,10 @@
               <div class="field col-12"><label>CANCELLATION POLICY (SHOWN ON DOCUMENTS)</label><textarea name="cancellation_policy"></textarea></div>
               <div class="field col-12"><label>DEFAULT INVOICE NOTE</label><textarea name="invoice_footer_note"></textarea></div>
             </div>
-            <button type="button" id="settings-save" class="btn btn-primary">Save settings</button>
+            <div class="section-actions section-follow-action">
+              <button type="button" id="settings-save" class="btn btn-primary">Save settings</button>
+              <button type="button" id="settings-reset" class="btn btn-outline">Reset to defaults</button>
+            </div>
           </form>
         </div>
 
@@ -143,6 +147,6 @@
 <script src="js/airports.js" defer></script>
 <script src="js/airport-ac.js" defer></script>
 <script src="js/preset-ac.js?v=20260727a" defer></script>
-<script src="js/documents.js?v=20260727c" defer></script>
+<script src="js/documents.js?v=20260729b" defer></script>
 </body>
 </html>
