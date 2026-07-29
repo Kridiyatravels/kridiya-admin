@@ -339,6 +339,9 @@
     ".kv .v{color:#1a1a1a;font-weight:600}" +
     ".note{font-family:Arial,sans-serif;font-size:0.82rem;color:#555;white-space:pre-line;line-height:1.6}" +
     ".box{background:#fdf1e4;border:1px solid #f0d3ae;border-radius:8px;padding:0.9rem 1.1rem;margin-top:0.6rem}" +
+    ".ticket-code-box{display:flex;align-items:center;gap:1rem;border:1px solid #eee;background:#fafafa;padding:0.8rem 1rem;font-family:Arial,sans-serif;break-inside:avoid}" +
+    ".ticket-code-img{width:92px;height:92px;object-fit:contain;border:1px solid #ddd;background:#fff;padding:0.3rem}" +
+    ".ticket-code-value{margin-top:0.25rem;font-size:0.82rem;font-weight:700;word-break:break-word}" +
     ".print-quote-option{margin-top:1.35rem;padding-top:1rem;border-top:2px solid #e8b98a;break-inside:avoid}" +
     ".print-quote-option-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;font-family:Arial,sans-serif;margin-bottom:0.8rem}" +
     ".print-quote-option-head div{display:grid;gap:0.15rem}.print-quote-option-head span{font-size:0.72rem;color:#777;text-transform:uppercase}.print-quote-option-head b{font-size:1rem;color:#1a1a1a}.print-quote-option-head strong{font-size:1rem;color:#a3480f;white-space:nowrap}" +
@@ -1039,26 +1042,39 @@
     mount.innerHTML =
       '<div id="rep-legs"></div>' +
       (legCount === "multi" ? '<button type="button" id="add-item" class="btn btn-outline doc-add-repeat">+ Add flight leg</button>' : "") +
-      '<div class="field-row doc-ticket-passenger-row">' +
-        '<div class="field col-6"><label>PASSENGER NAME(S), ONE PER LINE</label><textarea name="passengers">' + esc(prefillName()) + "</textarea></div>" +
-        '<div class="field col-3"><label>CLASS</label><input name="cabin" data-preset="cabin" value="Economy"></div>' +
-        '<div class="field col-3"><label>BAGGAGE</label><input name="baggage" placeholder="e.g. 20kg checked + 7kg cabin"></div>' +
-        '<div class="field col-6"><label>AIRLINE PNR / BOOKING REF</label><input name="pnr"></div>' +
-        '<div class="field col-6"><label>E-TICKET NUMBER(S), ONE PER PASSENGER</label><textarea name="ticket_numbers" placeholder="13-digit airline ticket number(s)"></textarea></div>' +
-        '<div class="field col-3"><label>ISSUE DATE</label><input name="issue_date" type="date" value="' + todayISO() + '"></div>' +
-        '<div class="field col-3"><label>ISSUING AIRLINE</label><input name="issuing_airline" data-preset="airline"></div>' +
-        '<div class="field col-3"><label>BOOKING STATUS</label><input name="booking_status" data-preset="booking_status" placeholder="Confirmed / Ticketed"></div>' +
-        '<div class="field col-3"><label>BOOKING CLASS / FARE BASIS</label><input name="fare_basis" placeholder="e.g. V / Saver"></div>' +
-        '<div class="field col-3"><label>BASE FARE</label><input name="base_fare" type="number" min="0" step="0.01"></div>' +
-        '<div class="field col-3"><label>TAXES / FEES</label><input name="taxes" type="number" min="0" step="0.01"></div>' +
-        '<div class="field col-3"><label>TOTAL PAID</label><input name="total_paid" type="number" min="0" step="0.01"></div>' +
-        '<div class="field col-3"><label>CURRENCY</label><input class="currency-input" name="currency" value="AED" maxlength="3"></div>' +
-        '<div class="field col-4"><label>PAYMENT STATUS</label><input name="payment_status" placeholder="Paid / Balance due"></div>' +
-        '<div class="field col-4"><label>PAYMENT METHOD</label><input name="payment_method" data-preset="payment_method" placeholder="Cash / bank transfer / card"></div>' +
-        '<div class="field col-4"><label>AIRLINE RECORD LOCATOR</label><input name="airline_locator" placeholder="If different from PNR"></div>' +
-        '<div class="field col-12"><label>CHANGE / CANCELLATION / NO-SHOW RULES</label><textarea name="airline_rules" placeholder="Paste the airline fare rules or the key rule summary."></textarea></div>' +
+      '<div class="doc-repeat-section">' +
+        '<div class="doc-repeat-head"><div><h3>Passengers</h3><p>Add each passenger separately. Ticket number can stay pending if the supplier does not show it yet.</p></div><button type="button" id="add-ticket-passenger" class="btn btn-outline">+ Add passenger</button></div>' +
+        '<div id="rep-ticket-passengers" class="doc-repeat-stack"></div>' +
+      '</div>' +
+      '<div class="field-row doc-ticket-form-row">' +
+        '<div class="field doc-span-3"><label>CLASS</label><input name="cabin" data-preset="cabin" value="Economy"></div>' +
+        '<div class="field doc-span-3"><label>AIRLINE PNR / BOOKING REF</label><input name="pnr"></div>' +
+        '<div class="field doc-span-3"><label>CHECK-IN BAGGAGE (KG)</label><input name="checkin_baggage_kg" type="number" min="0" step="1" value="0" inputmode="numeric"></div>' +
+        '<div class="field doc-span-3"><label>CABIN BAGGAGE (KG)</label><input name="cabin_baggage_kg" type="number" min="0" step="1" value="0" inputmode="numeric"></div>' +
+        '<div class="field doc-span-3"><label>ISSUE DATE</label><input name="issue_date" type="date" value="' + todayISO() + '"></div>' +
+        '<div class="field doc-span-3"><label>ISSUING AIRLINE</label><input name="issuing_airline" data-preset="airline"></div>' +
+        '<div class="field doc-span-3"><label>BOOKING STATUS</label><input name="booking_status" data-preset="booking_status" placeholder="Confirmed / Ticketed"></div>' +
+        '<div class="field doc-span-3"><label>BOOKING CLASS / FARE BASIS</label><input name="fare_basis" placeholder="e.g. V / Saver"></div>' +
+        '<div class="field doc-span-3"><label>BASE FARE</label><input name="base_fare" type="number" min="0" step="0.01"></div>' +
+        '<div class="field doc-span-3"><label>TAXES / FEES</label><input name="taxes" type="number" min="0" step="0.01"></div>' +
+        '<div class="field doc-span-3"><label>TOTAL PAID</label><input name="total_paid" type="number" min="0" step="0.01"></div>' +
+        '<div class="field doc-span-3"><label>CURRENCY</label><input class="currency-input" name="currency" value="AED" maxlength="3"></div>' +
+        '<div class="field doc-span-4"><label>PAYMENT STATUS</label><input name="payment_status" placeholder="Paid / Balance due"></div>' +
+        '<div class="field doc-span-4"><label>PAYMENT METHOD</label><input name="payment_method" data-preset="payment_method" placeholder="Cash / bank transfer / card"></div>' +
+        '<div class="field doc-span-4"><label>AIRLINE RECORD LOCATOR</label><input name="airline_locator" placeholder="If different from PNR"></div>' +
+        '<div class="field doc-span-6"><label>TICKET QR / BARCODE IMAGE URL</label><input name="ticket_barcode_url" placeholder="Optional: paste real airline/supplier QR image URL"></div>' +
+        '<div class="field doc-span-6"><label>TICKET QR / BARCODE VALUE</label><input name="ticket_barcode_value" placeholder="Optional: paste real code/reference text"></div>' +
+        '<div class="field doc-span-12 doc-tall-field"><label>CHANGE / CANCELLATION / NO-SHOW RULES</label><textarea name="airline_rules" placeholder="Paste the airline fare rules or the key rule summary."></textarea></div>' +
         addonChecksHTML("flight_addon") +
       "</div>";
+    renderRepeatable("rep-ticket-passengers", "add-ticket-passenger", function (i) {
+      return (
+        '<div class="field-row doc-passenger-box">' +
+          '<div class="field doc-span-6"><label>PASSENGER ' + (i + 1) + ' NAME</label><input name="passenger_name_' + i + '" value="' + (i === 0 ? esc(prefillName()) : "") + '" placeholder="Name as per passport"></div>' +
+          '<div class="field doc-span-6"><label>TICKET NUMBER</label><input name="passenger_ticket_' + i + '" placeholder="13-digit number, or Not shown / pending"></div>' +
+        "</div>"
+      );
+    }, 1);
     const initial = legCount === "round" ? 2 : 1;
     renderRepeatable("rep-legs", "add-item", function (i) {
       return (
@@ -1090,6 +1106,13 @@
     }
   }
   function gatherFlight(form) {
+    const passengerRecords = rowsOf("rep-ticket-passengers").map(function (row) {
+      const idx = row.dataset.index;
+      return {
+        name: fieldVal(row, "passenger_name_" + idx),
+        ticket_number: fieldVal(row, "passenger_ticket_" + idx)
+      };
+    }).filter(function (p) { return p.name || p.ticket_number; });
     const legs = rowsOf("rep-legs").map(function (row) {
       const idx = row.dataset.index;
       return {
@@ -1107,11 +1130,17 @@
     }).filter(function (l) { return l.from || l.to; });
     const data = {
       legs: legs,
-      passengers: namedVal(form, "passengers"),
+      passenger_records: passengerRecords,
+      passengers: passengerRecords.map(function (p) { return p.name; }).filter(Boolean).join("\n"),
       cabin: namedVal(form, "cabin"),
-      baggage: namedVal(form, "baggage"),
+      checkin_baggage_kg: namedVal(form, "checkin_baggage_kg") || "0",
+      cabin_baggage_kg: namedVal(form, "cabin_baggage_kg") || "0",
       pnr: namedVal(form, "pnr"),
-      ticket_numbers: namedVal(form, "ticket_numbers"),
+      ticket_numbers: passengerRecords.map(function (p) {
+        return p.ticket_number ? ((p.name ? p.name + " - " : "") + p.ticket_number) : "";
+      }).filter(Boolean).join("\n"),
+      ticket_barcode_url: namedVal(form, "ticket_barcode_url"),
+      ticket_barcode_value: namedVal(form, "ticket_barcode_value"),
       issue_date: namedVal(form, "issue_date") || todayISO(),
       issuing_airline: namedVal(form, "issuing_airline"),
       booking_status: namedVal(form, "booking_status"),
@@ -1129,7 +1158,6 @@
     const missing = [];
     if (!data.passengers) missing.push("passenger name");
     if (!data.pnr) missing.push("airline PNR / booking ref");
-    if (!data.ticket_numbers) missing.push("e-ticket number");
     if (!data.issue_date) missing.push("issue date");
     if (!data.issuing_airline) missing.push("issuing airline");
     if (!data.legs.length) missing.push("at least one flight leg");
@@ -1150,9 +1178,11 @@
     }).join("");
     return (
       letterheadHTML("E-Ticket — " + tripLabel + " Flight", docNumber, todayISO()) +
-      '<div class="kv"><span class="k">Passenger(s)</span><span class="v">' + nl2br(data.passengers) + "</span>" +
+      passengerSummaryHTML(data) +
+      '<div class="kv">' +
         '<span class="k">Class</span><span class="v">' + esc(data.cabin) + "</span>" +
-        (data.baggage ? '<span class="k">Baggage</span><span class="v">' + esc(data.baggage) + "</span>" : "") +
+        '<span class="k">Check-in baggage</span><span class="v">' + esc(data.checkin_baggage_kg || "0") + " kg</span>" +
+        '<span class="k">Cabin baggage</span><span class="v">' + esc(data.cabin_baggage_kg || "0") + " kg</span>" +
         (data.extras && data.extras.length ? '<span class="k">Extras included</span><span class="v">' + esc(data.extras.join(", ")) + "</span>" : "") +
         (data.pnr ? '<span class="k">Airline PNR</span><span class="v">' + esc(data.pnr) + "</span>" : "") +
         (linkedEnquiry ? '<span class="k">Kridiya reference</span><span class="v">' + esc(linkedEnquiry.reference) + "</span>" : "") +
@@ -1173,15 +1203,17 @@
         "</td><td>" + fmtDate(l.date) + "</td><td>" + esc(l.deptime) + " &ndash; " + esc(l.arrtime) + "</td></tr>"
       );
     }).join("");
+    const barcodeHTML = ticketBarcodeHTML(data);
     return (
       letterheadHTML("E-Ticket — " + tripLabel + " Flight", docNumber, data.issue_date || todayISO()) +
-      '<div class="kv"><span class="k">Passenger(s)</span><span class="v">' + nl2br(data.passengers) + "</span>" +
-        (data.ticket_numbers ? '<span class="k">E-ticket number(s)</span><span class="v">' + nl2br(data.ticket_numbers) + "</span>" : "") +
+      passengerSummaryHTML(data) +
+      '<div class="kv">' +
         '<span class="k">Class</span><span class="v">' + esc(data.cabin) + "</span>" +
         (data.issuing_airline ? '<span class="k">Issuing airline</span><span class="v">' + esc(data.issuing_airline) + "</span>" : "") +
         (data.booking_status ? '<span class="k">Booking status</span><span class="v">' + esc(data.booking_status) + "</span>" : "") +
         (data.fare_basis ? '<span class="k">Booking class / fare basis</span><span class="v">' + esc(data.fare_basis) + "</span>" : "") +
-        (data.baggage ? '<span class="k">Baggage</span><span class="v">' + esc(data.baggage) + "</span>" : "") +
+        '<span class="k">Check-in baggage</span><span class="v">' + esc(data.checkin_baggage_kg || "0") + " kg</span>" +
+        '<span class="k">Cabin baggage</span><span class="v">' + esc(data.cabin_baggage_kg || "0") + " kg</span>" +
         (data.extras && data.extras.length ? '<span class="k">Extras included</span><span class="v">' + esc(data.extras.join(", ")) + "</span>" : "") +
         (data.pnr ? '<span class="k">Airline PNR</span><span class="v">' + esc(data.pnr) + "</span>" : "") +
         (data.airline_locator ? '<span class="k">Airline record locator</span><span class="v">' + esc(data.airline_locator) + "</span>" : "") +
@@ -1194,9 +1226,32 @@
       "</div>" +
       "<h2>Flight details</h2>" +
       "<table><thead><tr><th>Leg</th><th>Flight</th><th>Route</th><th>Date</th><th>Time</th></tr></thead><tbody>" + legRows + "</tbody></table>" +
+      barcodeHTML +
       (data.airline_rules ? "<h2>Change / cancellation / no-show rules</h2><p class='note'>" + nl2br(data.airline_rules) + "</p>" : "") +
-      '<div class="box"><p class="note" style="margin:0">This is an issued e-ticket itinerary. Boarding pass barcode or QR code is provided by the airline during check-in, not generated by Kridiya Travel.</p></div>'
+      '<div class="box"><p class="note" style="margin:0">This is an issued e-ticket itinerary. Boarding pass barcode or QR code is only shown when provided by the airline or supplier. Kridiya Travel does not generate airline boarding codes.</p></div>'
     );
+  }
+
+  function passengerSummaryHTML(data) {
+    const ticketLines = String(data.ticket_numbers || "").split(/\n+/).filter(Boolean);
+    const records = data.passenger_records && data.passenger_records.length
+      ? data.passenger_records
+      : String(data.passengers || "").split(/\n+/).filter(Boolean).map(function (name, index) { return { name: name, ticket_number: ticketLines[index] || "" }; });
+    if (!records.length) return "";
+    return '<h2>Passenger details</h2><table><thead><tr><th>Passenger</th><th>Ticket number</th></tr></thead><tbody>' + records.map(function (p) {
+      return '<tr><td>' + esc(p.name || "-") + '</td><td>' + esc(p.ticket_number || "Not shown / pending") + '</td></tr>';
+    }).join("") + "</tbody></table>";
+  }
+
+  function ticketBarcodeHTML(data) {
+    if (!data.ticket_barcode_url && !data.ticket_barcode_value) return "";
+    const img = data.ticket_barcode_url
+      ? '<img class="ticket-code-img" src="' + esc(data.ticket_barcode_url) + '" alt="Ticket QR or barcode">'
+      : "";
+    const value = data.ticket_barcode_value
+      ? '<div class="ticket-code-value">' + esc(data.ticket_barcode_value) + "</div>"
+      : "";
+    return '<h2>Ticket QR / Barcode</h2><div class="ticket-code-box">' + img + '<div><b>Airline/supplier provided code</b>' + value + '<p class="note" style="margin:0.35rem 0 0">Use only the real ticket QR/barcode or code value from the airline or supplier.</p></div></div>';
   }
 
   /* ---- Hotel e-ticket ---- */
