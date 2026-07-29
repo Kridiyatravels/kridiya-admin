@@ -3545,7 +3545,7 @@ table tbody tr:hover {
 }
 
 #doc-fields {
-  gap: var(--sp-5);
+  gap: var(--sp-4);
   /* The shared `.field` class carries `grid-column: span 12` from the public
      stylesheet. Inside this single-column grid that silently creates implicit
      columns, so non-.field children (the "Line items" heading, #rep-items, the
@@ -3685,6 +3685,7 @@ table tbody tr:hover {
 
 .doc-ticket-form-row {
   align-items: start !important;
+  margin-top: calc(-1 * var(--sp-2));
 }
 
 .doc-passenger-box > .field,
@@ -3723,9 +3724,19 @@ table tbody tr:hover {
   display: flex;
   align-items: center;
   padding: 0.63rem 0.78rem;
+  border-color: var(--line) !important;
   line-height: 1.2;
   color: var(--ink);
   background: var(--surface);
+  box-shadow: none !important;
+  outline: none;
+}
+
+#doc-fields input[type="file"]:focus,
+#doc-fields input[type="file"]:focus-visible {
+  border-color: var(--line-strong, var(--line)) !important;
+  box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08) !important;
+  outline: none;
 }
 
 #doc-fields input[type="file"]::file-selector-button {
@@ -3733,16 +3744,17 @@ table tbody tr:hover {
   padding: 0.52rem 0.8rem;
   border: 1px solid var(--line-strong, var(--line));
   border-radius: 7px;
-  color: var(--ink);
-  background: #fff;
+  color: var(--ink) !important;
+  background: #fff !important;
   font-weight: 800;
   cursor: pointer;
-  box-shadow: var(--shadow-soft);
+  box-shadow: none;
 }
 
 #doc-fields input[type="file"]::file-selector-button:hover {
-  border-color: var(--brand);
-  color: var(--brand);
+  border-color: var(--line-strong, var(--line));
+  color: var(--ink) !important;
+  background: var(--surface-tint) !important;
 }
 
 .doc-tall-field textarea {
