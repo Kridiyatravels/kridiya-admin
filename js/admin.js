@@ -106,6 +106,9 @@
 
   function marketingSource(enq) {
     const fields = [
+      enq.last_touch_source,
+      enq.utm_source,
+      enq.first_touch_source,
       detail(enq, "utm_source"),
       detail(enq, "source"),
       detail(enq, "Lead_source"),
@@ -160,6 +163,46 @@
         '<button type="button" class="btn btn-outline js-quick-note" data-id="' + enq.id + '" data-note="Marketing follow-up: lead lost or unresponsive.">Lost/unresponsive</button>' +
       '</div>' +
     '</div>';
+  }
+
+  function localDateTimeValue(value) {
+    if (!value) return "";
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return "";
+    const pad = function (n) { return String(n).padStart(2, "0"); };
+    return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) +
+      "T" + pad(d.getHours()) + ":" + pad(d.getMinutes());
+  }
+
+  function crmSelectOptions(options, selected, blankLabel) {
+    return '<option value="">' + blankLabel + "</option>" + options.map(function (value) {
+      return '<option value="' + value + '"' + (value === selected ? " selected" : "") + ">" +
+        KridiyaAuth.escapeHTML(KridiyaAuth.statusLabel(value)) + "</option>";
+    }).join("");
+  }
+
+  function crmFieldsHTML(enq) {
+    const source = enq.last_touch_source || enq.utm_source || enq.first_touch_source || marketingSource(enq);
+    const consent = enq.marketing_consent ? "Opted in" : "Not opted in";
+    return '<form class="enquiry-crm-form" data-id="' + enq.id + '">' +
+      '<div class="crm-field"><label>Source</label><input value="' + KridiyaAuth.escapeHTML(source || "Unknown") + '" readonly></div>' +
+      '<div class="crm-field"><label>Lead temperature</label><select name="lead_temperature">' +
+        crmSelectOptions(["cold", "warm", "hot"], enq.lead_temperature, "Not set") + "</select></div>" +
+      '<div class="crm-field"><label>Lead score</label><input name="lead_score" type="number" min="0" max="100" value="' +
+        KridiyaAuth.escapeHTML(enq.lead_score == null ? "" : String(enq.lead_score)) + '"></div>' +
+      '<div class="crm-field"><label>Next action</label><input name="next_action" maxlength="500" value="' +
+        KridiyaAuth.escapeHTML(enq.next_action || "") + '" placeholder="Call, revise quote, request passport…"></div>' +
+      '<div class="crm-field"><label>Next action date</label><input name="next_action_at" type="datetime-local" value="' +
+        localDateTimeValue(enq.next_action_at) + '"></div>' +
+      '<div class="crm-field"><label>Lost reason</label><select name="lost_reason">' +
+        crmSelectOptions(["price", "no_response", "dates_changed", "not_available", "booked_elsewhere", "duplicate", "invalid_enquiry", "visa_ineligible", "payment_issue", "other"], enq.lost_reason, "Not lost") + "</select></div>" +
+      '<div class="crm-field"><label>Est. booking value (AED)</label><input name="estimated_booking_value" type="number" min="0" step="0.01" value="' +
+        KridiyaAuth.escapeHTML(enq.estimated_booking_value == null ? "" : String(enq.estimated_booking_value)) + '"></div>' +
+      '<div class="crm-field"><label>Est. gross profit (AED)</label><input name="estimated_gross_profit" type="number" step="0.01" value="' +
+        KridiyaAuth.escapeHTML(enq.estimated_gross_profit == null ? "" : String(enq.estimated_gross_profit)) + '"></div>' +
+      '<div class="crm-field"><label>Marketing consent</label><input value="' + consent + '" readonly></div>' +
+      '<button class="btn btn-primary" type="submit">Save CRM details</button>' +
+    "</form>";
   }
 
   function detail(enq, key) {
@@ -830,6 +873,7 @@
             '<a href="mailto:' + KridiyaAuth.escapeHTML(enq.email) + '">' + KridiyaAuth.escapeHTML(enq.email) + "</a></p>" +
           corporatePreview(enq) +
           marketingFollowUp(enq, notes, quotes, booking) +
+          crmFieldsHTML(enq) +
           '<div class="admin-enq-actions">' +
             '<select class="status-select status-pill-select" data-id="' + enq.id + '" style="' + statusStyle(enq.status) + '">' +
               STATUS_OPTIONS.map(function (s) {
@@ -1069,16 +1113,29 @@
       const select = e.target;
       const id = select.dataset.id;
       const newStatus = select.value;
+      const row = allEnquiries.find(function (r) { return r.id === id; });
+      const statusUpdate = { status: newStatus };
+      const now = new Date().toISOString();
+      if (newStatus === "checking_availability" && row && !row.first_response_at) {
+        statusUpdate.first_response_at = now;
+        statusUpdate.qualified_at = row.qualified_at || now;
+      }
+      if (newStatus === "quote_sent" && row && !row.quote_sent_at) statusUpdate.quote_sent_at = now;
+      if ((newStatus === "confirmed" || newStatus === "booked") && row && !row.booking_confirmed_at) {
+        statusUpdate.booking_confirmed_at = now;
+      }
       select.disabled = true;
-      const result = await sb.from("enquiries").update({ status: newStatus }).eq("id", id);
+      let result = await sb.from("enquiries").update(statusUpdate).eq("id", id);
+      if (result.error && (result.error.code === "PGRST204" || result.error.code === "42703")) {
+        result = await sb.from("enquiries").update({ status: newStatus }).eq("id", id);
+      }
       select.disabled = false;
       if (result.error) {
         toast("Could not update status: " + result.error.message);
         return;
       }
-      const row = allEnquiries.find(function (r) { return r.id === id; });
       const prevStatus = row ? row.status : null;
-      if (row) row.status = newStatus;
+      if (row) Object.assign(row, statusUpdate);
       select.setAttribute("style", statusStyle(newStatus));
       const badge = select.closest(".admin-enq").querySelector(".enq-row-head .status-badge");
       if (badge) {
@@ -1217,6 +1274,44 @@
     });
 
     listEl.addEventListener("submit", async function (e) {
+      const form = e.target.closest(".enquiry-crm-form");
+      if (!form) return;
+      e.preventDefault();
+      const id = form.dataset.id;
+      const valueOrNull = function (name) {
+        const value = String(form.elements[name].value || "").trim();
+        return value || null;
+      };
+      const numberOrNull = function (name) {
+        const value = valueOrNull(name);
+        return value === null ? null : Number(value);
+      };
+      const localNextAction = valueOrNull("next_action_at");
+      const update = {
+        lead_temperature: valueOrNull("lead_temperature"),
+        lead_score: numberOrNull("lead_score"),
+        next_action: valueOrNull("next_action"),
+        next_action_at: localNextAction ? new Date(localNextAction).toISOString() : null,
+        lost_reason: valueOrNull("lost_reason"),
+        estimated_booking_value: numberOrNull("estimated_booking_value"),
+        estimated_gross_profit: numberOrNull("estimated_gross_profit")
+      };
+      const btn = form.querySelector('button[type="submit"]');
+      btn.disabled = true;
+      const result = await sb.from("enquiries").update(update).eq("id", id).select("*").single();
+      btn.disabled = false;
+      if (result.error) {
+        toast("Could not save CRM details: " + result.error.message);
+        return;
+      }
+      const rowIndex = allEnquiries.findIndex(function (row) { return row.id === id; });
+      if (rowIndex !== -1) allEnquiries[rowIndex] = result.data;
+      logActivity(sb, currentStaffId, "enquiry.crm_updated", "enquiry", id, update);
+      renderList();
+      toast("CRM details saved.");
+    });
+
+    listEl.addEventListener("submit", async function (e) {
       const form = e.target.closest(".admin-note-form");
       if (!form) return;
       e.preventDefault();
@@ -1324,10 +1419,21 @@
       }
       if (!quotesByEnquiry[id]) quotesByEnquiry[id] = [];
       quotesByEnquiry[id] = sortQuoteOptions(quotesByEnquiry[id].concat(result.data || []));
+      const quoteTimestamp = new Date().toISOString();
+      let enquiryUpdate = await sb.from("enquiries")
+        .update({ status: "quote_sent", quote_sent_at: quoteTimestamp })
+        .eq("id", id);
+      if (enquiryUpdate.error && (enquiryUpdate.error.code === "PGRST204" || enquiryUpdate.error.code === "42703")) {
+        enquiryUpdate = await sb.from("enquiries").update({ status: "quote_sent" }).eq("id", id);
+      }
+      const quoteEnq = allEnquiries.find(function (r) { return r.id === id; });
+      if (!enquiryUpdate.error && quoteEnq) {
+        quoteEnq.status = "quote_sent";
+        quoteEnq.quote_sent_at = quoteTimestamp;
+      }
       delete quoteDraftsByEnquiry[id];
       renderList();
       reopenQuotePanel(listEl, id);
-      const quoteEnq = allEnquiries.find(function (r) { return r.id === id; });
       logActivity(sb, currentStaffId, "enquiry.quote_sent", "enquiry", id, {
         reference: quoteEnq ? quoteEnq.reference : null,
         options: sortedOptions.length,
