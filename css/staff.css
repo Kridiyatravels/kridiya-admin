@@ -3693,6 +3693,48 @@ table tbody tr:hover {
 .doc-span-6 { grid-column: span 6 !important; }
 .doc-span-12 { grid-column: 1 / -1 !important; }
 
+.doc-passenger-box {
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.label-soft {
+  color: var(--text-muted);
+  font-size: 0.72em;
+  font-weight: 700;
+}
+
+#doc-fields .field small {
+  display: block;
+  margin-top: var(--sp-1);
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+#doc-fields input[type="file"] {
+  display: flex;
+  align-items: center;
+  padding: 0.72rem 0.85rem;
+  line-height: 1.2;
+  color: var(--text-muted);
+  background: var(--surface);
+}
+
+#doc-fields input[type="file"]::file-selector-button {
+  margin-right: var(--sp-3);
+  padding: 0.52rem 0.8rem;
+  border: 0;
+  border-radius: 7px;
+  color: #fff;
+  background: var(--brand);
+  font-weight: 800;
+  cursor: pointer;
+}
+
 .doc-tall-field textarea {
   min-height: 6rem;
 }
@@ -3722,6 +3764,18 @@ table tbody tr:hover {
   grid-template-columns: repeat(4, minmax(130px, 1fr));
   gap: var(--sp-3);
   margin-top: var(--sp-2);
+}
+
+#doc-fields .doc-addon-field {
+  display: grid;
+  gap: var(--sp-2);
+}
+
+#doc-fields .doc-addon-title {
+  display: block;
+  width: 100%;
+  margin-bottom: 0;
+  line-height: 1.2;
 }
 
 .doc-addon-check {

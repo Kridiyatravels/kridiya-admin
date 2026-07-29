@@ -458,6 +458,30 @@
     const el = scope.querySelector('[name="' + name + '"]');
     return el ? el.value.trim() : "";
   }
+  function namedFile(scope, name) {
+    const el = scope.querySelector('[name="' + name + '"]');
+    return el && el.files && el.files.length ? el.files[0] : null;
+  }
+  function readImageDataURL(file) {
+    return new Promise(function (resolve, reject) {
+      if (!file) { resolve(""); return; }
+      if (!/^image\//.test(file.type || "")) {
+        reject(new Error("QR/barcode upload must be an image file."));
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = function () { resolve(String(reader.result || "")); };
+      reader.onerror = function () { reject(new Error("Could not read the QR/barcode image.")); };
+      reader.readAsDataURL(file);
+    });
+  }
+  async function attachTicketBarcodeImage(form, data) {
+    const file = namedFile(form, "ticket_barcode_file");
+    if (!file) return data;
+    data.ticket_barcode_image = await readImageDataURL(file);
+    data.ticket_barcode_file_name = file.name || "";
+    return data;
+  }
   /* Safe numeric read: never returns NaN. */
   function num(v, fallback) {
     const n = parseFloat(v);
@@ -466,7 +490,7 @@
 
   /* Preset add-on tick-boxes for e-ticket forms (included extras). */
   function addonChecksHTML(nameAttr) {
-    return '<div class="field col-12"><label>OPTIONAL EXTRAS INCLUDED</label>' +
+    return '<div class="field col-12 doc-addon-field"><label class="doc-addon-title">OPTIONAL EXTRAS INCLUDED</label>' +
       '<div class="doc-addon-checks">' +
       PRESET_ADDONS.map(function (a) {
         return '<label class="doc-addon-check"><input type="checkbox" name="' + nameAttr + '" value="' + esc(a) + '"> ' + esc(a) + "</label>";
@@ -1062,16 +1086,17 @@
         '<div class="field doc-span-4"><label>PAYMENT STATUS</label><input name="payment_status" placeholder="Paid / Balance due"></div>' +
         '<div class="field doc-span-4"><label>PAYMENT METHOD</label><input name="payment_method" data-preset="payment_method" placeholder="Cash / bank transfer / card"></div>' +
         '<div class="field doc-span-4"><label>AIRLINE RECORD LOCATOR</label><input name="airline_locator" placeholder="If different from PNR"></div>' +
-        '<div class="field doc-span-6"><label>TICKET QR / BARCODE IMAGE URL</label><input name="ticket_barcode_url" placeholder="Optional: paste real airline/supplier QR image URL"></div>' +
-        '<div class="field doc-span-6"><label>TICKET QR / BARCODE VALUE</label><input name="ticket_barcode_value" placeholder="Optional: paste real code/reference text"></div>' +
+        '<div class="field doc-span-4"><label>TICKET QR / BARCODE IMAGE</label><input name="ticket_barcode_file" type="file" accept="image/*"><small>Optional. Upload the real QR/barcode image from airline or supplier.</small></div>' +
+        '<div class="field doc-span-4"><label>TICKET QR / BARCODE IMAGE URL</label><input name="ticket_barcode_url" placeholder="Optional image link"></div>' +
+        '<div class="field doc-span-4"><label>TICKET QR / BARCODE VALUE</label><input name="ticket_barcode_value" placeholder="Optional code/reference text"></div>' +
         '<div class="field doc-span-12 doc-tall-field"><label>CHANGE / CANCELLATION / NO-SHOW RULES</label><textarea name="airline_rules" placeholder="Paste the airline fare rules or the key rule summary."></textarea></div>' +
         addonChecksHTML("flight_addon") +
       "</div>";
     renderRepeatable("rep-ticket-passengers", "add-ticket-passenger", function (i) {
       return (
         '<div class="field-row doc-passenger-box">' +
-          '<div class="field doc-span-6"><label>PASSENGER ' + (i + 1) + ' NAME</label><input name="passenger_name_' + i + '" value="' + (i === 0 ? esc(prefillName()) : "") + '" placeholder="Name as per passport"></div>' +
-          '<div class="field doc-span-6"><label>TICKET NUMBER</label><input name="passenger_ticket_' + i + '" placeholder="13-digit number, or Not shown / pending"></div>' +
+          '<div class="field doc-span-6"><label>PASSENGER #' + (i + 1) + ' NAME</label><input name="passenger_name_' + i + '" value="' + (i === 0 ? esc(prefillName()) : "") + '" placeholder="Name as per passport"></div>' +
+          '<div class="field doc-span-6"><label>TICKET NUMBER <span class="label-soft">(OPTIONAL)</span></label><input name="passenger_ticket_' + i + '" placeholder="13-digit number if shown, or leave blank"></div>' +
         "</div>"
       );
     }, 1);
@@ -1141,6 +1166,8 @@
       }).filter(Boolean).join("\n"),
       ticket_barcode_url: namedVal(form, "ticket_barcode_url"),
       ticket_barcode_value: namedVal(form, "ticket_barcode_value"),
+      ticket_barcode_image: "",
+      ticket_barcode_file_name: "",
       issue_date: namedVal(form, "issue_date") || todayISO(),
       issuing_airline: namedVal(form, "issuing_airline"),
       booking_status: namedVal(form, "booking_status"),
@@ -1244,9 +1271,10 @@
   }
 
   function ticketBarcodeHTML(data) {
-    if (!data.ticket_barcode_url && !data.ticket_barcode_value) return "";
-    const img = data.ticket_barcode_url
-      ? '<img class="ticket-code-img" src="' + esc(data.ticket_barcode_url) + '" alt="Ticket QR or barcode">'
+    if (!data.ticket_barcode_image && !data.ticket_barcode_url && !data.ticket_barcode_value) return "";
+    const src = data.ticket_barcode_image || data.ticket_barcode_url || "";
+    const img = src
+      ? '<img class="ticket-code-img" src="' + esc(src) + '" alt="Ticket QR or barcode">'
       : "";
     const value = data.ticket_barcode_value
       ? '<div class="ticket-code-value">' + esc(data.ticket_barcode_value) + "</div>"
@@ -1726,6 +1754,7 @@
     let data;
     try {
       data = handler.gather(form);
+      await attachTicketBarcodeImage(form, data);
     } catch (err) {
       toast(err.message || "Complete the required document details.");
       return;
@@ -1775,7 +1804,7 @@
 
   /* Draft preview — renders exactly what will print, WITHOUT saving or
      consuming a document number. Safe to click any number of times. */
-  function handlePreview() {
+  async function handlePreview() {
     const kindId = document.getElementById("doc-kind").value;
     const kind = findKind(kindId);
     const handler = HANDLERS[kindId];
@@ -1784,6 +1813,7 @@
     let data, bodyHTML;
     try {
       data = handler.gather(form);
+      await attachTicketBarcodeImage(form, data);
       bodyHTML = handler.render(data, ""); // empty number -> shows DRAFT watermark
     } catch (err) {
       toast("Could not build preview: " + err.message);
