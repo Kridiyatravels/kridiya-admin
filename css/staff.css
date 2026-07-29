@@ -3645,18 +3645,56 @@ table tbody tr:hover {
   grid-column: auto;
 }
 
-.doc-ticket-passenger-row {
-  grid-template-columns: minmax(320px, 2fr) minmax(180px, 1fr) minmax(240px, 1fr);
+.doc-repeat-section {
+  display: grid;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-tint);
 }
 
-.doc-ticket-passenger-row > .field {
+.doc-repeat-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+}
+
+.doc-repeat-head h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--ink);
+}
+
+.doc-repeat-head p {
+  margin: var(--sp-1) 0 0;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.doc-repeat-stack {
+  display: grid;
+  gap: var(--sp-3);
+}
+
+.doc-passenger-box,
+.doc-ticket-form-row {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+}
+
+.doc-passenger-box > .field,
+.doc-ticket-form-row > .field {
   grid-column: auto;
 }
 
-.doc-ticket-passenger-row > .field:first-child,
-.doc-ticket-passenger-row > .field:nth-child(4),
-.doc-ticket-passenger-row > .field:last-child {
-  grid-column: 1 / -1;
+.doc-span-3 { grid-column: span 3 !important; }
+.doc-span-4 { grid-column: span 4 !important; }
+.doc-span-6 { grid-column: span 6 !important; }
+.doc-span-12 { grid-column: 1 / -1 !important; }
+
+.doc-tall-field textarea {
+  min-height: 6rem;
 }
 
 .doc-addon-chips {
@@ -3905,7 +3943,8 @@ table tbody tr:hover {
   #rep-items .repeat-field-row,
   .doc-invoice-customer-row,
   .doc-money-row,
-  .doc-ticket-passenger-row,
+  .doc-passenger-box,
+  .doc-ticket-form-row,
   .doc-quote-customer-row,
   .quote-option-core,
   .quote-flight-segment-grid {
@@ -3915,14 +3954,14 @@ table tbody tr:hover {
   #rep-items .repeat-field-row > .field,
   .doc-invoice-customer-row > .field,
   .doc-money-row > .field,
-  .doc-ticket-passenger-row > .field {
-    grid-column: auto;
+  .doc-passenger-box > .field,
+  .doc-ticket-form-row > .field {
+    grid-column: auto !important;
   }
 
-  .doc-ticket-passenger-row > .field:first-child,
-  .doc-ticket-passenger-row > .field:nth-child(4),
-  .doc-ticket-passenger-row > .field:last-child {
-    grid-column: 1 / -1;
+  .doc-passenger-box > .doc-span-12,
+  .doc-ticket-form-row > .doc-span-12 {
+    grid-column: 1 / -1 !important;
   }
 
   .doc-quote-customer-row > .field,
@@ -3960,7 +3999,8 @@ table tbody tr:hover {
   #rep-legs .repeat-field-row,
   .doc-invoice-customer-row,
   .doc-money-row,
-  .doc-ticket-passenger-row,
+  .doc-passenger-box,
+  .doc-ticket-form-row,
   .doc-quote-customer-row,
   .quote-option-core,
   .quote-flight-segment-grid,
@@ -3969,8 +4009,18 @@ table tbody tr:hover {
   }
 
   #rep-legs .repeat-field-row > .field,
-  .doc-ticket-passenger-row > .field {
-    grid-column: 1 / -1;
+  .doc-passenger-box > .field,
+  .doc-ticket-form-row > .field {
+    grid-column: 1 / -1 !important;
+  }
+
+  .doc-repeat-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .doc-repeat-head .btn {
+    width: 100%;
   }
 
   .doc-addon-chips {
