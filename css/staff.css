@@ -3685,7 +3685,7 @@ table tbody tr:hover {
 
 .doc-ticket-form-row {
   align-items: start !important;
-  margin-top: 0;
+  margin-top: 1.15rem;
 }
 
 .doc-passenger-box > .field,
@@ -3782,10 +3782,11 @@ table tbody tr:hover {
 }
 
 .doc-addon-checks {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(120px, max-content));
-  gap: var(--sp-2);
-  margin-top: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 0.75rem;
+  margin-top: 0.35rem;
+  margin-bottom: 0.45rem;
   align-items: center;
 }
 
@@ -3887,7 +3888,7 @@ table tbody tr:hover {
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  padding: 0 var(--sp-2);
+  padding: 0 0.85rem;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface);
@@ -3908,7 +3909,7 @@ table tbody tr:hover {
   align-items: center;
   min-height: 38px;
   margin-bottom: 0;
-  padding: 0 var(--sp-2);
+  padding: 0 0.85rem;
   color: var(--ink);
   font-size: 0.82rem;
   font-weight: 600;
@@ -3930,7 +3931,7 @@ table tbody tr:hover {
   align-items: center;
   gap: var(--sp-3);
   padding-top: 0;
-  margin-top: var(--sp-2);
+  margin-top: 0.85rem;
 }
 
 .doc-quote-customer-row {
