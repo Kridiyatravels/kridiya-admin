@@ -3545,7 +3545,7 @@ table tbody tr:hover {
 }
 
 #doc-fields {
-  gap: var(--sp-3);
+  gap: 0.9rem;
   /* The shared `.field` class carries `grid-column: span 12` from the public
      stylesheet. Inside this single-column grid that silently creates implicit
      columns, so non-.field children (the "Line items" heading, #rep-items, the
@@ -3648,7 +3648,7 @@ table tbody tr:hover {
 .doc-repeat-section {
   display: grid;
   gap: var(--sp-2);
-  padding: var(--sp-3);
+  padding: 0.85rem 1rem;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface-tint);
@@ -3685,7 +3685,7 @@ table tbody tr:hover {
 
 .doc-ticket-form-row {
   align-items: start !important;
-  margin-top: calc(-1 * var(--sp-3));
+  margin-top: 0;
 }
 
 .doc-passenger-box > .field,
@@ -3700,7 +3700,7 @@ table tbody tr:hover {
 
 .doc-passenger-box {
   gap: var(--sp-2);
-  padding: var(--sp-2);
+  padding: 0.75rem;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface);
@@ -3792,6 +3792,7 @@ table tbody tr:hover {
 #doc-fields .doc-addon-field {
   display: grid;
   gap: var(--sp-2);
+  padding-bottom: var(--sp-1);
 }
 
 #doc-fields .doc-addon-title {
@@ -3929,7 +3930,7 @@ table tbody tr:hover {
   align-items: center;
   gap: var(--sp-3);
   padding-top: 0;
-  margin-top: calc(-1 * var(--sp-1));
+  margin-top: var(--sp-2);
 }
 
 .doc-quote-customer-row {
