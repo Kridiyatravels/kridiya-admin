@@ -339,15 +339,28 @@
     ".kv .v{color:#1a1a1a;font-weight:600}" +
     ".note{font-family:Arial,sans-serif;font-size:0.82rem;color:#555;white-space:pre-line;line-height:1.6}" +
     ".box{background:#fdf1e4;border:1px solid #f0d3ae;border-radius:8px;padding:0.9rem 1.1rem;margin-top:0.6rem}" +
+    ".ticket-panel{font-family:Arial,sans-serif;border:1px solid #e4e4e4;background:#fff;margin-top:0.75rem;break-inside:avoid}" +
+    ".ticket-panel-head{padding:0.48rem 0.7rem;background:#f6f6f6;border-bottom:1px solid #e4e4e4;font-size:0.76rem;font-weight:800;text-transform:uppercase;color:#333}" +
+    ".ticket-passenger-row{display:grid;grid-template-columns:150px 1fr 1fr;gap:1rem;align-items:center;padding:0.7rem;border-bottom:1px solid #eee}" +
+    ".ticket-passenger-row:last-child{border-bottom:0}" +
+    ".ticket-code-slot{width:150px;min-height:72px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid #e5e5e5;background:#fff}" +
+    ".ticket-code-img{max-width:142px;max-height:82px;width:auto;height:auto;object-fit:contain;display:block}" +
+    ".ticket-code-placeholder{font-size:0.72rem;color:#777;text-align:center;line-height:1.35;padding:0.5rem}" +
+    ".ticket-passenger-name span,.ticket-passenger-extra span{display:block;font-size:0.68rem;color:#777;text-transform:uppercase;font-weight:800;margin-bottom:0.18rem}" +
+    ".ticket-passenger-name b,.ticket-passenger-extra b{display:block;font-size:0.82rem;color:#111;line-height:1.35}" +
+    ".ticket-meta-grid{font-family:Arial,sans-serif;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;border:1px solid #e4e4e4;border-bottom:0;margin-top:0.85rem;break-inside:avoid}" +
+    ".ticket-meta-item{min-height:46px;padding:0.5rem 0.65rem;border-right:1px solid #eee;border-bottom:1px solid #eee}" +
+    ".ticket-meta-item:nth-child(4n){border-right:0}" +
+    ".ticket-meta-item span{display:block;font-size:0.66rem;text-transform:uppercase;color:#777;font-weight:800;margin-bottom:0.14rem}" +
+    ".ticket-meta-item b{display:block;font-size:0.84rem;color:#111;line-height:1.35}" +
     ".ticket-code-box{display:flex;align-items:center;gap:1rem;border:1px solid #eee;background:#fafafa;padding:0.8rem 1rem;font-family:Arial,sans-serif;break-inside:avoid}" +
-    ".ticket-code-img{width:92px;height:92px;object-fit:contain;border:1px solid #ddd;background:#fff;padding:0.3rem}" +
     ".ticket-code-value{margin-top:0.25rem;font-size:0.82rem;font-weight:700;word-break:break-word}" +
     ".print-quote-option{margin-top:1.35rem;padding-top:1rem;border-top:2px solid #e8b98a;break-inside:avoid}" +
     ".print-quote-option-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;font-family:Arial,sans-serif;margin-bottom:0.8rem}" +
     ".print-quote-option-head div{display:grid;gap:0.15rem}.print-quote-option-head span{font-size:0.72rem;color:#777;text-transform:uppercase}.print-quote-option-head b{font-size:1rem;color:#1a1a1a}.print-quote-option-head strong{font-size:1rem;color:#a3480f;white-space:nowrap}" +
     ".quote-option-meta{margin-bottom:0.75rem}.quote-connection-row td{background:#fafafa;color:#666;font-size:0.76rem;font-style:italic;padding:0.3rem 0.7rem}" +
     ".footer-note{margin-top:2.4rem;padding-top:1rem;border-top:1px solid #eee;font-family:Arial,sans-serif;font-size:0.74rem;color:#888}" +
-    "@media print{body{padding:0.4in}}";
+    "@media print{body{padding:0.4in}.ticket-passenger-row{grid-template-columns:150px 1fr 1fr}.ticket-meta-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}";
 
   function letterheadHTML(docLabel, docNumber, docDate) {
     let addr =
@@ -1230,44 +1243,71 @@
         "</td><td>" + fmtDate(l.date) + "</td><td>" + esc(l.deptime) + " &ndash; " + esc(l.arrtime) + "</td></tr>"
       );
     }).join("");
-    const barcodeHTML = ticketBarcodeHTML(data);
     return (
       letterheadHTML("E-Ticket — " + tripLabel + " Flight", docNumber, data.issue_date || todayISO()) +
-      passengerSummaryHTML(data) +
-      '<div class="kv">' +
-        '<span class="k">Class</span><span class="v">' + esc(data.cabin) + "</span>" +
-        (data.issuing_airline ? '<span class="k">Issuing airline</span><span class="v">' + esc(data.issuing_airline) + "</span>" : "") +
-        (data.booking_status ? '<span class="k">Booking status</span><span class="v">' + esc(data.booking_status) + "</span>" : "") +
-        (data.fare_basis ? '<span class="k">Booking class / fare basis</span><span class="v">' + esc(data.fare_basis) + "</span>" : "") +
-        '<span class="k">Check-in baggage</span><span class="v">' + esc(data.checkin_baggage_kg || "0") + " kg</span>" +
-        '<span class="k">Cabin baggage</span><span class="v">' + esc(data.cabin_baggage_kg || "0") + " kg</span>" +
-        (data.extras && data.extras.length ? '<span class="k">Extras included</span><span class="v">' + esc(data.extras.join(", ")) + "</span>" : "") +
-        (data.pnr ? '<span class="k">Airline PNR</span><span class="v">' + esc(data.pnr) + "</span>" : "") +
-        (data.airline_locator ? '<span class="k">Airline record locator</span><span class="v">' + esc(data.airline_locator) + "</span>" : "") +
-        (data.base_fare != null ? '<span class="k">Base fare</span><span class="v">' + money(data.base_fare, data.currency) + "</span>" : "") +
-        (data.taxes != null ? '<span class="k">Taxes / fees</span><span class="v">' + money(data.taxes, data.currency) + "</span>" : "") +
-        (data.total_paid != null ? '<span class="k">Total paid</span><span class="v">' + money(data.total_paid, data.currency) + "</span>" : "") +
-        (data.payment_status ? '<span class="k">Payment status</span><span class="v">' + esc(data.payment_status) + "</span>" : "") +
-        (data.payment_method ? '<span class="k">Payment method</span><span class="v">' + esc(data.payment_method) + "</span>" : "") +
-        (linkedEnquiry ? '<span class="k">Kridiya reference</span><span class="v">' + esc(linkedEnquiry.reference) + "</span>" : "") +
-      "</div>" +
+      issuedPassengerPanelHTML(data) +
+      issuedTicketMetaHTML(data) +
       "<h2>Flight details</h2>" +
       "<table><thead><tr><th>Leg</th><th>Flight</th><th>Route</th><th>Date</th><th>Time</th></tr></thead><tbody>" + legRows + "</tbody></table>" +
-      barcodeHTML +
       (data.airline_rules ? "<h2>Change / cancellation / no-show rules</h2><p class='note'>" + nl2br(data.airline_rules) + "</p>" : "") +
       '<div class="box"><p class="note" style="margin:0">This is an issued e-ticket itinerary. Boarding pass barcode or QR code is only shown when provided by the airline or supplier. Kridiya Travel does not generate airline boarding codes.</p></div>'
     );
   }
 
   function passengerSummaryHTML(data) {
-    const ticketLines = String(data.ticket_numbers || "").split(/\n+/).filter(Boolean);
-    const records = data.passenger_records && data.passenger_records.length
-      ? data.passenger_records
-      : String(data.passengers || "").split(/\n+/).filter(Boolean).map(function (name, index) { return { name: name, ticket_number: ticketLines[index] || "" }; });
+    const records = passengerRecords(data);
     if (!records.length) return "";
     return '<h2>Passenger details</h2><table><thead><tr><th>Passenger</th><th>Ticket number</th></tr></thead><tbody>' + records.map(function (p) {
       return '<tr><td>' + esc(p.name || "-") + '</td><td>' + esc(p.ticket_number || "Not shown / pending") + '</td></tr>';
     }).join("") + "</tbody></table>";
+  }
+
+  function passengerRecords(data) {
+    const ticketLines = String(data.ticket_numbers || "").split(/\n+/).filter(Boolean);
+    return data.passenger_records && data.passenger_records.length
+      ? data.passenger_records
+      : String(data.passengers || "").split(/\n+/).filter(Boolean).map(function (name, index) { return { name: name, ticket_number: ticketLines[index] || "" }; });
+  }
+
+  function ticketBarcodeImageHTML(data) {
+    const src = data.ticket_barcode_image || data.ticket_barcode_url || "";
+    if (!src && !data.ticket_barcode_value) return '<div class="ticket-code-placeholder">No QR / barcode attached</div>';
+    return (src ? '<img class="ticket-code-img" src="' + esc(src) + '" alt="Ticket QR or barcode">' : "") +
+      (data.ticket_barcode_value ? '<div class="ticket-code-value">' + esc(data.ticket_barcode_value) + "</div>" : "");
+  }
+
+  function issuedPassengerPanelHTML(data) {
+    const records = passengerRecords(data);
+    if (!records.length) return "";
+    return '<h2>Traveller(s) information</h2><div class="ticket-panel"><div class="ticket-panel-head">Onward</div>' + records.map(function (p, index) {
+      return '<div class="ticket-passenger-row">' +
+        '<div class="ticket-code-slot">' + (index === 0 ? ticketBarcodeImageHTML(data) : "") + "</div>" +
+        '<div class="ticket-passenger-name"><span>Name</span><b>' + esc(p.name || "-") + '</b><span style="margin-top:0.45rem">Ticket no.</span><b>' + esc(p.ticket_number || "Not shown / pending") + "</b></div>" +
+        '<div class="ticket-passenger-extra"><span>Purchased add-ons</span><b>' + esc(data.extras && data.extras.length ? data.extras.join(", ") : "Nil") + '</b><span style="margin-top:0.45rem">Baggage</span><b>Check-in ' + esc(data.checkin_baggage_kg || "0") + " kg / Cabin " + esc(data.cabin_baggage_kg || "0") + " kg</b></div>" +
+      "</div>";
+    }).join("") + "</div>";
+  }
+
+  function metaItemHTML(labelText, value) {
+    return value == null || value === "" ? "" : '<div class="ticket-meta-item"><span>' + esc(labelText) + '</span><b>' + esc(value) + "</b></div>";
+  }
+
+  function issuedTicketMetaHTML(data) {
+    const items =
+      metaItemHTML("Class", data.cabin) +
+      metaItemHTML("Issuing airline", data.issuing_airline) +
+      metaItemHTML("Booking status", data.booking_status) +
+      metaItemHTML("Fare basis", data.fare_basis) +
+      metaItemHTML("Check-in baggage", (data.checkin_baggage_kg || "0") + " kg") +
+      metaItemHTML("Cabin baggage", (data.cabin_baggage_kg || "0") + " kg") +
+      metaItemHTML("Airline PNR", data.pnr) +
+      metaItemHTML("Record locator", data.airline_locator) +
+      metaItemHTML("Base fare", data.base_fare != null ? money(data.base_fare, data.currency) : "") +
+      metaItemHTML("Taxes / fees", data.taxes != null ? money(data.taxes, data.currency) : "") +
+      metaItemHTML("Total paid", data.total_paid != null ? money(data.total_paid, data.currency) : "") +
+      metaItemHTML("Payment", [data.payment_status, data.payment_method].filter(Boolean).join(" / ")) +
+      (linkedEnquiry ? metaItemHTML("Kridiya reference", linkedEnquiry.reference) : "");
+    return items ? '<div class="ticket-meta-grid">' + items + "</div>" : "";
   }
 
   function ticketBarcodeHTML(data) {
