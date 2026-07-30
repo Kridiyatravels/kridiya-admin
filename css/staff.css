@@ -3544,6 +3544,10 @@ table tbody tr:hover {
   overflow: visible;
 }
 
+#doc-app [hidden] {
+  display: none !important;
+}
+
 #doc-fields {
   gap: 0.9rem;
   /* The shared `.field` class carries `grid-column: span 12` from the public
