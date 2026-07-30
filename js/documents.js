@@ -1752,9 +1752,11 @@
   function setSettingsEditing(open) {
     const form = document.getElementById("settings-form");
     const btn = document.getElementById("settings-toggle");
+    const summary = document.getElementById("settings-summary");
     if (!form || !btn) return;
     if (open) populateSettingsForm();
     form.hidden = !open;
+    if (summary) summary.hidden = open;
     btn.textContent = open ? "Close" : "Edit";
   }
 
