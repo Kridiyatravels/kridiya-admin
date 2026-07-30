@@ -58,6 +58,18 @@
               <div class="field col-6"><label>IBAN</label><input name="bank_iban"></div>
               <div class="field col-6"><label>SWIFT / BIC</label><input name="bank_swift"></div>
               <div class="field col-12"><label>BANK ADDRESS</label><input name="bank_address"></div>
+              <div class="field col-12">
+                <label>CANCELLATION POLICY PRESET</label>
+                <select name="cancellation_policy_preset" id="cancellation-policy-preset">
+                  <option value="custom">Custom / edit manually</option>
+                  <option value="general">General travel services</option>
+                  <option value="flight_standard">Flight - standard airline rules</option>
+                  <option value="flight_non_refundable">Flight - non-refundable fare</option>
+                  <option value="visa">Visa service</option>
+                  <option value="hotel_package">Hotel / holiday package</option>
+                </select>
+                <small>Choose a preset, then edit the policy text below if needed.</small>
+              </div>
               <div class="field col-12"><label>CANCELLATION POLICY (SHOWN ON DOCUMENTS)</label><textarea name="cancellation_policy"></textarea></div>
               <div class="field col-12"><label>DEFAULT INVOICE NOTE</label><textarea name="invoice_footer_note"></textarea></div>
             </div>
@@ -147,6 +159,6 @@
 <script src="js/airports.js" defer></script>
 <script src="js/airport-ac.js" defer></script>
 <script src="js/preset-ac.js?v=20260727a" defer></script>
-<script src="js/documents.js?v=20260730a" defer></script>
+<script src="js/documents.js?v=20260730f" defer></script>
 </body>
 </html>

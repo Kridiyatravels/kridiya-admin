@@ -228,6 +228,13 @@
     cancellation_policy: "Supplier, airline, hotel, visa authority, payment provider, and fare/package rules apply. Refunds, changes, penalties, and timelines depend on the relevant supplier or authority.",
     invoice_footer_note: "Payment before booking. Bank address: Etihad Airways Centre 5th Floor, Abu Dhabi, UAE."
   };
+  const CANCELLATION_POLICY_PRESETS = {
+    general: "Supplier, airline, hotel, visa authority, payment provider, and fare/package rules apply. Refunds, changes, penalties, and timelines depend on the relevant supplier or authority.",
+    flight_standard: "Changes, cancellation, refunds, and no-show are subject to airline and supplier rules. Airline/supplier penalties, fare difference, service charges, and payment gateway charges may apply. Refunds, if applicable, will be processed only after airline/supplier approval and may take additional working days.",
+    flight_non_refundable: "This ticket/fare may be non-refundable. Changes, cancellation, refunds, and no-show are subject to airline and supplier rules. Airline/supplier penalties, fare difference, service charges, and payment gateway charges may apply.",
+    visa: "Visa approval, rejection, cancellation, processing time, and refund eligibility are controlled by the relevant embassy, immigration authority, or visa supplier. Government/embassy fees and service charges may be non-refundable once processing or submission has started.",
+    hotel_package: "Hotel, holiday package, transfer, tour, and activity changes or cancellations are subject to supplier rules, availability, and deadline conditions. Supplier penalties, no-show charges, fare differences, service charges, and payment gateway charges may apply."
+  };
 
   let sb = null;
   let currentUserId = null;
@@ -1692,7 +1699,32 @@
     form.bank_swift.value = settings.bank_swift || "";
     form.bank_address.value = settings.bank_address || "";
     form.cancellation_policy.value = settings.cancellation_policy || "";
+    if (form.cancellation_policy_preset) {
+      form.cancellation_policy_preset.value = cancellationPolicyPresetFor(settings.cancellation_policy || "");
+    }
     form.invoice_footer_note.value = settings.invoice_footer_note || "";
+  }
+
+  function cancellationPolicyPresetFor(text) {
+    const normalized = String(text || "").trim();
+    const found = Object.keys(CANCELLATION_POLICY_PRESETS).find(function (key) {
+      return CANCELLATION_POLICY_PRESETS[key] === normalized;
+    });
+    return found || "custom";
+  }
+
+  function applyCancellationPolicyPreset() {
+    const form = document.getElementById("settings-form");
+    if (!form || !form.cancellation_policy_preset || !form.cancellation_policy) return;
+    const key = form.cancellation_policy_preset.value;
+    if (key === "custom") return;
+    form.cancellation_policy.value = CANCELLATION_POLICY_PRESETS[key] || form.cancellation_policy.value;
+  }
+
+  function syncCancellationPolicyPreset() {
+    const form = document.getElementById("settings-form");
+    if (!form || !form.cancellation_policy_preset || !form.cancellation_policy) return;
+    form.cancellation_policy_preset.value = cancellationPolicyPresetFor(form.cancellation_policy.value);
   }
 
   function settingsSummaryItem(labelText, value) {
@@ -2042,6 +2074,8 @@
     });
     document.getElementById("settings-save").addEventListener("click", saveSettings);
     document.getElementById("settings-reset").addEventListener("click", resetSettingsToDefaults);
+    document.getElementById("cancellation-policy-preset").addEventListener("change", applyCancellationPolicyPreset);
+    document.getElementById("settings-form").cancellation_policy.addEventListener("input", syncCancellationPolicyPreset);
     document.getElementById("doc-archive-refresh").addEventListener("click", loadDocumentArchive);
 
     document.getElementById("sig-build").addEventListener("click", function () {
