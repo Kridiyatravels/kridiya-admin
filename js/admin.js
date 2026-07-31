@@ -236,11 +236,14 @@
   function convertPanel(enq) {
     if (!isCorporateEnquiry(enq)) return "";
     if (!canCreateBookings || !canEditCorporates) {
-      return '<div class="admin-notes" data-convert-for="' + enq.id + '" hidden><p class="form-note">You need create booking and edit corporate permissions to convert this enquiry.</p></div>';
+      return '<div class="admin-notes" data-convert-for="' + enq.id + '" hidden><p class="form-note">You need create booking and edit corporate permissions to approve or convert this corporate enquiry.</p></div>';
     }
     return '<div class="admin-notes corporate-convert-panel" data-convert-for="' + enq.id + '" hidden>' +
-      '<p class="form-note">This will create or reuse the corporate company, create the contact, create a linked corporate booking, and mark this enquiry as confirmed.</p>' +
-      '<button type="button" class="btn btn-primary convert-corporate-btn" data-id="' + enq.id + '">Convert to corporate booking</button>' +
+      '<p class="form-note">Approve portal access after you create the company contact in Supabase Auth. This creates or reuses the corporate account, links the contact, activates portal access, and creates the admin booking record.</p>' +
+      '<div class="section-actions">' +
+        '<button type="button" class="btn btn-primary approve-corporate-btn" data-id="' + enq.id + '">Approve portal access</button>' +
+        '<button type="button" class="btn btn-outline convert-corporate-btn" data-id="' + enq.id + '">Convert booking only</button>' +
+      '</div>' +
     '</div>';
   }
 
@@ -1260,6 +1263,11 @@
         await convertCorporateEnquiry(doConvertBtn);
         return;
       }
+      const approveCorporateBtn = e.target.closest(".approve-corporate-btn");
+      if (approveCorporateBtn) {
+        await approveCorporateApplication(approveCorporateBtn);
+        return;
+      }
       const viewBtn = e.target.closest(".view-file-btn");
       if (viewBtn) {
         viewBtn.disabled = true;
@@ -1497,6 +1505,57 @@
       toast("Could not convert enquiry: " + err.message);
       btn.disabled = false;
       btn.textContent = "Convert to corporate booking";
+    }
+  }
+
+  async function approveCorporateApplication(btn) {
+    const id = btn.dataset.id;
+    const enq = allEnquiries.find(function (r) { return r.id === id; });
+    if (!enq) return;
+    const companyName = detail(enq, "Company_name") || enq.full_name || "this company";
+    const authUserId = (window.prompt(
+      "Paste the Supabase Auth user ID for " + companyName + ".\n\nCreate the user first in Supabase Auth, then paste its ID here."
+    ) || "").trim();
+    if (!authUserId) return;
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(authUserId)) {
+      toast("That does not look like a valid Auth user ID.");
+      return;
+    }
+    const canApproveQuotes = confirm("Allow this corporate user to approve quotes?");
+    const canViewFinance = confirm("Allow this corporate user to view finance/payment status?");
+    const canViewDocuments = confirm("Allow this corporate user to view released documents?");
+    if (!confirm("Approve " + companyName + " and activate corporate portal access now?")) return;
+
+    btn.disabled = true;
+    btn.textContent = "Approving...";
+    try {
+      const result = await sb.rpc("approve_corporate_application", {
+        p_enquiry_id: id,
+        p_auth_user_id: authUserId,
+        p_role: "travel_coordinator",
+        p_can_request: true,
+        p_can_approve_quotes: canApproveQuotes,
+        p_can_view_finance: canViewFinance,
+        p_can_view_documents: canViewDocuments,
+        p_notes: "Approved corporate portal account from staff enquiries"
+      });
+      if (result.error) throw result.error;
+      const data = result.data || {};
+      logActivity(sb, currentStaffId, "corporate.application_approved", "corporate_account", data.corporate_account_id || null, {
+        reference: enq.reference,
+        company_name: companyName,
+        booking_id: data.booking_id || null,
+        portal_member_id: data.corporate_portal_member_id || null
+      });
+      toast("Corporate portal approved. Opening linked booking.");
+      setTimeout(function () {
+        if (data.booking_id) location.href = "booking-detail.html?id=" + encodeURIComponent(data.booking_id);
+        else location.href = "corporate.html";
+      }, 450);
+    } catch (err) {
+      toast("Could not approve corporate portal: " + err.message);
+      btn.disabled = false;
+      btn.textContent = "Approve portal access";
     }
   }
 
