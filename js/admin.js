@@ -239,9 +239,24 @@
       return '<div class="admin-notes" data-convert-for="' + enq.id + '" hidden><p class="form-note">You need create booking and edit corporate permissions to approve or convert this corporate enquiry.</p></div>';
     }
     return '<div class="admin-notes corporate-convert-panel" data-convert-for="' + enq.id + '" hidden>' +
-      '<p class="form-note">Approve portal access after you create the company contact in Supabase Auth. This creates or reuses the corporate account, links the contact, activates portal access, and creates the admin booking record.</p>' +
-      '<div class="section-actions">' +
-        '<button type="button" class="btn btn-primary approve-corporate-btn" data-id="' + enq.id + '">Approve portal access</button>' +
+      '<div class="corporate-approval-head"><div><b>Approve corporate portal access</b><p>After creating the user in Supabase Auth, paste the user ID here. The system activates the corporate account, links the contact, creates portal access, and opens the booking record.</p></div><span>Staff controlled</span></div>' +
+      '<form class="corporate-approval-form" data-id="' + enq.id + '" onsubmit="return false">' +
+        '<div class="corporate-approval-grid">' +
+          '<label><span>Supabase Auth user ID</span><input name="auth_user_id" placeholder="73eebf6a-0328-48aa-ba6c-e2013ac217b5" required></label>' +
+          '<label><span>Portal role</span><select name="role"><option value="travel_coordinator">Travel coordinator</option><option value="company_admin">Company admin</option><option value="finance">Finance team</option><option value="traveller">Traveller</option></select></label>' +
+        '</div>' +
+        '<div class="corporate-permission-grid">' +
+          '<label><input type="checkbox" name="can_request" checked><span>Can submit requests</span></label>' +
+          '<label><input type="checkbox" name="can_approve_quotes"><span>Can approve quotes</span></label>' +
+          '<label><input type="checkbox" name="can_view_finance"><span>Can view finance</span></label>' +
+          '<label><input type="checkbox" name="can_view_documents" checked><span>Can view documents</span></label>' +
+        '</div>' +
+        '<label class="corporate-approval-note"><span>Approval note</span><input name="notes" value="Approved corporate portal account from staff enquiries"></label>' +
+        '<div class="section-actions">' +
+          '<button type="submit" class="btn btn-primary approve-corporate-btn">Approve portal access</button>' +
+        '</div>' +
+      '</form>' +
+      '<div class="section-actions corporate-booking-only">' +
         '<button type="button" class="btn btn-outline convert-corporate-btn" data-id="' + enq.id + '">Convert booking only</button>' +
       '</div>' +
     '</div>';
@@ -1263,11 +1278,6 @@
         await convertCorporateEnquiry(doConvertBtn);
         return;
       }
-      const approveCorporateBtn = e.target.closest(".approve-corporate-btn");
-      if (approveCorporateBtn) {
-        await approveCorporateApplication(approveCorporateBtn);
-        return;
-      }
       const viewBtn = e.target.closest(".view-file-btn");
       if (viewBtn) {
         viewBtn.disabled = true;
@@ -1317,6 +1327,13 @@
       logActivity(sb, currentStaffId, "enquiry.crm_updated", "enquiry", id, update);
       renderList();
       toast("CRM details saved.");
+    });
+
+    listEl.addEventListener("submit", async function (e) {
+      const form = e.target.closest(".corporate-approval-form");
+      if (!form) return;
+      e.preventDefault();
+      await approveCorporateApplication(form);
     });
 
     listEl.addEventListener("submit", async function (e) {
@@ -1508,36 +1525,33 @@
     }
   }
 
-  async function approveCorporateApplication(btn) {
-    const id = btn.dataset.id;
+  async function approveCorporateApplication(form) {
+    const id = form.dataset.id;
     const enq = allEnquiries.find(function (r) { return r.id === id; });
     if (!enq) return;
     const companyName = detail(enq, "Company_name") || enq.full_name || "this company";
-    const authUserId = (window.prompt(
-      "Paste the Supabase Auth user ID for " + companyName + ".\n\nCreate the user first in Supabase Auth, then paste its ID here."
-    ) || "").trim();
+    const authUserId = (form.auth_user_id.value || "").trim();
     if (!authUserId) return;
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(authUserId)) {
       toast("That does not look like a valid Auth user ID.");
+      form.auth_user_id.focus();
       return;
     }
-    const canApproveQuotes = confirm("Allow this corporate user to approve quotes?");
-    const canViewFinance = confirm("Allow this corporate user to view finance/payment status?");
-    const canViewDocuments = confirm("Allow this corporate user to view released documents?");
     if (!confirm("Approve " + companyName + " and activate corporate portal access now?")) return;
 
+    const btn = form.querySelector(".approve-corporate-btn");
     btn.disabled = true;
     btn.textContent = "Approving...";
     try {
       const result = await sb.rpc("approve_corporate_application", {
         p_enquiry_id: id,
         p_auth_user_id: authUserId,
-        p_role: "travel_coordinator",
-        p_can_request: true,
-        p_can_approve_quotes: canApproveQuotes,
-        p_can_view_finance: canViewFinance,
-        p_can_view_documents: canViewDocuments,
-        p_notes: "Approved corporate portal account from staff enquiries"
+        p_role: form.role.value || "travel_coordinator",
+        p_can_request: form.can_request.checked,
+        p_can_approve_quotes: form.can_approve_quotes.checked,
+        p_can_view_finance: form.can_view_finance.checked,
+        p_can_view_documents: form.can_view_documents.checked,
+        p_notes: form.notes.value || "Approved corporate portal account from staff enquiries"
       });
       if (result.error) throw result.error;
       const data = result.data || {};

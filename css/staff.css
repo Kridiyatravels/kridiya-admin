@@ -310,6 +310,44 @@ body { background: var(--bg); }
 .ops-chip { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px; padding: 0.24rem 0.55rem; font-size: 0.72rem; font-weight: 700; color: var(--ink-2); background: var(--surface-tint); }
 .corporate-enquiry-preview { margin: 0.6rem 0 0.75rem; }
 .corporate-convert-panel { border-color: color-mix(in oklab, var(--brand) 36%, var(--line)); background: color-mix(in oklab, var(--brand-soft) 72%, #fff); }
+.corporate-approval-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem;
+  border-bottom: 1px solid color-mix(in oklab, var(--gold-deep) 28%, var(--line));
+  padding-bottom: 0.75rem; margin-bottom: 0.8rem;
+}
+.corporate-approval-head b { display: block; color: var(--ink); font-size: 1rem; }
+.corporate-approval-head p { margin: 0.25rem 0 0; color: var(--ink-2); font-size: 0.86rem; max-width: 760px; }
+.corporate-approval-head > span {
+  flex: 0 0 auto; border: 1px solid color-mix(in oklab, var(--gold-deep) 36%, var(--line));
+  border-radius: 999px; background: var(--surface); color: var(--brand-deep); padding: 0.28rem 0.62rem;
+  font-size: 0.72rem; font-weight: 850; text-transform: uppercase;
+}
+.corporate-approval-form { display: grid; gap: 0.75rem; }
+.corporate-approval-grid { display: grid; grid-template-columns: minmax(280px, 1fr) minmax(200px, 0.35fr); gap: 0.65rem; }
+.corporate-approval-form label { display: grid; gap: 0.35rem; margin: 0; }
+.corporate-approval-form label > span {
+  color: var(--text-muted); font-size: 0.72rem; font-weight: 850; text-transform: uppercase;
+}
+.corporate-approval-form input,
+.corporate-approval-form select {
+  min-height: 42px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface);
+  color: var(--ink); padding: 0 0.8rem; font: inherit; font-weight: 650;
+}
+.corporate-permission-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.5rem; }
+.corporate-permission-grid label {
+  display: flex; align-items: center; gap: 0.45rem; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--surface); min-height: 42px; padding: 0 0.65rem; color: var(--ink-2); font-weight: 800;
+}
+.corporate-permission-grid input { width: 16px; height: 16px; min-height: 0; accent-color: var(--brand-deep); }
+.corporate-permission-grid label > span { color: inherit; font-size: 0.78rem; text-transform: none; }
+.corporate-approval-note input { width: 100%; }
+.corporate-booking-only { margin-top: 0.65rem; padding-top: 0.65rem; border-top: 1px dashed var(--line); }
+@media (max-width: 820px) {
+  .corporate-approval-head,
+  .corporate-approval-grid { grid-template-columns: 1fr; flex-direction: column; }
+  .corporate-permission-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 520px) { .corporate-permission-grid { grid-template-columns: 1fr; } }
 .permission-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.45rem 0.8rem; margin-top: 0.7rem; }
 .permission-grid label { display: flex; align-items: center; gap: 0.42rem; font-size: 0.78rem; font-weight: 700; color: var(--ink-2); }
 .permission-grid input { width: 16px; height: 16px; }
