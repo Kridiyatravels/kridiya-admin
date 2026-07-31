@@ -92,13 +92,15 @@
       activeSearch = event.target.value.trim().toLowerCase();
       renderRows();
     });
-    document.getElementById("corporate-status-filter").addEventListener("change", function (event) {
-      activeStatus = event.target.value;
-      renderRows();
-    });
-    document.getElementById("corporate-health-filter").addEventListener("change", function (event) {
-      activeHealth = event.target.value;
-      renderRows();
+    document.querySelectorAll(".corporate-filter-group").forEach(function (group) {
+      group.addEventListener("click", function (event) {
+        const btn = event.target.closest("button[data-value]");
+        if (!btn) return;
+        group.querySelectorAll("button").forEach(function (x) { x.classList.toggle("is-active", x === btn); });
+        if (group.dataset.filterGroup === "status") activeStatus = btn.dataset.value || "";
+        if (group.dataset.filterGroup === "health") activeHealth = btn.dataset.value || "";
+        renderRows();
+      });
     });
     showStaffNav();
     gate.hidden = true;
@@ -202,7 +204,7 @@
     const contactRows = contacts.length ? contacts.map(function (x) {
       return '<div class="ops-row compact-row"><div class="ops-row-main"><b>' + esc(x.full_name) + '</b><p>' + esc(x.job_title || "Contact") + ' / ' + esc(x.email || "No email") + ' / ' + esc(x.phone || x.whatsapp || "No phone") + '</p><div class="ops-kv">' + (x.is_authorized_contact ? '<span class="ops-chip">Authorized</span>' : '') + (x.is_accounts_contact ? '<span class="ops-chip">Accounts</span>' : '') + '</div></div></div>';
     }).join("") : '<p class="form-note">No contacts saved yet.</p>';
-    const form = canEdit ? '<form class="form-grid payment-mini-form corporate-contact-form" data-account-id="' + esc(c.id) + '" onsubmit="return false"><div class="field-row"><div class="field col-4"><label>CONTACT NAME</label><input name="full_name" required></div><div class="field col-4"><label>JOB TITLE</label><input name="job_title"></div><div class="field col-4"><label>EMAIL</label><input name="email" type="email"></div><div class="field col-4"><label>PHONE</label><input name="phone"></div><div class="field col-4"><label>WHATSAPP</label><input name="whatsapp"></div><div class="field col-2"><label>AUTHORIZED?</label><select name="is_authorized_contact"><option value="false">No</option><option value="true">Yes</option></select></div><div class="field col-2"><label>ACCOUNTS?</label><select name="is_accounts_contact"><option value="false">No</option><option value="true">Yes</option></select></div><div class="field col-12"><label>NOTES</label><input name="notes"></div></div><button class="btn btn-primary" type="submit">Add contact</button></form>' : '';
+    const form = canEdit ? '<details class="corporate-add-contact"><summary>Add contact</summary><form class="form-grid payment-mini-form corporate-contact-form" data-account-id="' + esc(c.id) + '" onsubmit="return false"><div class="field-row"><div class="field col-4"><label>CONTACT NAME</label><input name="full_name" required></div><div class="field col-4"><label>JOB TITLE</label><input name="job_title"></div><div class="field col-4"><label>EMAIL</label><input name="email" type="email"></div><div class="field col-4"><label>PHONE</label><input name="phone"></div><div class="field col-4"><label>WHATSAPP</label><input name="whatsapp"></div><div class="field col-2"><label>AUTHORIZED?</label><select name="is_authorized_contact"><option value="false">No</option><option value="true">Yes</option></select></div><div class="field col-2"><label>ACCOUNTS?</label><select name="is_accounts_contact"><option value="false">No</option><option value="true">Yes</option></select></div><div class="field col-12"><label>NOTES</label><input name="notes"></div></div><button class="btn btn-primary" type="submit">Save contact</button></form></details>' : '';
     const tone = health.tone === "info" ? "ok" : health.tone;
     return '<details class="corporate-card corporate-' + esc(tone) + '"><summary><div class="ops-row-main"><div class="corporate-company-line"><b>' + esc(c.company_name) + '</b><span>' + esc(label(c.status)) + '</span></div><p>' + esc(c.billing_email || c.accounts_email || "No billing email") + ' / ' + esc(c.phone || "No phone") + '</p><div class="ops-kv"><span class="staff-risk ' + esc(tone === "ok" ? "warn" : tone) + '">' + esc(health.label) + '</span><span class="ops-chip">Terms: ' + esc(label(c.payment_terms)) + '</span><span class="ops-chip">LPO: ' + esc(bool(c.lpo_required)) + '</span><span class="ops-chip">Contacts: ' + esc(contacts.length) + '</span><span class="ops-chip">Bookings: ' + esc(c.booking_count || 0) + '</span></div></div><div class="corporate-row-value"><span>Account value</span><b>' + esc(money(c.booking_value, "AED")) + '</b></div></summary><div class="corporate-card-body"><div class="corporate-health-strip corporate-health-' + esc(tone) + '"><div><b>' + esc(health.label) + '</b><p>' + esc(health.action) + '</p></div><div class="ops-kv">' + issueChips + '</div></div><div class="ops-grid ops-grid-2"><div><h3>Account controls</h3><div class="ops-kv"><span class="ops-chip">Credit: ' + esc(bool(c.credit_allowed)) + '</span><span class="ops-chip">Monthly billing: ' + esc(bool(c.monthly_billing)) + '</span><span class="ops-chip">Billing email: ' + esc(bool(hasBillingEmail(c))) + '</span><span class="ops-chip">Authorized contact: ' + esc(bool(hasAuthorizedContact(c))) + '</span><span class="ops-chip">Accounts contact: ' + esc(bool(hasAccountsContact(c))) + '</span>' + (c.trade_license_no ? '<span class="ops-chip">TL: ' + esc(c.trade_license_no) + '</span>' : '') + (c.trn ? '<span class="ops-chip">TRN: ' + esc(c.trn) + '</span>' : '') + '</div><p class="form-note">' + esc(c.notes || "No account notes.") + '</p></div><div><h3>Contacts</h3>' + contactRows + '</div></div>' + form + '</div></details>';
   }

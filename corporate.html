@@ -13,7 +13,7 @@
 <link rel="icon" href="https://kridiyatravel.com/assets/favicon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="https://kridiyatravel.com/assets/favicon-180.png">
 <link rel="stylesheet" href="https://kridiyatravel.com/css/styles.css">
-<link rel="stylesheet" href="css/staff.css?v=20260731b"><title>Corporate Accounts - Kridiya Staff Tools</title>
+<link rel="stylesheet" href="css/staff.css?v=20260731c"><title>Corporate Accounts - Kridiya Staff Tools</title>
 </head>
 <body data-page="corporate">
 <header id="site-header" class="site-header"></header>
@@ -51,8 +51,8 @@
       <div class="account-section-head"><div><h2>Company workspace</h2><p>Search accounts, check readiness, open contacts, and control corporate handling.</p></div><span class="form-note" id="corporate-count"></span></div>
       <div class="corporate-toolbar">
         <label class="corporate-search"><span>Search</span><input id="corporate-search" type="search" placeholder="Company, email, phone, contact..."></label>
-        <label><span>Status</span><select id="corporate-status-filter"><option value="">All accounts</option><option value="active">Active</option><option value="prospect">Prospect</option><option value="on_hold">On hold</option><option value="inactive">Inactive</option></select></label>
-        <label><span>Readiness</span><select id="corporate-health-filter"><option value="">All readiness</option><option value="ok">Ready/operational</option><option value="warn">Needs review</option><option value="risk">High risk/on hold</option></select></label>
+        <div class="corporate-filter-group" data-filter-group="status"><span>Status</span><div class="corporate-segments"><button type="button" class="is-active" data-value="">All</button><button type="button" data-value="active">Active</button><button type="button" data-value="prospect">Prospect</button><button type="button" data-value="on_hold">Hold</button></div></div>
+        <div class="corporate-filter-group" data-filter-group="health"><span>Readiness</span><div class="corporate-segments"><button type="button" class="is-active" data-value="">All</button><button type="button" data-value="ok">Ready</button><button type="button" data-value="warn">Review</button><button type="button" data-value="risk">Risk</button></div></div>
       </div>
       <div id="corporate-list"></div>
     </div>
@@ -61,5 +61,5 @@
 <footer id="site-footer" class="site-footer"></footer>
 <script src="https://kridiyatravel.com/js/auth.js" defer></script>
 <script src="js/staff-common.js?v=20260726c" defer></script>
-<script src="js/corporate.js?v=20260731b" defer></script>
+<script src="js/corporate.js?v=20260731c" defer></script>
 </body></html>
