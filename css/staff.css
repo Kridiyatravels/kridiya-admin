@@ -1188,6 +1188,38 @@ body { background: var(--bg); }
 #booking-status-form input,
 #booking-status-form select,
 #booking-status-form textarea { background: #fff; }
+.booking-quote-form {
+  margin-top: var(--sp-3);
+}
+
+.quote-control-note {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: 0.78rem 0.9rem;
+  border: 1px solid color-mix(in oklab, var(--gold) 42%, var(--line));
+  border-radius: 10px;
+  background: linear-gradient(135deg, color-mix(in oklab, var(--gold) 16%, white), var(--surface));
+}
+
+.quote-control-note b {
+  display: block;
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
+.quote-control-note p {
+  margin: 0.18rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.quote-release-row {
+  border-color: color-mix(in oklab, var(--gold) 34%, var(--line));
+  background: color-mix(in oklab, var(--surface-tint) 82%, white);
+}
 @media (max-width: 720px) {
   #booking-detail-app .account-head .btn { width: 100%; justify-content: center; }
   .payment-mini-form .field-row .field,

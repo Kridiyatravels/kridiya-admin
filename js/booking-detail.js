@@ -4,6 +4,7 @@
   let sb = null;
   let bookingId = null;
   let detail = null;
+  let quoteContext = { quotes: [], can_edit_quotes: false };
   let workflow = { tasks: [], timeline: [], can_edit_tasks: false, can_view_activity: false };
   let businessSettings = null;
 
@@ -44,7 +45,10 @@
   function bookingBalance() { return Math.max(0, amountNum(detail.booking.selling_price) - paymentReceivedTotal()); }
   function paymentIsCleared(status) { return ["paid", "received", "payment_received", "completed"].indexOf(String(status || "").toLowerCase()) !== -1; }
   function bookingIsConfirmed(status) { return ["confirmed", "paid", "ticketed", "completed"].indexOf(String(status || "").toLowerCase()) !== -1; }
-  function isPortalBooking() { return String((detail.booking || {}).source || "").toLowerCase() === "portal"; }
+  function isPortalBooking() {
+    const source = String((detail.booking || {}).source || "").toLowerCase();
+    return source === "portal" || source === "corporate_portal";
+  }
   function paymentControlNote() {
     const b = detail.booking;
     if (paymentIsCleared(b.payment_status)) return { text: "Payment control OK. Money is marked as received/paid.", tone: "ok" };
@@ -179,8 +183,18 @@
     }
     detail = result.data;
     await loadWorkflow();
+    await loadQuoteContext();
     if (!businessSettings) await loadBusinessSettings();
     renderAll();
+  }
+
+  async function loadQuoteContext() {
+    const result = await sb.rpc("get_booking_quote_context", { p_booking_id: bookingId });
+    if (result.error || !result.data) {
+      quoteContext = { quotes: [], can_edit_quotes: false };
+      return;
+    }
+    quoteContext = result.data;
   }
 
   function renderAll() {
@@ -197,6 +211,7 @@
     renderBookingCommand();
     renderStatusForm();
     renderCustomer();
+    renderBookingQuotes();
     renderCorporateControls();
     renderWorkflow();
     renderPassengers();
@@ -240,6 +255,63 @@
           return '<span>' + esc(item) + '</span>';
         }).join("") + '</div>' +
       '</div>';
+  }
+
+  function renderBookingQuotes() {
+    const panel = document.getElementById("booking-quote-panel");
+    if (!panel) return;
+    const b = detail.booking;
+    const quotes = quoteContext.quotes || [];
+    const canEdit = !!quoteContext.can_edit_quotes;
+    const form = canEdit ? '<form id="booking-quote-form" class="form-grid booking-quote-form" onsubmit="return false">' +
+      '<div class="field-row">' +
+        '<div class="field col-5"><label>QUOTE TITLE</label><input name="title" required placeholder="Option 1 - Emirates morning flight"></div>' +
+        '<div class="field col-3"><label>AMOUNT</label><input name="price_amount" type="number" min="1" step="0.01" required placeholder="0.00"></div>' +
+        '<div class="field col-2"><label>CURRENCY</label><input name="currency" value="' + esc(b.currency || "AED") + '"></div>' +
+        '<div class="field col-2"><label>VALID UNTIL</label><input name="valid_until" type="datetime-local"></div>' +
+        '<div class="field col-12"><label>CUSTOMER DESCRIPTION</label><textarea name="description" placeholder="Customer-safe details: airline/hotel/service option, route, inclusions, baggage, deadline, and approval note."></textarea></div>' +
+        '<div class="field col-12"><label>TERMS SHOWN TO COMPANY</label><textarea name="terms">Final booking is completed after company approval, payment/LPO clearance, and supplier availability check. Fares, seats, rooms, visa rules, refunds, and cancellation terms may change until confirmed.</textarea></div>' +
+      '</div>' +
+      '<button class="btn btn-primary" type="submit">Release quote to portal</button>' +
+    '</form>' : '<p class="form-note">Booking edit permission required to create quotes.</p>';
+    panel.innerHTML = '<div class="quote-control-note"><b>Portal-safe quote rule</b><p>Only selling price, customer description, validity, and terms are visible to the company. Supplier cost and internal notes stay hidden.</p></div>' + form + renderBookingQuoteRows(quotes);
+    const f = document.getElementById("booking-quote-form");
+    if (f) f.addEventListener("submit", createBookingQuote);
+  }
+
+  function renderBookingQuoteRows(rows) {
+    if (!rows.length) return '<p class="form-note">No quote options released yet.</p>';
+    return '<div class="ops-list payment-history">' + rows.map(function (q) {
+      const amount = money(q.price_amount, q.currency || "AED");
+      const valid = q.valid_until ? dateTimeText(q.valid_until) : "Not set";
+      return '<div class="ops-row quote-release-row"><div class="ops-row-main"><b>' + esc(q.title || "Quote option") + '</b><p>' + esc(q.description || "No customer description") + '</p><div class="ops-kv"><span class="ops-chip">Status: ' + esc(label(q.status || "sent")) + '</span><span class="ops-chip">Valid: ' + esc(valid) + '</span>' + (q.responded_at ? '<span class="ops-chip">Responded: ' + esc(dateTimeText(q.responded_at)) + '</span>' : '') + '</div></div><div class="ops-row-actions"><span class="finance-value">' + esc(amount) + '</span></div></div>';
+    }).join("") + '</div>';
+  }
+
+  async function createBookingQuote() {
+    const form = document.getElementById("booking-quote-form");
+    const button = form.querySelector('button[type="submit"]');
+    button.disabled = true;
+    const validUntil = form.valid_until.value ? new Date(form.valid_until.value).toISOString() : null;
+    const result = await sb.rpc("create_booking_quote_option", {
+      p_booking_id: bookingId,
+      p_title: form.title.value,
+      p_description: form.description.value || null,
+      p_price_amount: Number(form.price_amount.value || 0),
+      p_currency: form.currency.value || "AED",
+      p_valid_until: validUntil,
+      p_terms: form.terms.value || null,
+      p_option_data: {
+        service: detail.booking.service_type,
+        route_or_destination: detail.booking.route_or_destination,
+        travel_start: detail.booking.travel_start,
+        travel_end: detail.booking.travel_end
+      }
+    });
+    button.disabled = false;
+    if (result.error) { toast("Could not release quote: " + result.error.message); return; }
+    toast("Quote released to corporate portal.");
+    await loadDetail();
   }
 
   function renderBookingCommand() {

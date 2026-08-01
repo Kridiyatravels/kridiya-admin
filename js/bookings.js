@@ -168,7 +168,8 @@
   }
 
   function isPortalRequest(b) {
-    return String(b.source || "").toLowerCase() === "portal";
+    const source = String(b.source || "").toLowerCase();
+    return source === "portal" || source === "corporate_portal";
   }
 
   function riskRank(b) {
