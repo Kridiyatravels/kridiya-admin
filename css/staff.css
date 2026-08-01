@@ -2961,6 +2961,37 @@ textarea,
   color: var(--brand-deep);
 }
 
+.ops-row-portal {
+  border-color: color-mix(in oklab, var(--brand) 38%, var(--line));
+  background:
+    linear-gradient(90deg, color-mix(in oklab, var(--brand-soft) 72%, white) 0, var(--surface) 34%),
+    var(--surface);
+  box-shadow: inset 4px 0 0 color-mix(in oklab, var(--brand) 72%, var(--gold));
+}
+
+.ops-row-portal .ops-row-main > b::before {
+  content: "Portal";
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  margin-right: var(--sp-2);
+  padding: 0 var(--sp-2);
+  border-radius: 999px;
+  background: var(--ink);
+  color: #fffaf2;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  vertical-align: 2px;
+}
+
+.booking-chip-portal {
+  border-color: color-mix(in oklab, var(--brand) 34%, var(--line));
+  background: color-mix(in oklab, var(--brand-soft) 82%, white);
+  color: var(--brand-deep);
+}
+
 .booking-sort {
   position: relative;
 }

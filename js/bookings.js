@@ -162,9 +162,13 @@
   function searchableBooking(b) {
     return [
       b.booking_reference, b.title, b.customer_name, b.customer_email, b.customer_phone,
-      b.corporate_company_name, b.corporate_contact_name, b.service_type, b.status,
+      b.corporate_company_name, b.corporate_contact_name, b.service_type, b.status, b.source,
       b.payment_status, b.document_status, b.route_or_destination, b.supplier_name
     ].filter(Boolean).join(" ").toLowerCase();
+  }
+
+  function isPortalRequest(b) {
+    return String(b.source || "").toLowerCase() === "portal";
   }
 
   function riskRank(b) {
@@ -185,6 +189,7 @@
   function filteredBookings() {
     return allBookings.filter(function (b) {
       if (activeSearch && searchableBooking(b).indexOf(activeSearch) === -1) return false;
+      if (activeFilter === "portal" && !isPortalRequest(b)) return false;
       if (activeFilter === "payment_pending" && !/pending|proof|partial|due/.test(String(b.payment_status || "").toLowerCase())) return false;
       if (activeFilter === "docs_pending" && !/pending|missing|not/.test(String(b.document_status || "").toLowerCase())) return false;
       if (activeFilter === "corporate" && !(b.booking_kind === "corporate" || b.corporate_company_name)) return false;
@@ -204,6 +209,7 @@
     const sort = sortMeta();
     const filters = [
       ["", "All"],
+      ["portal", "Portal requests"],
       ["payment_pending", "Payment pending"],
       ["docs_pending", "Docs pending"],
       ["confirmed_unpaid", "Confirmed unpaid"],
@@ -230,8 +236,16 @@
   }
 
   function rowHTML(b) {
+      const portal = isPortalRequest(b) ? '<span class="ops-chip booking-chip-portal">Portal request</span>' : '';
       const corporate = b.corporate_company_name ? '<span class="ops-chip">Corporate: ' + esc(b.corporate_company_name) + (b.corporate_contact_name ? ' / ' + esc(b.corporate_contact_name) : '') + '</span>' : '';
-      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(b.booking_reference) + ' - ' + esc(b.title) + '</b><p>' + esc(label(b.service_type)) + ' - ' + esc(label(b.status)) + ' - ' + esc(b.route_or_destination || "No route/destination") + '</p><div class="ops-kv">' + corporate + '<span class="ops-chip">Payment: ' + esc(label(b.payment_status)) + '</span><span class="ops-chip">Docs: ' + esc(label(b.document_status)) + '</span><span class="ops-chip">Sell: ' + esc(money(b.selling_price, b.currency)) + '</span><span class="ops-chip">Cost: ' + esc(money(b.supplier_cost, b.currency)) + '</span><span class="ops-chip">Profit: ' + esc(money(b.gross_profit, b.currency)) + '</span></div></div><div class="ops-row-actions"><a class="btn btn-primary" href="booking-detail.html?id=' + esc(b.id) + '">Open</a><a class="btn btn-outline" href="documents.html">Document</a></div></div>';
+      const source = b.source && !isPortalRequest(b) ? '<span class="ops-chip">Source: ' + esc(label(b.source)) + '</span>' : '';
+      const rowClass = isPortalRequest(b) ? " ops-row-portal" : "";
+      const subline = [
+        label(b.service_type),
+        isPortalRequest(b) ? "Portal submitted" : label(b.status),
+        b.route_or_destination || "No route/destination"
+      ].filter(Boolean).join(" - ");
+      return '<div class="ops-row' + rowClass + '"><div class="ops-row-main"><b>' + esc(b.booking_reference) + ' - ' + esc(b.title) + '</b><p>' + esc(subline) + '</p><div class="ops-kv">' + portal + corporate + source + '<span class="ops-chip">Payment: ' + esc(label(b.payment_status)) + '</span><span class="ops-chip">Docs: ' + esc(label(b.document_status)) + '</span><span class="ops-chip">Sell: ' + esc(money(b.selling_price, b.currency)) + '</span><span class="ops-chip">Cost: ' + esc(money(b.supplier_cost, b.currency)) + '</span><span class="ops-chip">Profit: ' + esc(money(b.gross_profit, b.currency)) + '</span></div></div><div class="ops-row-actions"><a class="btn btn-primary" href="booking-detail.html?id=' + esc(b.id) + '">Open</a><a class="btn btn-outline" href="documents.html">Document</a></div></div>';
   }
 
   function renderBookings() {
