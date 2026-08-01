@@ -1380,7 +1380,8 @@ body { background: var(--bg); }
 }
 .corporate-portal-controls select,
 .corporate-portal-controls input[type="text"],
-.corporate-portal-controls input:not([type]) {
+.corporate-portal-controls input:not([type]),
+.corporate-portal-controls textarea {
   min-height: 38px;
   border: 1px solid var(--line);
   border-radius: 9px;
@@ -1390,6 +1391,12 @@ body { background: var(--bg); }
   font: inherit;
   font-size: 0.8rem;
   font-weight: 750;
+}
+.corporate-portal-controls textarea {
+  min-height: 62px;
+  padding-top: 0.55rem;
+  resize: vertical;
+  line-height: 1.35;
 }
 .corporate-portal-controls .checkline {
   display: flex;
@@ -1416,7 +1423,7 @@ body { background: var(--bg); }
   grid-column: span 3;
 }
 .corporate-portal-controls .btn {
-  min-height: 38px;
+  min-height: 62px;
   align-self: end;
   justify-content: center;
 }

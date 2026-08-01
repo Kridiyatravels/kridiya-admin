@@ -13,6 +13,12 @@
   function money(v, c) { return (c || "AED") + " " + Number(v || 0).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
   function bool(v) { return v ? "Yes" : "No"; }
   function num(v) { return Number(v || 0); }
+  function cleanNote(v) {
+    return String(v || "")
+      .replace(/([A-Z0-9])Approved/g, "$1\nApproved")
+      .replace(/\s*\n\s*/g, "\n")
+      .trim();
+  }
   function hasBillingEmail(c) { return !!(c.billing_email || c.accounts_email); }
   function hasAuthorizedContact(c) {
     return (c.contacts || []).some(function (x) { return x.is_authorized_contact; });
@@ -209,7 +215,7 @@
         can_approve_quotes: form.can_approve_quotes.checked,
         can_view_finance: form.can_view_finance.checked,
         can_view_documents: form.can_view_documents.checked,
-        notes: form.notes.value || null
+        notes: cleanNote(form.notes.value) || null
       })
       .eq("id", form.dataset.memberId);
     if (result.error) { toast("Could not update portal access: " + result.error.message); return; }
@@ -277,7 +283,7 @@
     if (!canEdit) {
       return '<article class="corporate-portal-member"><div><b>' + esc(title) + '</b><p>' + esc(subtitle) + '</p><div class="ops-kv">' + renderPermissionChips(member) + '</div></div></article>';
     }
-    return '<form class="corporate-portal-member corporate-portal-form" data-member-id="' + esc(member.id) + '" onsubmit="return false"><div class="corporate-portal-identity"><b>' + esc(title) + '</b><p>' + esc(subtitle) + '</p><small>' + esc(member.user_id) + '</small></div><div class="corporate-portal-controls"><label>ROLE<select name="role">' + roleOptions(member.role) + '</select></label><label>STATUS<select name="status">' + statusOptions(member.status) + '</select></label><label class="checkline"><input type="checkbox" name="can_request"' + (member.can_request ? " checked" : "") + '><span>Requests</span></label><label class="checkline"><input type="checkbox" name="can_approve_quotes"' + (member.can_approve_quotes ? " checked" : "") + '><span>Quote approval</span></label><label class="checkline"><input type="checkbox" name="can_view_finance"' + (member.can_view_finance ? " checked" : "") + '><span>Finance</span></label><label class="checkline"><input type="checkbox" name="can_view_documents"' + (member.can_view_documents ? " checked" : "") + '><span>Documents</span></label><label class="corporate-portal-notes">NOTES<input name="notes" value="' + esc(member.notes || "") + '" placeholder="Internal access note"></label><button class="btn btn-primary" type="submit">Save access</button></div></form>';
+    return '<form class="corporate-portal-member corporate-portal-form" data-member-id="' + esc(member.id) + '" onsubmit="return false"><div class="corporate-portal-identity"><b>' + esc(title) + '</b><p>' + esc(subtitle) + '</p><small>' + esc(member.user_id) + '</small></div><div class="corporate-portal-controls"><label>ROLE<select name="role">' + roleOptions(member.role) + '</select></label><label>STATUS<select name="status">' + statusOptions(member.status) + '</select></label><label class="checkline"><input type="checkbox" name="can_request"' + (member.can_request ? " checked" : "") + '><span>Requests</span></label><label class="checkline"><input type="checkbox" name="can_approve_quotes"' + (member.can_approve_quotes ? " checked" : "") + '><span>Quote approval</span></label><label class="checkline"><input type="checkbox" name="can_view_finance"' + (member.can_view_finance ? " checked" : "") + '><span>Finance</span></label><label class="checkline"><input type="checkbox" name="can_view_documents"' + (member.can_view_documents ? " checked" : "") + '><span>Documents</span></label><label class="corporate-portal-notes">NOTES<textarea name="notes" rows="2" placeholder="Internal access note">' + esc(cleanNote(member.notes)) + '</textarea></label><button class="btn btn-primary" type="submit">Save access</button></div></form>';
   }
 
   function renderPermissionChips(member) {
