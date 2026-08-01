@@ -928,6 +928,130 @@ body { background: var(--bg); }
 #booking-detail-gate[hidden] { display: none; }
 @media (max-width: 720px) { .stat-text { font-size: 0.96rem !important; } }
 .booking-command-card { padding-bottom: 1rem; }
+.portal-intake-card {
+  position: relative;
+  overflow: hidden !important;
+  border-color: color-mix(in oklab, var(--brand) 30%, var(--line));
+  background:
+    radial-gradient(circle at 88% 12%, color-mix(in oklab, var(--gold) 24%, transparent) 0 80px, transparent 82px),
+    linear-gradient(135deg, color-mix(in oklab, var(--brand-soft) 82%, white), var(--surface) 48%);
+}
+
+.portal-intake-card::after {
+  content: "";
+  position: absolute;
+  inset: 18px -28px auto auto;
+  width: 230px;
+  height: 86px;
+  border-top: 1px dashed color-mix(in oklab, var(--brand) 38%, transparent);
+  border-radius: 50%;
+  transform: rotate(-8deg);
+  pointer-events: none;
+}
+
+.portal-intake-head {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+}
+
+.portal-intake-head > div {
+  min-width: 0;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.portal-intake-head span {
+  color: var(--brand-deep);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.portal-intake-head h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(1.35rem, 2vw, 2rem);
+  line-height: 1.08;
+}
+
+.portal-intake-head p {
+  max-width: 760px;
+  margin: 0;
+  color: var(--ink-2);
+  line-height: 1.65;
+}
+
+.portal-intake-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--sp-2);
+  margin-top: var(--sp-4);
+}
+
+.portal-intake-grid > div {
+  min-width: 0;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid color-mix(in oklab, var(--line) 70%, white);
+  border-radius: 10px;
+  background: rgb(255 255 255 / 0.74);
+  box-shadow: var(--staff-shadow-sm);
+}
+
+.portal-intake-grid b {
+  display: block;
+  color: var(--ink);
+  font-size: 0.94rem;
+  overflow-wrap: anywhere;
+}
+
+.portal-intake-grid small {
+  display: block;
+  margin-top: 0.18rem;
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.portal-intake-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+}
+
+.portal-intake-actions span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0.25rem 0.65rem;
+  border: 1px solid color-mix(in oklab, var(--brand) 26%, var(--line));
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--brand-deep);
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+@media (max-width: 820px) {
+  .portal-intake-head { flex-direction: column; }
+  .portal-intake-head .btn { width: 100%; justify-content: center; }
+  .portal-intake-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 520px) {
+  .portal-intake-grid { grid-template-columns: 1fr; }
+}
+
 .booking-command-summary {
   display: flex;
   align-items: center;

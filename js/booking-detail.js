@@ -44,6 +44,7 @@
   function bookingBalance() { return Math.max(0, amountNum(detail.booking.selling_price) - paymentReceivedTotal()); }
   function paymentIsCleared(status) { return ["paid", "received", "payment_received", "completed"].indexOf(String(status || "").toLowerCase()) !== -1; }
   function bookingIsConfirmed(status) { return ["confirmed", "paid", "ticketed", "completed"].indexOf(String(status || "").toLowerCase()) !== -1; }
+  function isPortalBooking() { return String((detail.booking || {}).source || "").toLowerCase() === "portal"; }
   function paymentControlNote() {
     const b = detail.booking;
     if (paymentIsCleared(b.payment_status)) return { text: "Payment control OK. Money is marked as received/paid.", tone: "ok" };
@@ -192,6 +193,7 @@
       ["Gross profit", moneyTile(b.gross_profit, b.currency, detail.can_view_profit), "var(--status-confirmed)"],
       ["Payment", label(b.payment_status), "var(--status-docs)"]
     ].map(function (s) { return '<div class="stat-tile" style="--tile-accent:' + s[2] + '"><div class="num stat-text">' + esc(s[1]) + '</div><div class="label">' + esc(s[0]) + '</div></div>'; }).join("");
+    renderPortalIntake();
     renderBookingCommand();
     renderStatusForm();
     renderCustomer();
@@ -201,6 +203,43 @@
     renderDocuments();
     renderCustomerPayments();
     renderSupplierPayments();
+  }
+
+  function renderPortalIntake() {
+    const shell = document.getElementById("booking-portal-intake");
+    if (!shell) return;
+    const b = detail.booking;
+    if (!isPortalBooking()) {
+      shell.innerHTML = "";
+      return;
+    }
+    const corp = detail.corporate;
+    const contact = detail.corporate_contact;
+    const requester = contact ? contact.full_name : (b.customer_name || "Company contact");
+    const company = corp ? corp.company_name : (b.corporate_company_name || "Corporate company");
+    const approval = b.approval_person || (contact ? contact.full_name : "");
+    const required = [];
+    if (!approval) required.push("Confirm approver");
+    if (!b.route_or_destination) required.push("Clarify route");
+    if (!b.selling_price) required.push("Prepare quote");
+    if (!paymentIsCleared(b.payment_status)) required.push("Control payment/LPO");
+    if (!required.length) required.push("Continue fulfilment");
+    shell.innerHTML =
+      '<div class="account-main portal-intake-card">' +
+        '<div class="portal-intake-head">' +
+          '<div><span>Corporate portal intake</span><h2>' + esc(company) + '</h2><p>Request submitted by ' + esc(requester) + '. Treat this as a company-visible job: quote clearly, keep internal cost hidden, release only approved documents.</p></div>' +
+          '<a class="btn btn-primary" href="#booking-task-panel">Create follow-up</a>' +
+        '</div>' +
+        '<div class="portal-intake-grid">' +
+          '<div><b>' + esc(label(b.service_type)) + '</b><small>Service requested</small></div>' +
+          '<div><b>' + esc(b.route_or_destination || "Not specified") + '</b><small>Route / destination</small></div>' +
+          '<div><b>' + esc(dateText(b.travel_start)) + '</b><small>Start date</small></div>' +
+          '<div><b>' + esc(label(b.status)) + '</b><small>Current status</small></div>' +
+        '</div>' +
+        '<div class="portal-intake-actions">' + required.map(function (item) {
+          return '<span>' + esc(item) + '</span>';
+        }).join("") + '</div>' +
+      '</div>';
   }
 
   function renderBookingCommand() {
