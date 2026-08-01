@@ -696,13 +696,35 @@
     const balance = bookingBalance();
     const control = paymentControlNote();
     const controlHtml = '<div class="payment-control ' + esc(control.tone) + '"><div><b>' + esc(control.text) + '</b><p>Sale: ' + esc(money(b.selling_price, b.currency)) + ' / Received: ' + esc(money(received, b.currency)) + ' / Balance: ' + esc(money(balance, b.currency)) + '</p></div></div>';
+    const controlActions = detail.can_edit_bookings ? '<div class="payment-control-actions"><button class="btn btn-outline" type="button" data-payment-control="request_sent">Mark payment request sent</button><button class="btn btn-outline" type="button" data-payment-control="proof_received">Mark LPO/proof received</button><button class="btn btn-primary" type="button" data-payment-control="paid">Mark payment received</button></div>' : '';
     const request = detail.can_edit_payments ? '<form id="payment-request-form" class="form-grid payment-mini-form payment-request-form" onsubmit="return false"><div class="field-row"><div class="field col-4"><label>REQUEST AMOUNT</label><input name="amount_requested" type="number" min="0" step="0.01" value="' + esc(balance || b.selling_price || "") + '"></div><div class="field col-8"><label>PAYMENT REQUEST NOTE</label><input name="request_notes" placeholder="Bank transfer, payment link, due date, approval note"></div></div><button class="btn btn-outline" type="submit">Generate payment request</button></form>' : '';
     const form = detail.can_edit_payments ? '<form id="customer-payment-form" class="form-grid payment-mini-form" onsubmit="return false"><div class="field-row"><div class="field col-4"><label>AMOUNT</label><input name="amount" type="number" min="0" step="0.01" required></div><div class="field col-4"><label>METHOD</label><select name="method"><option value="bank_transfer">Bank transfer</option><option value="cash">Cash</option><option value="payment_link">Payment link</option><option value="stripe">Stripe</option><option value="tabby">Tabby</option><option value="tamara">Tamara</option><option value="paypal">PayPal</option><option value="other">Other</option></select></div><div class="field col-4"><label>STATUS</label><select name="status"><option value="received">Received</option><option value="proof_received">Proof received</option><option value="pending">Pending</option></select></div><div class="field col-6"><label>PAYMENT LINK / REF</label><input name="payment_link" placeholder="Stripe link, bank ref, receipt ref"></div><div class="field col-6"><label>NOTES</label><input name="notes" placeholder="Receipt note, transfer note, approval note"></div></div><button class="btn btn-primary" type="submit">Record customer payment</button></form>' : '<p class="form-note">Finance permission required to record payments.</p>';
-    document.getElementById("customer-payment-panel").innerHTML = controlHtml + request + form + renderPaymentRows(rows, true);
+    document.getElementById("customer-payment-panel").innerHTML = controlHtml + controlActions + request + form + renderPaymentRows(rows, true);
+    document.querySelectorAll("[data-payment-control]").forEach(function (btn) {
+      btn.addEventListener("click", function () { updatePaymentControlStatus(btn.dataset.paymentControl); });
+    });
     const f = document.getElementById("customer-payment-form");
     if (f) f.addEventListener("submit", recordCustomerPayment);
     const requestForm = document.getElementById("payment-request-form");
     if (requestForm) requestForm.addEventListener("submit", generatePaymentRequest);
+  }
+
+  async function updatePaymentControlStatus(paymentStatus) {
+    const b = detail.booking;
+    const nextBookingStatus = paymentStatus === "paid" && ["enquiry", "quote_sent", "payment_pending"].indexOf(String(b.status || "")) !== -1
+      ? "confirmed"
+      : (String(b.status || "") === "enquiry" || String(b.status || "") === "quote_sent" ? "payment_pending" : b.status);
+    const result = await sb.rpc("update_operations_booking_status", {
+      p_booking_id: bookingId,
+      p_status: nextBookingStatus,
+      p_payment_status: paymentStatus,
+      p_document_status: b.document_status,
+      p_supplier_reference: b.supplier_reference || null,
+      p_staff_notes: b.staff_notes || null
+    });
+    if (result.error) { toast("Could not update payment control: " + result.error.message); return; }
+    toast("Payment control updated.");
+    await loadDetail();
   }
   function renderSupplierPayments() {
     const rows = detail.supplier_payments || [];

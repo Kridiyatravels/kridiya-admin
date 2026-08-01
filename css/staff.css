@@ -1349,6 +1349,16 @@ body { background: var(--bg); }
 .payment-control.ok { border-color: oklch(0.74 0.12 145); background: oklch(0.96 0.04 145); }
 .payment-control.warn { border-color: oklch(0.82 0.13 78); background: oklch(0.97 0.05 82); }
 .payment-control.risk { border-color: oklch(0.7 0.18 30); background: oklch(0.96 0.05 35); }
+.payment-control-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin: -0.25rem 0 1rem;
+}
+.payment-control-actions .btn {
+  justify-content: center;
+  min-height: 42px;
+}
 .payment-request-form { border-bottom: 1px solid var(--line); padding-bottom: 1rem; }
 .supplier-control {
   border: 1px solid var(--line); border-radius: var(--staff-radius); padding: 0.9rem 1rem;
@@ -1375,6 +1385,7 @@ body { background: var(--bg); }
 @media (max-width: 820px) {
   .supplier-control-head { flex-direction: column; }
   .supplier-control-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .payment-control-actions { grid-template-columns: 1fr; }
 }
 @media (max-width: 460px) { .supplier-control-grid { grid-template-columns: 1fr; } }
 /* ---------- Template library ---------- */
