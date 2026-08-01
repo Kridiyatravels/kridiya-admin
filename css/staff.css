@@ -4776,3 +4776,48 @@ table tbody tr:hover {
   .corporate-desk-job { grid-template-columns: 1fr; }
   .corporate-desk-job .btn { width: 100%; }
 }
+
+/* Corporate command center polish */
+.corporate-desk-card .account-section-head {
+  align-items: flex-start;
+  gap: 1.25rem;
+}
+.corporate-desk-card .account-section-head .btn {
+  flex: 0 0 auto;
+}
+.corporate-desk-metrics {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.corporate-desk-metric {
+  min-height: 92px;
+  display: grid;
+  align-content: center;
+}
+.corporate-desk-queue {
+  padding: 0.8rem 0.9rem;
+}
+.corporate-desk-queue-head {
+  align-items: center;
+}
+.corporate-desk-job {
+  min-height: 118px;
+  padding: 1rem;
+}
+.corporate-desk-job .ops-kv {
+  row-gap: 0.4rem;
+}
+.corporate-desk-job .btn {
+  min-width: 104px;
+  justify-content: center;
+}
+@media (min-width: 1240px) {
+  .corporate-desk-metrics {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+  .corporate-desk-metric {
+    min-height: 112px;
+  }
+}
+@media (max-width: 900px) {
+  .corporate-desk-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
