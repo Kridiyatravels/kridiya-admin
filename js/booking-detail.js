@@ -46,7 +46,7 @@
   function paymentIsCleared(status) { return ["paid", "received", "payment_received", "completed"].indexOf(String(status || "").toLowerCase()) !== -1; }
   function bookingIsConfirmed(status) { return ["confirmed", "paid", "ticketed", "completed"].indexOf(String(status || "").toLowerCase()) !== -1; }
   function isPortalBooking() {
-    const source = String((detail.booking || {}).source || "").toLowerCase();
+    const source = String((detail.booking || {}).source || (quoteContext || {}).source || "").toLowerCase();
     return source === "portal" || source === "corporate_portal";
   }
   function paymentControlNote() {
@@ -365,7 +365,20 @@
   function renderCustomer() {
     const c = detail.customer;
     const corp = detail.corporate;
-    document.getElementById("booking-customer-box").innerHTML = c ? '<div class="ops-list"><div class="ops-row"><div class="ops-row-main"><b>' + esc(c.full_name) + '</b><p>' + esc(c.email || "No email") + ' / ' + esc(c.phone || c.whatsapp || "No phone") + '</p><div class="ops-kv"><span class="ops-chip">Source: ' + esc(label(c.source)) + '</span>' + (corp ? '<span class="ops-chip">Corporate: ' + esc(corp.company_name) + '</span>' : '') + '</div></div></div></div>' : '<p class="form-note">No customer profile linked yet.</p>';
+    const contact = detail.corporate_contact;
+    if (c) {
+      document.getElementById("booking-customer-box").innerHTML = '<div class="ops-list"><div class="ops-row"><div class="ops-row-main"><b>' + esc(c.full_name) + '</b><p>' + esc(c.email || "No email") + ' / ' + esc(c.phone || c.whatsapp || "No phone") + '</p><div class="ops-kv"><span class="ops-chip">Source: ' + esc(label(c.source)) + '</span>' + (corp ? '<span class="ops-chip">Corporate: ' + esc(corp.company_name) + '</span>' : '') + '</div></div></div></div>';
+      return;
+    }
+    if (contact) {
+      document.getElementById("booking-customer-box").innerHTML =
+        '<div class="ops-list"><div class="ops-row"><div class="ops-row-main"><b>' + esc(contact.full_name || "Corporate contact") + '</b>' +
+        '<p>' + esc(contact.email || "No email") + ' / ' + esc(contact.phone || contact.whatsapp || "No phone") + '</p>' +
+        '<div class="ops-kv"><span class="ops-chip">Corporate contact</span>' + (corp ? '<span class="ops-chip">Company: ' + esc(corp.company_name) + '</span>' : '') +
+        (contact.is_authorized_contact ? '<span class="ops-chip">Authorized</span>' : '') + (contact.is_accounts_contact ? '<span class="ops-chip">Accounts</span>' : '') + '</div></div></div></div>';
+      return;
+    }
+    document.getElementById("booking-customer-box").innerHTML = '<p class="form-note">No customer or corporate contact linked yet.</p>';
   }
 
 
