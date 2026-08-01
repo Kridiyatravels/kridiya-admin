@@ -3,6 +3,7 @@
   if (document.body.dataset.page !== "corporate") return;
   let sb = null;
   let rows = [];
+  let deskBookings = [];
   let canEdit = false;
   let activeSearch = "";
   let activeStatus = "";
@@ -167,9 +168,104 @@
     if (result.error) { toast("Could not load companies: " + result.error.message); return; }
     rows = result.data || [];
     await loadPortalMembers();
+    await loadCorporateDesk();
     renderStats();
+    renderCorporateDesk();
     renderCorporateControl();
     renderRows();
+  }
+
+
+  async function loadCorporateDesk() {
+    const result = await sb.rpc("list_operations_bookings", { limit_count: 250 });
+    if (result.error) {
+      deskBookings = [];
+      const panel = document.getElementById("corporate-desk-panel");
+      if (panel) panel.innerHTML = '<p class="blocked-note">Could not load corporate desk: ' + esc(result.error.message) + '</p>';
+      return;
+    }
+    deskBookings = (result.data || []).filter(isCorporateBooking).sort(function (a, b) {
+      return deskRank(a) - deskRank(b) || bookingTime(b) - bookingTime(a);
+    });
+  }
+
+  function isCorporateBooking(b) {
+    const source = String(b.source || "").toLowerCase();
+    return b.booking_kind === "corporate" || !!b.corporate_company_name || !!b.corporate_account_id || source === "portal" || source === "corporate_portal";
+  }
+
+  function isClosedBooking(b) {
+    return /cancel|complete|closed|archived/.test(String(b.status || "").toLowerCase());
+  }
+
+  function paymentPending(b) {
+    return !/paid|received|verified|completed/.test(String(b.payment_status || "").toLowerCase());
+  }
+
+  function docsPending(b) {
+    return !/ready|released|sent|generated|archived|completed/.test(String(b.document_status || "").toLowerCase());
+  }
+
+  function isPortalRequest(b) {
+    const source = String(b.source || "").toLowerCase();
+    return source === "portal" || source === "corporate_portal";
+  }
+
+  function bookingTime(b) {
+    const t = new Date(b.created_at || b.travel_start || 0).getTime();
+    return isNaN(t) ? 0 : t;
+  }
+
+  function deskRank(b) {
+    if (isClosedBooking(b)) return 9;
+    if (!num(b.selling_price)) return 0;
+    if (paymentPending(b)) return 1;
+    if (!b.supplier_name && !b.supplier_reference) return 2;
+    if (docsPending(b)) return 3;
+    return 4;
+  }
+
+  function deskAction(b) {
+    if (!num(b.selling_price)) return { label: "Prepare quote", tone: "warn" };
+    if (paymentPending(b)) return { label: "Collect payment/LPO", tone: "risk" };
+    if (!b.supplier_name && !b.supplier_reference) return { label: "Add supplier control", tone: "risk" };
+    if (docsPending(b)) return { label: "Prepare documents", tone: "warn" };
+    return { label: "Monitor", tone: "ok" };
+  }
+
+  function renderCorporateDesk() {
+    const panel = document.getElementById("corporate-desk-panel");
+    if (!panel) return;
+    const active = deskBookings.filter(function (b) { return !isClosedBooking(b); });
+    const portal = active.filter(isPortalRequest);
+    const quoted = active.filter(function (b) { return num(b.selling_price) > 0; });
+    const payments = active.filter(paymentPending);
+    const docs = active.filter(docsPending);
+    const value = active.reduce(function (sum, b) { return sum + num(b.selling_price); }, 0);
+    const queue = active.slice(0, 5);
+    panel.innerHTML =
+      '<div class="corporate-desk-metrics">' +
+        renderDeskMetric("Active jobs", active.length, "Live corporate work") +
+        renderDeskMetric("Portal requests", portal.length, "Company submitted") +
+        renderDeskMetric("Quotes released", quoted.length, "Visible to clients") +
+        renderDeskMetric("Payment handoff", payments.length, "Needs LPO or receipt") +
+        renderDeskMetric("Document risk", docs.length, "Not ready for handover") +
+        renderDeskMetric("Pipeline value", money(value, "AED"), "Customer-visible sales") +
+      '</div>' +
+      '<div class="corporate-desk-queue"><div class="corporate-desk-queue-head"><div><h3>Priority queue</h3><p>Work from the first row down: quote, collect payment, control supplier, then release documents.</p></div><span>' + esc(queue.length) + ' shown</span></div>' +
+      (queue.length ? queue.map(renderDeskBooking).join("") : '<div class="corporate-portal-empty"><b>No active corporate queue.</b><p>New portal requests and corporate bookings will appear here automatically.</p></div>') +
+      '</div>';
+  }
+
+  function renderDeskMetric(title, value, note) {
+    return '<div class="corporate-desk-metric"><b>' + esc(value) + '</b><span>' + esc(title) + '</span><small>' + esc(note) + '</small></div>';
+  }
+
+  function renderDeskBooking(b) {
+    const action = deskAction(b);
+    const company = b.corporate_company_name || b.customer_name || "Corporate client";
+    const travel = [b.travel_start, b.travel_end].filter(Boolean).join(" - ") || "Date not set";
+    return '<article class="corporate-desk-job corporate-desk-' + esc(action.tone) + '"><div><div class="corporate-desk-ref"><span>' + esc(b.booking_reference || "No reference") + '</span><em>' + esc(action.label) + '</em></div><h3>' + esc(b.title || "Corporate booking") + '</h3><p>' + esc(company) + ' / ' + esc(b.route_or_destination || "No route") + '</p><div class="ops-kv"><span class="ops-chip">' + esc(label(b.service_type)) + '</span><span class="ops-chip">Travel: ' + esc(travel) + '</span><span class="ops-chip">Payment: ' + esc(label(b.payment_status)) + '</span><span class="ops-chip">Docs: ' + esc(label(b.document_status)) + '</span><span class="ops-chip">Value: ' + esc(money(b.selling_price, b.currency)) + '</span></div></div><a class="btn btn-primary" href="booking-detail.html?id=' + esc(b.id) + '">Open job</a></article>';
   }
 
   async function loadPortalMembers() {

@@ -4653,3 +4653,126 @@ table tbody tr:hover {
     width: 100%;
   }
 }
+
+/* Corporate desk command center */
+.corporate-desk-card {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, color-mix(in oklab, var(--surface) 92%, var(--brand-soft)) 0%, var(--surface) 54%),
+    radial-gradient(circle at 88% 12%, color-mix(in oklab, var(--gold) 22%, transparent) 0 130px, transparent 132px);
+}
+.corporate-desk-card::after {
+  content: "";
+  position: absolute;
+  right: 3.5rem;
+  top: 2.6rem;
+  width: 180px;
+  height: 90px;
+  pointer-events: none;
+  opacity: 0.28;
+  background: repeating-linear-gradient(90deg, transparent 0 26px, color-mix(in oklab, var(--gold-deep) 50%, transparent) 27px 31px);
+  mask: linear-gradient(to top, #000 0 68%, transparent 69%);
+}
+.corporate-desk-card > * { position: relative; z-index: 1; }
+.corporate-desk-metrics {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+.corporate-desk-metric {
+  min-height: 104px;
+  border: 1px solid color-mix(in oklab, var(--line) 78%, var(--gold-deep));
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--surface) 88%, var(--brand-soft));
+  padding: 0.85rem;
+  box-shadow: var(--staff-shadow-sm);
+}
+.corporate-desk-metric b {
+  display: block;
+  color: var(--gold-deep);
+  font-size: clamp(1.35rem, 2vw, 1.8rem);
+  line-height: 1;
+  font-weight: 850;
+}
+.corporate-desk-metric span {
+  display: block;
+  margin-top: 0.55rem;
+  color: var(--ink);
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+.corporate-desk-metric small {
+  display: block;
+  margin-top: 0.28rem;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.corporate-desk-queue {
+  margin-top: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: color-mix(in oklab, var(--surface) 92%, var(--surface-tint));
+  padding: 0.9rem;
+}
+.corporate-desk-queue-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--line);
+}
+.corporate-desk-queue-head h3 { margin: 0; font-size: 1.05rem; }
+.corporate-desk-queue-head p { margin: 0.2rem 0 0; color: var(--text-muted); font-weight: 600; }
+.corporate-desk-queue-head span { color: var(--gold-deep); font-weight: 800; }
+.corporate-desk-job {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+  margin-top: 0.75rem;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--gold-deep);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 0.9rem;
+}
+.corporate-desk-job h3 { margin: 0.25rem 0; font-size: 1rem; }
+.corporate-desk-job p { margin: 0 0 0.55rem; color: var(--ink-2); font-weight: 650; }
+.corporate-desk-ref {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.corporate-desk-ref span {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.corporate-desk-ref em {
+  border-radius: 999px;
+  padding: 0.22rem 0.55rem;
+  color: var(--brand-deep);
+  background: var(--brand-soft);
+  border: 1px solid color-mix(in oklab, var(--brand) 24%, var(--line));
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 850;
+}
+.corporate-desk-risk { border-left-color: var(--status-payment); }
+.corporate-desk-risk .corporate-desk-ref em { color: var(--status-payment); background: var(--status-payment-bg); }
+.corporate-desk-ok { border-left-color: var(--status-quoted); }
+@media (max-width: 1100px) {
+  .corporate-desk-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .corporate-desk-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .corporate-desk-job { grid-template-columns: 1fr; }
+  .corporate-desk-job .btn { width: 100%; }
+}
