@@ -345,9 +345,36 @@
     return rows.find(function (row) { return String(row.id) === String(id); });
   }
 
+  function companyBookings(c) {
+    const name = String(c.company_name || "").toLowerCase();
+    return deskBookings.filter(function (b) {
+      return String(b.corporate_account_id || "") === String(c.id) ||
+        (!!name && String(b.corporate_company_name || "").toLowerCase() === name);
+    }).sort(function (a, b) { return bookingTime(b) - bookingTime(a); });
+  }
+
+  function visibleBookingValue(bookings) {
+    return bookings.reduce(function (sum, b) { return sum + num(b.selling_price); }, 0);
+  }
+
+  function statementBookingLine(b) {
+    const travel = [b.travel_start, b.travel_end].filter(Boolean).join(" to ") || "Date not set";
+    return [
+      b.booking_reference || "No reference",
+      b.title || "Corporate booking",
+      label(b.service_type),
+      b.route_or_destination || "Route not set",
+      travel,
+      label(b.payment_status),
+      label(b.document_status),
+      money(b.selling_price, b.currency)
+    ].join(" | ");
+  }
+
   function companyStatementText(c) {
     const now = new Date();
     const month = now.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+    const bookings = companyBookings(c);
     return [
       "Kridiya Corporate Monthly Statement - " + month,
       "Company: " + (c.company_name || "Corporate account"),
@@ -355,10 +382,14 @@
       "Account status: " + label(c.status),
       "Payment terms: " + label(c.payment_terms),
       "LPO required: " + bool(c.lpo_required),
-      "Visible bookings: " + (c.booking_count || 0),
-      "Customer-visible value: " + money(c.booking_value, "AED"),
+      "Visible bookings: " + bookings.length,
+      "Customer-visible value: " + money(visibleBookingValue(bookings) || c.booking_value, "AED"),
       "Portal users: " + ((c.portal_members || []).length),
       "Contacts: " + ((c.contacts || []).map(function (x) { return [x.full_name, x.email, x.phone || x.whatsapp].filter(Boolean).join(" / "); }).join("; ") || "Not set"),
+      "",
+      "Booking rows:",
+      bookings.length ? bookings.map(statementBookingLine).join("\n") : "No customer-visible booking rows found yet.",
+      "",
       "Note: Supplier cost, margin, and internal staff notes remain inside Kridiya admin."
     ].join("\n");
   }
@@ -366,8 +397,13 @@
   function printCompanyStatement(c) {
     const w = window.open("", "_blank", "noopener,noreferrer");
     if (!w) { toast("Popup blocked. Use copy statement summary instead."); return; }
-    const lines = companyStatementText(c).split("\n");
-    w.document.write('<!doctype html><html><head><title>Corporate Statement - ' + esc(c.company_name) + '</title><style>body{font-family:Arial,sans-serif;margin:36px;color:#241b13}h1{font-size:24px;margin:0 0 18px}.meta{border:1px solid #ead8bd;border-radius:10px;padding:18px;background:#fffaf2}.row{display:flex;justify-content:space-between;gap:24px;border-bottom:1px solid #ead8bd;padding:10px 0}.row:last-child{border-bottom:0}.k{font-weight:700}.note{margin-top:18px;color:#6f6254;font-size:13px}</style></head><body><h1>' + esc(lines.shift()) + '</h1><div class="meta">' + lines.slice(0, -1).map(function (line) { const i = line.indexOf(": "); return '<div class="row"><span class="k">' + esc(i > -1 ? line.slice(0, i) : line) + '</span><span>' + esc(i > -1 ? line.slice(i + 2) : "") + '</span></div>'; }).join("") + '</div><p class="note">' + esc(lines[lines.length - 1] || "") + '</p></body></html>');
+    const bookings = companyBookings(c);
+    const month = new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+    const rowsHtml = bookings.length ? bookings.map(function (b) {
+      const travel = [b.travel_start, b.travel_end].filter(Boolean).join(" to ") || "Date not set";
+      return '<tr><td>' + esc(b.booking_reference || "-") + '</td><td>' + esc(b.title || "Corporate booking") + '</td><td>' + esc(label(b.service_type)) + '</td><td>' + esc(b.route_or_destination || "-") + '</td><td>' + esc(travel) + '</td><td>' + esc(label(b.payment_status)) + '</td><td>' + esc(label(b.document_status)) + '</td><td>' + esc(money(b.selling_price, b.currency)) + '</td></tr>';
+    }).join("") : '<tr><td colspan="8">No customer-visible booking rows found yet.</td></tr>';
+    w.document.write('<!doctype html><html><head><title>Corporate Statement - ' + esc(c.company_name) + '</title><style>body{font-family:Arial,sans-serif;margin:32px;color:#241b13}h1{font-size:24px;margin:0}.sub{color:#6f6254;margin:6px 0 22px}.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}.summary div{border:1px solid #ead8bd;border-radius:10px;padding:12px;background:#fffaf2}.summary span{display:block;color:#6f6254;font-size:11px;text-transform:uppercase;font-weight:700}.summary b{display:block;margin-top:5px;font-size:15px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border-bottom:1px solid #ead8bd;text-align:left;padding:9px;vertical-align:top}th{background:#fffaf2;font-size:11px;text-transform:uppercase}.note{margin-top:18px;color:#6f6254;font-size:12px}</style></head><body><h1>Kridiya Corporate Monthly Statement</h1><p class="sub">' + esc(month) + ' / ' + esc(c.company_name || "Corporate account") + '</p><div class="summary"><div><span>Customer value</span><b>' + esc(money(visibleBookingValue(bookings) || c.booking_value, "AED")) + '</b></div><div><span>Bookings</span><b>' + esc(bookings.length) + '</b></div><div><span>Payment terms</span><b>' + esc(label(c.payment_terms)) + '</b></div><div><span>LPO required</span><b>' + esc(bool(c.lpo_required)) + '</b></div></div><table><thead><tr><th>Reference</th><th>Booking</th><th>Service</th><th>Route</th><th>Travel window</th><th>Payment</th><th>Documents</th><th>Amount</th></tr></thead><tbody>' + rowsHtml + '</tbody></table><p class="note">Supplier cost, margin, and internal staff notes remain inside Kridiya admin.</p></body></html>');
     w.document.close();
     w.focus();
     w.print();
@@ -446,7 +482,13 @@
 
   function renderStatementPanel(c, portalMembers) {
     const month = new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
-    return '<section class="corporate-statement-panel"><div class="account-section-head"><div><h3>Monthly statement handoff</h3><p>Prepare a customer-safe account summary for ' + esc(month) + '. Supplier cost, profit, and internal notes stay hidden.</p></div><div class="corporate-statement-actions"><button class="btn btn-outline btn-sm" type="button" data-copy-company-statement="' + esc(c.id) + '">Copy summary</button><button class="btn btn-outline btn-sm" type="button" data-print-company-statement="' + esc(c.id) + '">Print statement</button><a class="btn btn-outline btn-sm" href="bookings.html">Open bookings</a></div></div><div class="corporate-statement-grid"><div><span>Customer value</span><b>' + esc(money(c.booking_value, "AED")) + '</b></div><div><span>Visible bookings</span><b>' + esc(c.booking_count || 0) + '</b></div><div><span>Payment terms</span><b>' + esc(label(c.payment_terms)) + '</b></div><div><span>LPO required</span><b>' + esc(bool(c.lpo_required)) + '</b></div><div><span>Billing email</span><b>' + esc(c.billing_email || c.accounts_email || "Not set") + '</b></div><div><span>Portal users</span><b>' + esc(portalMembers.length) + '</b></div></div></section>';
+    const bookings = companyBookings(c);
+    const value = visibleBookingValue(bookings) || c.booking_value;
+    const bookingRows = bookings.length ? bookings.slice(0, 4).map(function (b) {
+      const travel = [b.travel_start, b.travel_end].filter(Boolean).join(" to ") || "Date not set";
+      return '<div class="corporate-statement-row"><b>' + esc(b.booking_reference || "No ref") + '</b><span>' + esc(b.title || "Corporate booking") + '</span><em>' + esc(label(b.payment_status)) + ' / ' + esc(label(b.document_status)) + '</em><strong>' + esc(money(b.selling_price, b.currency)) + '</strong><small>' + esc((b.route_or_destination || "Route not set") + " / " + travel) + '</small></div>';
+    }).join("") : '<div class="corporate-statement-empty">No booking rows found for this company yet.</div>';
+    return '<section class="corporate-statement-panel"><div class="account-section-head"><div><h3>Monthly statement handoff</h3><p>Prepare a customer-safe account summary for ' + esc(month) + '. Supplier cost, profit, and internal notes stay hidden.</p></div><div class="corporate-statement-actions"><button class="btn btn-outline btn-sm" type="button" data-copy-company-statement="' + esc(c.id) + '">Copy summary</button><button class="btn btn-outline btn-sm" type="button" data-print-company-statement="' + esc(c.id) + '">Print statement</button><a class="btn btn-outline btn-sm" href="bookings.html">Open bookings</a></div></div><div class="corporate-statement-grid"><div><span>Customer value</span><b>' + esc(money(value, "AED")) + '</b></div><div><span>Statement rows</span><b>' + esc(bookings.length) + '</b></div><div><span>Payment terms</span><b>' + esc(label(c.payment_terms)) + '</b></div><div><span>LPO required</span><b>' + esc(bool(c.lpo_required)) + '</b></div><div><span>Billing email</span><b>' + esc(c.billing_email || c.accounts_email || "Not set") + '</b></div><div><span>Portal users</span><b>' + esc(portalMembers.length) + '</b></div></div><div class="corporate-statement-rows">' + bookingRows + '</div></section>';
   }
 
   function renderPortalAccess(c, portalMembers) {
