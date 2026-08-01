@@ -1348,6 +1348,31 @@ body { background: var(--bg); }
   box-shadow: var(--staff-shadow-sm);
 }
 .corporate-portal-member + .corporate-portal-member { margin-top: 0.7rem; }
+.corporate-portal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.42rem;
+  margin-top: 0.75rem;
+}
+.corporate-portal-actions .btn {
+  min-height: 34px;
+  padding: 0.45rem 0.62rem;
+  font-size: 0.76rem;
+}
+.corporate-portal-actions .btn:disabled {
+  opacity: 0.54;
+  cursor: not-allowed;
+}
+.corporate-portal-hint {
+  margin: 0.65rem 0 0;
+  border-top: 1px dashed var(--line);
+  padding-top: 0.55rem;
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
 .corporate-portal-identity b {
   display: block;
   color: var(--ink);

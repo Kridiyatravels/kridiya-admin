@@ -8,6 +8,7 @@
   let activeSearch = "";
   let activeStatus = "";
   let activeHealth = "";
+  const CORPORATE_PORTAL_LOGIN_URL = "https://corporate.kridiyatravel.com/login.html?next=corporate-account.html";
 
   function esc(v) { return KridiyaAuth.escapeHTML(String(v == null ? "" : v)); }
   function label(v) { return String(v || "").replace(/_/g, " ").replace(/\b\w/g, function (c) { return c.toUpperCase(); }); }
@@ -21,6 +22,12 @@
       .trim();
   }
   function hasBillingEmail(c) { return !!(c.billing_email || c.accounts_email); }
+  function phoneDigits(v) { return String(v || "").replace(/\D/g, ""); }
+  function portalAccessMessage(member) {
+    const name = member.contact_name || "there";
+    const username = member.contact_email || "the email registered with Kridiya";
+    return "Hello " + name + ", your Kridiya Corporate Portal access is active. Login here: " + CORPORATE_PORTAL_LOGIN_URL + " Username: " + username + ". Please use the password issued separately by Kridiya. Do not share this login with unauthorized users.";
+  }
   function hasAuthorizedContact(c) {
     return (c.contacts || []).some(function (x) { return x.is_authorized_contact; });
   }
@@ -98,6 +105,7 @@
       if (event.target.closest(".corporate-contact-form")) return saveContact(event);
       if (event.target.closest(".corporate-portal-form")) return savePortalMember(event);
     });
+    document.getElementById("corporate-list").addEventListener("click", handleCorporateListClick);
     document.getElementById("corporate-search").addEventListener("input", function (event) {
       activeSearch = event.target.value.trim().toLowerCase();
       renderRows();
@@ -298,6 +306,21 @@
     });
   }
 
+  async function handleCorporateListClick(event) {
+    const copyBtn = event.target.closest("[data-copy-portal-login]");
+    if (!copyBtn) return;
+    event.preventDefault();
+    const text = copyBtn.dataset.copyPortalLogin || CORPORATE_PORTAL_LOGIN_URL;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { toast("Corporate portal login link copied."); },
+        function () { toast("Could not copy automatically."); }
+      );
+    } else {
+      toast("Copy not supported on this browser.");
+    }
+  }
+
   async function savePortalMember(event) {
     const form = event.target.closest(".corporate-portal-form");
     if (!form) return;
@@ -379,7 +402,13 @@
     if (!canEdit) {
       return '<article class="corporate-portal-member"><div><b>' + esc(title) + '</b><p>' + esc(subtitle) + '</p><div class="ops-kv">' + renderPermissionChips(member) + '</div></div></article>';
     }
-    return '<form class="corporate-portal-member corporate-portal-form" data-member-id="' + esc(member.id) + '" onsubmit="return false"><div class="corporate-portal-identity"><b>' + esc(title) + '</b><p>' + esc(subtitle) + '</p><small>' + esc(member.user_id) + '</small></div><div class="corporate-portal-controls"><label>ROLE<select name="role">' + roleOptions(member.role) + '</select></label><label>STATUS<select name="status">' + statusOptions(member.status) + '</select></label><label class="checkline"><input type="checkbox" name="can_request"' + (member.can_request ? " checked" : "") + '><span>Requests</span></label><label class="checkline"><input type="checkbox" name="can_approve_quotes"' + (member.can_approve_quotes ? " checked" : "") + '><span>Quote approval</span></label><label class="checkline"><input type="checkbox" name="can_view_finance"' + (member.can_view_finance ? " checked" : "") + '><span>Finance</span></label><label class="checkline"><input type="checkbox" name="can_view_documents"' + (member.can_view_documents ? " checked" : "") + '><span>Documents</span></label><label class="corporate-portal-notes">NOTES<textarea name="notes" rows="2" placeholder="Internal access note">' + esc(cleanNote(member.notes)) + '</textarea></label><button class="btn btn-primary" type="submit">Save access</button></div></form>';
+    const message = portalAccessMessage(member);
+    const phone = phoneDigits(member.contact_phone);
+    const email = member.contact_email || "";
+    const whatsappHref = phone ? "https://wa.me/" + phone + "?text=" + encodeURIComponent(message) : "";
+    const mailHref = email ? "mailto:" + encodeURIComponent(email) + "?subject=" + encodeURIComponent("Kridiya Corporate Portal Access") + "&body=" + encodeURIComponent(message) : "";
+    const handoff = '<div class="corporate-portal-actions"><a class="btn btn-outline btn-sm" href="' + esc(CORPORATE_PORTAL_LOGIN_URL) + '" target="_blank" rel="noopener">Open portal</a><button class="btn btn-outline btn-sm" type="button" data-copy-portal-login="' + esc(CORPORATE_PORTAL_LOGIN_URL) + '">Copy login link</button>' + (whatsappHref ? '<a class="btn btn-outline btn-sm" href="' + esc(whatsappHref) + '" target="_blank" rel="noopener">WhatsApp access</a>' : '<button class="btn btn-outline btn-sm" type="button" disabled>No WhatsApp</button>') + (mailHref ? '<a class="btn btn-outline btn-sm" href="' + esc(mailHref) + '">Email access</a>' : '<button class="btn btn-outline btn-sm" type="button" disabled>No email</button>') + '</div><p class="corporate-portal-hint">Send the login link and username here. Share or reset the password separately from Supabase Auth.</p>';
+    return '<form class="corporate-portal-member corporate-portal-form" data-member-id="' + esc(member.id) + '" onsubmit="return false"><div class="corporate-portal-identity"><b>' + esc(title) + '</b><p>' + esc(subtitle) + '</p><small>' + esc(member.user_id) + '</small>' + handoff + '</div><div class="corporate-portal-controls"><label>ROLE<select name="role">' + roleOptions(member.role) + '</select></label><label>STATUS<select name="status">' + statusOptions(member.status) + '</select></label><label class="checkline"><input type="checkbox" name="can_request"' + (member.can_request ? " checked" : "") + '><span>Requests</span></label><label class="checkline"><input type="checkbox" name="can_approve_quotes"' + (member.can_approve_quotes ? " checked" : "") + '><span>Quote approval</span></label><label class="checkline"><input type="checkbox" name="can_view_finance"' + (member.can_view_finance ? " checked" : "") + '><span>Finance</span></label><label class="checkline"><input type="checkbox" name="can_view_documents"' + (member.can_view_documents ? " checked" : "") + '><span>Documents</span></label><label class="corporate-portal-notes">NOTES<textarea name="notes" rows="2" placeholder="Internal access note">' + esc(cleanNote(member.notes)) + '</textarea></label><button class="btn btn-primary" type="submit">Save access</button></div></form>';
   }
 
   function renderPermissionChips(member) {
