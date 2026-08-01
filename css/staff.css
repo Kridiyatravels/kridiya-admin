@@ -4846,3 +4846,45 @@ table tbody tr:hover {
 @media (max-width: 900px) {
   .corporate-desk-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+.corporate-statement-panel {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid color-mix(in oklab, var(--gold-deep) 34%, var(--line));
+  border-radius: var(--staff-radius);
+  background: linear-gradient(135deg, var(--surface), var(--surface-tint));
+}
+.corporate-statement-actions { display: flex; gap: 0.55rem; flex-wrap: wrap; justify-content: flex-end; }
+.corporate-statement-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin-top: 0.85rem;
+}
+.corporate-statement-grid div {
+  min-width: 0;
+  padding: 0.72rem 0.78rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.corporate-statement-grid span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.corporate-statement-grid b {
+  display: block;
+  margin-top: 0.24rem;
+  color: var(--ink);
+  font-size: 0.92rem;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 760px) {
+  .corporate-statement-actions { justify-content: flex-start; }
+  .corporate-statement-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 460px) { .corporate-statement-grid { grid-template-columns: 1fr; } }

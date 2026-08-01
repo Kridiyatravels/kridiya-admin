@@ -308,17 +308,69 @@
 
   async function handleCorporateListClick(event) {
     const copyBtn = event.target.closest("[data-copy-portal-login]");
-    if (!copyBtn) return;
-    event.preventDefault();
-    const text = copyBtn.dataset.copyPortalLogin || CORPORATE_PORTAL_LOGIN_URL;
+    const statementCopyBtn = event.target.closest("[data-copy-company-statement]");
+    const statementPrintBtn = event.target.closest("[data-print-company-statement]");
+    if (copyBtn) {
+      event.preventDefault();
+      copyText(copyBtn.dataset.copyPortalLogin || CORPORATE_PORTAL_LOGIN_URL, "Corporate portal login link copied.");
+      return;
+    }
+    if (statementCopyBtn) {
+      event.preventDefault();
+      const company = findCompany(statementCopyBtn.dataset.copyCompanyStatement);
+      if (!company) { toast("Company not found for statement."); return; }
+      copyText(companyStatementText(company), "Corporate statement summary copied.");
+      return;
+    }
+    if (statementPrintBtn) {
+      event.preventDefault();
+      const company = findCompany(statementPrintBtn.dataset.printCompanyStatement);
+      if (!company) { toast("Company not found for statement."); return; }
+      printCompanyStatement(company);
+    }
+  }
+
+  function copyText(text, successMessage) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(
-        function () { toast("Corporate portal login link copied."); },
+        function () { toast(successMessage); },
         function () { toast("Could not copy automatically."); }
       );
     } else {
       toast("Copy not supported on this browser.");
     }
+  }
+
+  function findCompany(id) {
+    return rows.find(function (row) { return String(row.id) === String(id); });
+  }
+
+  function companyStatementText(c) {
+    const now = new Date();
+    const month = now.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+    return [
+      "Kridiya Corporate Monthly Statement - " + month,
+      "Company: " + (c.company_name || "Corporate account"),
+      "Billing email: " + (c.billing_email || c.accounts_email || "Not set"),
+      "Account status: " + label(c.status),
+      "Payment terms: " + label(c.payment_terms),
+      "LPO required: " + bool(c.lpo_required),
+      "Visible bookings: " + (c.booking_count || 0),
+      "Customer-visible value: " + money(c.booking_value, "AED"),
+      "Portal users: " + ((c.portal_members || []).length),
+      "Contacts: " + ((c.contacts || []).map(function (x) { return [x.full_name, x.email, x.phone || x.whatsapp].filter(Boolean).join(" / "); }).join("; ") || "Not set"),
+      "Note: Supplier cost, margin, and internal staff notes remain inside Kridiya admin."
+    ].join("\n");
+  }
+
+  function printCompanyStatement(c) {
+    const w = window.open("", "_blank", "noopener,noreferrer");
+    if (!w) { toast("Popup blocked. Use copy statement summary instead."); return; }
+    const lines = companyStatementText(c).split("\n");
+    w.document.write('<!doctype html><html><head><title>Corporate Statement - ' + esc(c.company_name) + '</title><style>body{font-family:Arial,sans-serif;margin:36px;color:#241b13}h1{font-size:24px;margin:0 0 18px}.meta{border:1px solid #ead8bd;border-radius:10px;padding:18px;background:#fffaf2}.row{display:flex;justify-content:space-between;gap:24px;border-bottom:1px solid #ead8bd;padding:10px 0}.row:last-child{border-bottom:0}.k{font-weight:700}.note{margin-top:18px;color:#6f6254;font-size:13px}</style></head><body><h1>' + esc(lines.shift()) + '</h1><div class="meta">' + lines.slice(0, -1).map(function (line) { const i = line.indexOf(": "); return '<div class="row"><span class="k">' + esc(i > -1 ? line.slice(0, i) : line) + '</span><span>' + esc(i > -1 ? line.slice(i + 2) : "") + '</span></div>'; }).join("") + '</div><p class="note">' + esc(lines[lines.length - 1] || "") + '</p></body></html>');
+    w.document.close();
+    w.focus();
+    w.print();
   }
 
   async function savePortalMember(event) {
@@ -386,9 +438,15 @@
       return '<div class="ops-row compact-row"><div class="ops-row-main"><b>' + esc(x.full_name) + '</b><p>' + esc(x.job_title || "Contact") + ' / ' + esc(x.email || "No email") + ' / ' + esc(x.phone || x.whatsapp || "No phone") + '</p><div class="ops-kv">' + (x.is_authorized_contact ? '<span class="ops-chip">Authorized</span>' : '') + (x.is_accounts_contact ? '<span class="ops-chip">Accounts</span>' : '') + '</div></div></div>';
     }).join("") : '<p class="form-note">No contacts saved yet.</p>';
     const portalAccess = renderPortalAccess(c, portalMembers);
+    const statementPanel = renderStatementPanel(c, portalMembers);
     const form = canEdit ? '<details class="corporate-add-contact"><summary>Add contact</summary><form class="form-grid payment-mini-form corporate-contact-form" data-account-id="' + esc(c.id) + '" onsubmit="return false"><div class="field-row"><div class="field col-4"><label>CONTACT NAME</label><input name="full_name" required></div><div class="field col-4"><label>JOB TITLE</label><input name="job_title"></div><div class="field col-4"><label>EMAIL</label><input name="email" type="email"></div><div class="field col-4"><label>PHONE</label><input name="phone"></div><div class="field col-4"><label>WHATSAPP</label><input name="whatsapp"></div><div class="field col-2"><label>AUTHORIZED?</label><select name="is_authorized_contact"><option value="false">No</option><option value="true">Yes</option></select></div><div class="field col-2"><label>ACCOUNTS?</label><select name="is_accounts_contact"><option value="false">No</option><option value="true">Yes</option></select></div><div class="field col-12"><label>NOTES</label><input name="notes"></div></div><button class="btn btn-primary" type="submit">Save contact</button></form></details>' : '';
     const tone = health.tone === "info" ? "ok" : health.tone;
-    return '<details class="corporate-card corporate-' + esc(tone) + '"><summary><div class="ops-row-main"><div class="corporate-company-line"><b>' + esc(c.company_name) + '</b><span>' + esc(label(c.status)) + '</span></div><p>' + esc(c.billing_email || c.accounts_email || "No billing email") + ' / ' + esc(c.phone || "No phone") + '</p><div class="ops-kv"><span class="staff-risk ' + esc(tone === "ok" ? "warn" : tone) + '">' + esc(health.label) + '</span><span class="ops-chip">Terms: ' + esc(label(c.payment_terms)) + '</span><span class="ops-chip">LPO: ' + esc(bool(c.lpo_required)) + '</span><span class="ops-chip">Contacts: ' + esc(contacts.length) + '</span><span class="ops-chip">Portal: ' + esc(portalMembers.length) + '</span><span class="ops-chip">Bookings: ' + esc(c.booking_count || 0) + '</span></div></div><div class="corporate-row-value"><span>Account value</span><b>' + esc(money(c.booking_value, "AED")) + '</b></div></summary><div class="corporate-card-body"><div class="corporate-health-strip corporate-health-' + esc(tone) + '"><div><b>' + esc(health.label) + '</b><p>' + esc(health.action) + '</p></div><div class="ops-kv">' + issueChips + '</div></div><div class="ops-grid ops-grid-2"><div><h3>Account controls</h3><div class="ops-kv"><span class="ops-chip">Credit: ' + esc(bool(c.credit_allowed)) + '</span><span class="ops-chip">Monthly billing: ' + esc(bool(c.monthly_billing)) + '</span><span class="ops-chip">Billing email: ' + esc(bool(hasBillingEmail(c))) + '</span><span class="ops-chip">Authorized contact: ' + esc(bool(hasAuthorizedContact(c))) + '</span><span class="ops-chip">Accounts contact: ' + esc(bool(hasAccountsContact(c))) + '</span>' + (c.trade_license_no ? '<span class="ops-chip">TL: ' + esc(c.trade_license_no) + '</span>' : '') + (c.trn ? '<span class="ops-chip">TRN: ' + esc(c.trn) + '</span>' : '') + '</div><p class="form-note">' + esc(c.notes || "No account notes.") + '</p></div><div><h3>Contacts</h3>' + contactRows + '</div></div>' + portalAccess + form + '</div></details>';
+    return '<details class="corporate-card corporate-' + esc(tone) + '"><summary><div class="ops-row-main"><div class="corporate-company-line"><b>' + esc(c.company_name) + '</b><span>' + esc(label(c.status)) + '</span></div><p>' + esc(c.billing_email || c.accounts_email || "No billing email") + ' / ' + esc(c.phone || "No phone") + '</p><div class="ops-kv"><span class="staff-risk ' + esc(tone === "ok" ? "warn" : tone) + '">' + esc(health.label) + '</span><span class="ops-chip">Terms: ' + esc(label(c.payment_terms)) + '</span><span class="ops-chip">LPO: ' + esc(bool(c.lpo_required)) + '</span><span class="ops-chip">Contacts: ' + esc(contacts.length) + '</span><span class="ops-chip">Portal: ' + esc(portalMembers.length) + '</span><span class="ops-chip">Bookings: ' + esc(c.booking_count || 0) + '</span></div></div><div class="corporate-row-value"><span>Account value</span><b>' + esc(money(c.booking_value, "AED")) + '</b></div></summary><div class="corporate-card-body"><div class="corporate-health-strip corporate-health-' + esc(tone) + '"><div><b>' + esc(health.label) + '</b><p>' + esc(health.action) + '</p></div><div class="ops-kv">' + issueChips + '</div></div><div class="ops-grid ops-grid-2"><div><h3>Account controls</h3><div class="ops-kv"><span class="ops-chip">Credit: ' + esc(bool(c.credit_allowed)) + '</span><span class="ops-chip">Monthly billing: ' + esc(bool(c.monthly_billing)) + '</span><span class="ops-chip">Billing email: ' + esc(bool(hasBillingEmail(c))) + '</span><span class="ops-chip">Authorized contact: ' + esc(bool(hasAuthorizedContact(c))) + '</span><span class="ops-chip">Accounts contact: ' + esc(bool(hasAccountsContact(c))) + '</span>' + (c.trade_license_no ? '<span class="ops-chip">TL: ' + esc(c.trade_license_no) + '</span>' : '') + (c.trn ? '<span class="ops-chip">TRN: ' + esc(c.trn) + '</span>' : '') + '</div><p class="form-note">' + esc(c.notes || "No account notes.") + '</p></div><div><h3>Contacts</h3>' + contactRows + '</div></div>' + portalAccess + statementPanel + form + '</div></details>';
+  }
+
+  function renderStatementPanel(c, portalMembers) {
+    const month = new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+    return '<section class="corporate-statement-panel"><div class="account-section-head"><div><h3>Monthly statement handoff</h3><p>Prepare a customer-safe account summary for ' + esc(month) + '. Supplier cost, profit, and internal notes stay hidden.</p></div><div class="corporate-statement-actions"><button class="btn btn-outline btn-sm" type="button" data-copy-company-statement="' + esc(c.id) + '">Copy summary</button><button class="btn btn-outline btn-sm" type="button" data-print-company-statement="' + esc(c.id) + '">Print statement</button><a class="btn btn-outline btn-sm" href="bookings.html">Open bookings</a></div></div><div class="corporate-statement-grid"><div><span>Customer value</span><b>' + esc(money(c.booking_value, "AED")) + '</b></div><div><span>Visible bookings</span><b>' + esc(c.booking_count || 0) + '</b></div><div><span>Payment terms</span><b>' + esc(label(c.payment_terms)) + '</b></div><div><span>LPO required</span><b>' + esc(bool(c.lpo_required)) + '</b></div><div><span>Billing email</span><b>' + esc(c.billing_email || c.accounts_email || "Not set") + '</b></div><div><span>Portal users</span><b>' + esc(portalMembers.length) + '</b></div></div></section>';
   }
 
   function renderPortalAccess(c, portalMembers) {
