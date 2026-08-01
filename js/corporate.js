@@ -87,7 +87,10 @@
       card.hidden = !card.hidden;
     });
     document.getElementById("corporate-form").addEventListener("submit", saveCompany);
-    document.getElementById("corporate-list").addEventListener("submit", saveContact);
+    document.getElementById("corporate-list").addEventListener("submit", function (event) {
+      if (event.target.closest(".corporate-contact-form")) return saveContact(event);
+      if (event.target.closest(".corporate-portal-form")) return savePortalMember(event);
+    });
     document.getElementById("corporate-search").addEventListener("input", function (event) {
       activeSearch = event.target.value.trim().toLowerCase();
       renderRows();
@@ -157,9 +160,61 @@
     const result = await sb.rpc("list_corporate_accounts");
     if (result.error) { toast("Could not load companies: " + result.error.message); return; }
     rows = result.data || [];
+    await loadPortalMembers();
     renderStats();
     renderCorporateControl();
     renderRows();
+  }
+
+  async function loadPortalMembers() {
+    if (!rows.length) return;
+    const ids = rows.map(function (r) { return r.id; });
+    const result = await sb
+      .from("corporate_portal_members")
+      .select("id, corporate_account_id, corporate_contact_id, user_id, role, status, can_request, can_approve_quotes, can_view_finance, can_view_documents, notes, last_seen_at, invited_at, updated_at")
+      .in("corporate_account_id", ids)
+      .order("invited_at", { ascending: true });
+    if (result.error) {
+      rows.forEach(function (row) { row.portal_members = []; });
+      toast("Could not load portal access: " + result.error.message);
+      return;
+    }
+    const grouped = {};
+    (result.data || []).forEach(function (member) {
+      if (!grouped[member.corporate_account_id]) grouped[member.corporate_account_id] = [];
+      grouped[member.corporate_account_id].push(member);
+    });
+    rows.forEach(function (row) {
+      row.portal_members = (grouped[row.id] || []).map(function (member) {
+        const contact = (row.contacts || []).find(function (x) { return x.id === member.corporate_contact_id; }) || {};
+        return Object.assign({}, member, {
+          contact_name: contact.full_name || "",
+          contact_email: contact.email || "",
+          contact_phone: contact.phone || contact.whatsapp || ""
+        });
+      });
+    });
+  }
+
+  async function savePortalMember(event) {
+    const form = event.target.closest(".corporate-portal-form");
+    if (!form) return;
+    event.preventDefault();
+    const result = await sb
+      .from("corporate_portal_members")
+      .update({
+        role: form.role.value,
+        status: form.status.value,
+        can_request: form.can_request.checked,
+        can_approve_quotes: form.can_approve_quotes.checked,
+        can_view_finance: form.can_view_finance.checked,
+        can_view_documents: form.can_view_documents.checked,
+        notes: form.notes.value || null
+      })
+      .eq("id", form.dataset.memberId);
+    if (result.error) { toast("Could not update portal access: " + result.error.message); return; }
+    toast("Portal access updated.");
+    await loadCompanies();
   }
 
   function renderStats() {
@@ -199,14 +254,53 @@
 
   function renderCompany(c) {
     const contacts = c.contacts || [];
+    const portalMembers = c.portal_members || [];
     const health = accountHealth(c);
     const issueChips = health.issues.length ? health.issues.slice(0, 4).map(function (x) { return '<span class="ops-chip">' + esc(x) + '</span>'; }).join("") : '<span class="ops-chip">Controls complete</span>';
     const contactRows = contacts.length ? contacts.map(function (x) {
       return '<div class="ops-row compact-row"><div class="ops-row-main"><b>' + esc(x.full_name) + '</b><p>' + esc(x.job_title || "Contact") + ' / ' + esc(x.email || "No email") + ' / ' + esc(x.phone || x.whatsapp || "No phone") + '</p><div class="ops-kv">' + (x.is_authorized_contact ? '<span class="ops-chip">Authorized</span>' : '') + (x.is_accounts_contact ? '<span class="ops-chip">Accounts</span>' : '') + '</div></div></div>';
     }).join("") : '<p class="form-note">No contacts saved yet.</p>';
+    const portalAccess = renderPortalAccess(c, portalMembers);
     const form = canEdit ? '<details class="corporate-add-contact"><summary>Add contact</summary><form class="form-grid payment-mini-form corporate-contact-form" data-account-id="' + esc(c.id) + '" onsubmit="return false"><div class="field-row"><div class="field col-4"><label>CONTACT NAME</label><input name="full_name" required></div><div class="field col-4"><label>JOB TITLE</label><input name="job_title"></div><div class="field col-4"><label>EMAIL</label><input name="email" type="email"></div><div class="field col-4"><label>PHONE</label><input name="phone"></div><div class="field col-4"><label>WHATSAPP</label><input name="whatsapp"></div><div class="field col-2"><label>AUTHORIZED?</label><select name="is_authorized_contact"><option value="false">No</option><option value="true">Yes</option></select></div><div class="field col-2"><label>ACCOUNTS?</label><select name="is_accounts_contact"><option value="false">No</option><option value="true">Yes</option></select></div><div class="field col-12"><label>NOTES</label><input name="notes"></div></div><button class="btn btn-primary" type="submit">Save contact</button></form></details>' : '';
     const tone = health.tone === "info" ? "ok" : health.tone;
-    return '<details class="corporate-card corporate-' + esc(tone) + '"><summary><div class="ops-row-main"><div class="corporate-company-line"><b>' + esc(c.company_name) + '</b><span>' + esc(label(c.status)) + '</span></div><p>' + esc(c.billing_email || c.accounts_email || "No billing email") + ' / ' + esc(c.phone || "No phone") + '</p><div class="ops-kv"><span class="staff-risk ' + esc(tone === "ok" ? "warn" : tone) + '">' + esc(health.label) + '</span><span class="ops-chip">Terms: ' + esc(label(c.payment_terms)) + '</span><span class="ops-chip">LPO: ' + esc(bool(c.lpo_required)) + '</span><span class="ops-chip">Contacts: ' + esc(contacts.length) + '</span><span class="ops-chip">Bookings: ' + esc(c.booking_count || 0) + '</span></div></div><div class="corporate-row-value"><span>Account value</span><b>' + esc(money(c.booking_value, "AED")) + '</b></div></summary><div class="corporate-card-body"><div class="corporate-health-strip corporate-health-' + esc(tone) + '"><div><b>' + esc(health.label) + '</b><p>' + esc(health.action) + '</p></div><div class="ops-kv">' + issueChips + '</div></div><div class="ops-grid ops-grid-2"><div><h3>Account controls</h3><div class="ops-kv"><span class="ops-chip">Credit: ' + esc(bool(c.credit_allowed)) + '</span><span class="ops-chip">Monthly billing: ' + esc(bool(c.monthly_billing)) + '</span><span class="ops-chip">Billing email: ' + esc(bool(hasBillingEmail(c))) + '</span><span class="ops-chip">Authorized contact: ' + esc(bool(hasAuthorizedContact(c))) + '</span><span class="ops-chip">Accounts contact: ' + esc(bool(hasAccountsContact(c))) + '</span>' + (c.trade_license_no ? '<span class="ops-chip">TL: ' + esc(c.trade_license_no) + '</span>' : '') + (c.trn ? '<span class="ops-chip">TRN: ' + esc(c.trn) + '</span>' : '') + '</div><p class="form-note">' + esc(c.notes || "No account notes.") + '</p></div><div><h3>Contacts</h3>' + contactRows + '</div></div>' + form + '</div></details>';
+    return '<details class="corporate-card corporate-' + esc(tone) + '"><summary><div class="ops-row-main"><div class="corporate-company-line"><b>' + esc(c.company_name) + '</b><span>' + esc(label(c.status)) + '</span></div><p>' + esc(c.billing_email || c.accounts_email || "No billing email") + ' / ' + esc(c.phone || "No phone") + '</p><div class="ops-kv"><span class="staff-risk ' + esc(tone === "ok" ? "warn" : tone) + '">' + esc(health.label) + '</span><span class="ops-chip">Terms: ' + esc(label(c.payment_terms)) + '</span><span class="ops-chip">LPO: ' + esc(bool(c.lpo_required)) + '</span><span class="ops-chip">Contacts: ' + esc(contacts.length) + '</span><span class="ops-chip">Portal: ' + esc(portalMembers.length) + '</span><span class="ops-chip">Bookings: ' + esc(c.booking_count || 0) + '</span></div></div><div class="corporate-row-value"><span>Account value</span><b>' + esc(money(c.booking_value, "AED")) + '</b></div></summary><div class="corporate-card-body"><div class="corporate-health-strip corporate-health-' + esc(tone) + '"><div><b>' + esc(health.label) + '</b><p>' + esc(health.action) + '</p></div><div class="ops-kv">' + issueChips + '</div></div><div class="ops-grid ops-grid-2"><div><h3>Account controls</h3><div class="ops-kv"><span class="ops-chip">Credit: ' + esc(bool(c.credit_allowed)) + '</span><span class="ops-chip">Monthly billing: ' + esc(bool(c.monthly_billing)) + '</span><span class="ops-chip">Billing email: ' + esc(bool(hasBillingEmail(c))) + '</span><span class="ops-chip">Authorized contact: ' + esc(bool(hasAuthorizedContact(c))) + '</span><span class="ops-chip">Accounts contact: ' + esc(bool(hasAccountsContact(c))) + '</span>' + (c.trade_license_no ? '<span class="ops-chip">TL: ' + esc(c.trade_license_no) + '</span>' : '') + (c.trn ? '<span class="ops-chip">TRN: ' + esc(c.trn) + '</span>' : '') + '</div><p class="form-note">' + esc(c.notes || "No account notes.") + '</p></div><div><h3>Contacts</h3>' + contactRows + '</div></div>' + portalAccess + form + '</div></details>';
+  }
+
+  function renderPortalAccess(c, portalMembers) {
+    const memberRows = portalMembers.length ? portalMembers.map(renderPortalMember).join("") : '<div class="corporate-portal-empty"><b>No portal login linked yet.</b><p>Create a Supabase Auth user, approve/link the application, then this panel will control that login.</p></div>';
+    return '<section class="corporate-portal-panel"><div class="account-section-head"><div><h3>Portal access</h3><p>Controls what the company sees inside corporate.kridiyatravel.com after sign in.</p></div><span class="ops-chip">' + esc(portalMembers.length) + ' login' + (portalMembers.length === 1 ? "" : "s") + '</span></div>' + memberRows + '</section>';
+  }
+
+  function renderPortalMember(member) {
+    const title = member.contact_name || member.contact_email || member.user_id;
+    const subtitle = [member.contact_email, member.contact_phone].filter(Boolean).join(" / ") || "Auth user " + member.user_id;
+    if (!canEdit) {
+      return '<article class="corporate-portal-member"><div><b>' + esc(title) + '</b><p>' + esc(subtitle) + '</p><div class="ops-kv">' + renderPermissionChips(member) + '</div></div></article>';
+    }
+    return '<form class="corporate-portal-member corporate-portal-form" data-member-id="' + esc(member.id) + '" onsubmit="return false"><div class="corporate-portal-identity"><b>' + esc(title) + '</b><p>' + esc(subtitle) + '</p><small>' + esc(member.user_id) + '</small></div><div class="corporate-portal-controls"><label>ROLE<select name="role">' + roleOptions(member.role) + '</select></label><label>STATUS<select name="status">' + statusOptions(member.status) + '</select></label><label class="checkline"><input type="checkbox" name="can_request"' + (member.can_request ? " checked" : "") + '><span>Requests</span></label><label class="checkline"><input type="checkbox" name="can_approve_quotes"' + (member.can_approve_quotes ? " checked" : "") + '><span>Quote approval</span></label><label class="checkline"><input type="checkbox" name="can_view_finance"' + (member.can_view_finance ? " checked" : "") + '><span>Finance</span></label><label class="checkline"><input type="checkbox" name="can_view_documents"' + (member.can_view_documents ? " checked" : "") + '><span>Documents</span></label><label class="corporate-portal-notes">NOTES<input name="notes" value="' + esc(member.notes || "") + '" placeholder="Internal access note"></label><button class="btn btn-primary" type="submit">Save access</button></div></form>';
+  }
+
+  function renderPermissionChips(member) {
+    return [
+      '<span class="ops-chip">' + esc(label(member.role)) + '</span>',
+      '<span class="ops-chip">' + esc(label(member.status)) + '</span>',
+      '<span class="ops-chip">Requests: ' + esc(bool(member.can_request)) + '</span>',
+      '<span class="ops-chip">Quotes: ' + esc(bool(member.can_approve_quotes)) + '</span>',
+      '<span class="ops-chip">Finance: ' + esc(bool(member.can_view_finance)) + '</span>',
+      '<span class="ops-chip">Docs: ' + esc(bool(member.can_view_documents)) + '</span>'
+    ].join("");
+  }
+
+  function roleOptions(value) {
+    return ["owner", "travel_coordinator", "finance", "requester", "viewer"].map(function (option) {
+      return '<option value="' + esc(option) + '"' + (String(value) === option ? " selected" : "") + '>' + esc(label(option)) + '</option>';
+    }).join("");
+  }
+
+  function statusOptions(value) {
+    return ["invited", "active", "suspended", "revoked"].map(function (option) {
+      return '<option value="' + esc(option) + '"' + (String(value) === option ? " selected" : "") + '>' + esc(label(option)) + '</option>';
+    }).join("");
   }
 
   document.addEventListener("DOMContentLoaded", boot);

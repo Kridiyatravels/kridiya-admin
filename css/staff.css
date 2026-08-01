@@ -1309,6 +1309,117 @@ body { background: var(--bg); }
 .corporate-health-risk { border-color: color-mix(in oklab, var(--status-payment) 35%, var(--line)); background: var(--status-payment-bg); }
 .corporate-health-warn { border-color: color-mix(in oklab, var(--status-checking) 35%, var(--line)); background: var(--status-checking-bg); }
 .corporate-health-ok { border-color: color-mix(in oklab, var(--gold-deep) 28%, var(--line)); background: color-mix(in oklab, var(--brand-soft) 70%, #fff); }
+.corporate-portal-panel {
+  margin-top: 0.9rem;
+  border: 1px solid color-mix(in oklab, var(--gold-deep) 30%, var(--line));
+  border-radius: 12px;
+  background: linear-gradient(135deg, color-mix(in oklab, var(--brand-soft) 58%, #fff), var(--surface));
+  padding: 0.9rem;
+}
+.corporate-portal-panel .account-section-head {
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+.corporate-portal-panel .account-section-head p {
+  margin-top: 0.15rem;
+  font-size: 0.82rem;
+}
+.corporate-portal-empty {
+  border: 1px dashed color-mix(in oklab, var(--gold-deep) 36%, var(--line));
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--surface) 75%, var(--brand-soft));
+  padding: 0.85rem;
+}
+.corporate-portal-empty b { color: var(--ink); }
+.corporate-portal-empty p {
+  margin: 0.25rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.84rem;
+}
+.corporate-portal-member {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.7fr) minmax(0, 1.3fr);
+  gap: 0.85rem;
+  align-items: start;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 0.85rem;
+  box-shadow: var(--staff-shadow-sm);
+}
+.corporate-portal-member + .corporate-portal-member { margin-top: 0.7rem; }
+.corporate-portal-identity b {
+  display: block;
+  color: var(--ink);
+  font-size: 0.96rem;
+}
+.corporate-portal-identity p {
+  margin: 0.25rem 0;
+  color: var(--ink-2);
+  font-size: 0.82rem;
+}
+.corporate-portal-identity small {
+  display: block;
+  overflow-wrap: anywhere;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 750;
+}
+.corporate-portal-controls {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+.corporate-portal-controls label {
+  display: grid;
+  gap: 0.28rem;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+.corporate-portal-controls select,
+.corporate-portal-controls input[type="text"],
+.corporate-portal-controls input:not([type]) {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--ink);
+  padding: 0 0.65rem;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 750;
+}
+.corporate-portal-controls .checkline {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: color-mix(in oklab, var(--surface-tint) 72%, #fff);
+  padding: 0 0.65rem;
+  text-transform: none;
+}
+.corporate-portal-controls .checkline input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--brand-deep);
+}
+.corporate-portal-controls .checkline span {
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+.corporate-portal-notes {
+  grid-column: span 3;
+}
+.corporate-portal-controls .btn {
+  min-height: 38px;
+  align-self: end;
+  justify-content: center;
+}
 .corporate-add-contact {
   margin-top: 0.9rem; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-tint);
 }
@@ -1330,9 +1441,15 @@ body { background: var(--bg); }
   .corporate-health-strip { align-items: flex-start; grid-template-columns: 1fr; flex-direction: column; }
   .corporate-control-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .corporate-toolbar { grid-template-columns: 1fr; }
+  .corporate-portal-member { grid-template-columns: 1fr; }
+  .corporate-portal-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .corporate-portal-notes { grid-column: 1 / -1; }
   .corporate-row-value { text-align: left; }
 }
-@media (max-width: 460px) { .corporate-control-grid { grid-template-columns: 1fr; } }
+@media (max-width: 460px) {
+  .corporate-control-grid,
+  .corporate-portal-controls { grid-template-columns: 1fr; }
+}
 
 /* ---------- Backup exports ---------- */
 .backup-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.8rem; }
