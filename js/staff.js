@@ -15,7 +15,12 @@
       body: JSON.stringify(body)
     });
     const data = await resp.json();
-    if (!resp.ok) throw new Error(data.error || "Request failed");
+    if (!resp.ok) {
+      const error = new Error(data.error || "Request failed");
+      error.status = resp.status;
+      error.data = data;
+      throw error;
+    }
     return data;
   }
   const PERMS = [
@@ -229,7 +234,23 @@
       btn.textContent = "Creating…";
       const resultBox = document.getElementById("new-staff-result");
       try {
-        const data = await callAdminEdge("create-staff-account", { full_name: name, department: department, email: email, role: role });
+        let data;
+        const request = { full_name: name, department: department, email: email, role: role };
+        try {
+          data = await callAdminEdge("create-staff-account", request);
+        } catch (err) {
+          if (err.status !== 409 || !err.data || err.data.existing_user !== true) throw err;
+          const confirmed = window.confirm(
+            "An existing customer account already uses " + email + ".\n\n" +
+            "Continuing will convert that account into a staff account and replace its sign-in credentials. " +
+            "Only continue if you have verified the address and intend to grant staff access."
+          );
+          if (!confirmed) {
+            toast("Staff account creation cancelled. The existing account was not changed.");
+            return;
+          }
+          data = await callAdminEdge("create-staff-account", Object.assign({}, request, { allow_existing_user: true }));
+        }
         resultBox.hidden = false;
         resultBox.innerHTML = "Account created for <b>" + esc(name) + "</b>. Their PIN is <b style=\"font-size:1.2rem;letter-spacing:0.1em\">" + esc(data.pin) + "</b> — give it to them now, it won't be shown again.";
         document.getElementById("new-staff-name").value = "";
