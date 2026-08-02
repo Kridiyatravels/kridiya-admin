@@ -163,10 +163,30 @@
     return [
       b.booking_reference, b.title, b.customer_name, b.customer_email, b.customer_phone,
       b.corporate_company_name, b.corporate_contact_name, b.service_type, b.status, b.source,
-      b.payment_status, b.document_status, b.route_or_destination, b.supplier_name
+      b.payment_status, b.document_status, b.route_or_destination, b.supplier_name, isDocumentHandoff(b) ? "document handoff portal request " + documentHandoffType(b) + " " + documentHandoffRef(b) : ""
     ].filter(Boolean).join(" ").toLowerCase();
   }
 
+  function bookingNotes(b) {
+    return String(b.staff_notes || b.notes || b.internal_notes || b.description || "");
+  }
+
+  function isDocumentHandoff(b) {
+    const title = String(b.title || "");
+    return /^document request\s*-/i.test(title) || /document handoff request from corporate portal/i.test(bookingNotes(b));
+  }
+
+  function documentHandoffType(b) {
+    const titleMatch = String(b.title || "").match(/^document request\s*-\s*(.+)$/i);
+    if (titleMatch && titleMatch[1]) return titleMatch[1].trim();
+    const noteMatch = bookingNotes(b).match(/Document needed:\s*([^\n]+)/i);
+    return noteMatch && noteMatch[1] ? noteMatch[1].trim() : "Requested document";
+  }
+
+  function documentHandoffRef(b) {
+    const match = bookingNotes(b).match(/Booking:\s*(KRI-\d{4}-\d+)/i);
+    return match && match[1] ? match[1] : "Original booking";
+  }
   function isPortalRequest(b) {
     const source = String(b.source || "").toLowerCase();
     return source === "portal" || source === "corporate_portal";
@@ -237,18 +257,16 @@
   }
 
   function rowHTML(b) {
+      const docHandoff = isDocumentHandoff(b);
       const portal = isPortalRequest(b) ? '<span class="ops-chip booking-chip-portal">Portal request</span>' : '';
+      const handoff = docHandoff ? '<span class="ops-chip booking-chip-document">Document handoff</span><span class="ops-chip">Needed: ' + esc(documentHandoffType(b)) + '</span><span class="ops-chip">For: ' + esc(documentHandoffRef(b)) + '</span>' : '';
       const corporate = b.corporate_company_name ? '<span class="ops-chip">Corporate: ' + esc(b.corporate_company_name) + (b.corporate_contact_name ? ' / ' + esc(b.corporate_contact_name) : '') + '</span>' : '';
       const source = b.source && !isPortalRequest(b) ? '<span class="ops-chip">Source: ' + esc(label(b.source)) + '</span>' : '';
-      const rowClass = isPortalRequest(b) ? " ops-row-portal" : "";
-      const subline = [
-        label(b.service_type),
-        isPortalRequest(b) ? "Portal submitted" : label(b.status),
-        b.route_or_destination || "No route/destination"
-      ].filter(Boolean).join(" - ");
-      return '<div class="ops-row' + rowClass + '"><div class="ops-row-main"><b>' + esc(b.booking_reference) + ' - ' + esc(b.title) + '</b><p>' + esc(subline) + '</p><div class="ops-kv">' + portal + corporate + source + '<span class="ops-chip">Payment: ' + esc(label(b.payment_status)) + '</span><span class="ops-chip">Docs: ' + esc(label(b.document_status)) + '</span><span class="ops-chip">Sell: ' + esc(money(b.selling_price, b.currency)) + '</span><span class="ops-chip">Cost: ' + esc(money(b.supplier_cost, b.currency)) + '</span><span class="ops-chip">Profit: ' + esc(money(b.gross_profit, b.currency)) + '</span></div></div><div class="ops-row-actions"><a class="btn btn-primary" href="booking-detail.html?id=' + esc(b.id) + '">Open</a><a class="btn btn-outline" href="documents.html">Document</a></div></div>';
+      const rowClass = (isPortalRequest(b) ? " ops-row-portal" : "") + (docHandoff ? " ops-row-document" : "");
+      const subline = docHandoff ? ["Document handoff", documentHandoffType(b), documentHandoffRef(b)].filter(Boolean).join(" - ") : [label(b.service_type), isPortalRequest(b) ? "Portal submitted" : label(b.status), b.route_or_destination || "No route/destination"].filter(Boolean).join(" - ");
+      const documentHref = 'booking-detail.html?id=' + esc(b.id) + '#booking-document-panel';
+      return '<div class="ops-row' + rowClass + '"><div class="ops-row-main"><b>' + esc(b.booking_reference) + ' - ' + esc(b.title) + '</b><p>' + esc(subline) + '</p><div class="ops-kv">' + portal + handoff + corporate + source + '<span class="ops-chip">Payment: ' + esc(label(b.payment_status)) + '</span><span class="ops-chip">Docs: ' + esc(label(b.document_status)) + '</span><span class="ops-chip">Sell: ' + esc(money(b.selling_price, b.currency)) + '</span><span class="ops-chip">Cost: ' + esc(money(b.supplier_cost, b.currency)) + '</span><span class="ops-chip">Profit: ' + esc(money(b.gross_profit, b.currency)) + '</span></div></div><div class="ops-row-actions"><a class="btn btn-primary" href="booking-detail.html?id=' + esc(b.id) + '">Open</a><a class="btn btn-outline" href="' + documentHref + '">' + (docHandoff ? 'Prepare file' : 'Document') + '</a></div></div>';
   }
-
   function renderBookings() {
     const rows = filteredBookings();
     document.getElementById("bookings-count").textContent = rows.length + " shown / " + allBookings.length + " booking(s)";

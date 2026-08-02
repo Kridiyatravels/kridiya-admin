@@ -4914,3 +4914,10 @@ table tbody tr:hover {
   .corporate-statement-row strong { text-align: left; }
   .corporate-statement-row small { grid-column: auto; }
 }
+
+.ops-row-document { border-left: 4px solid #c79414; background: linear-gradient(90deg, rgba(199,148,20,.08), rgba(255,255,255,.92)); }
+.booking-chip-document { background: #fff2ca; border-color: #e0bd56; color: #5d4306; }
+.portal-document-intake { border-color: #e1be60; background: linear-gradient(135deg, #fffaf2, #fffdf8); }
+.portal-intake-note { margin-top: 14px; padding: 14px 16px; border: 1px solid #ead8b8; border-radius: 8px; background: rgba(255, 250, 242, .84); }
+.portal-intake-note b { display: block; color: #8a6508; text-transform: uppercase; font-size: 12px; letter-spacing: .03em; }
+.portal-intake-note p { margin: 6px 0 0; color: #4b4035; }

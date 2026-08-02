@@ -49,6 +49,29 @@
     const source = String((detail.booking || {}).source || (quoteContext || {}).source || "").toLowerCase();
     return source === "portal" || source === "corporate_portal";
   }
+  function bookingNotes() {
+    const b = detail && detail.booking ? detail.booking : {};
+    return String(b.staff_notes || b.notes || b.internal_notes || b.description || "");
+  }
+  function isDocumentHandoff() {
+    const b = detail && detail.booking ? detail.booking : {};
+    return /^document request\s*-/i.test(String(b.title || "")) || /document handoff request from corporate portal/i.test(bookingNotes());
+  }
+  function documentHandoffType() {
+    const b = detail && detail.booking ? detail.booking : {};
+    const titleMatch = String(b.title || "").match(/^document request\s*-\s*(.+)$/i);
+    if (titleMatch && titleMatch[1]) return titleMatch[1].trim();
+    const noteMatch = bookingNotes().match(/Document needed:\s*([^\n]+)/i);
+    return noteMatch && noteMatch[1] ? noteMatch[1].trim() : "Requested document";
+  }
+  function documentHandoffRef() {
+    const match = bookingNotes().match(/Booking:\s*(KRI-\d{4}-\d+)/i);
+    return match && match[1] ? match[1] : "Original booking";
+  }
+  function documentHandoffNote() {
+    const match = bookingNotes().match(/Company note:\s*([^\n]+)/i);
+    return match && match[1] ? match[1].trim() : "No company note supplied.";
+  }
   function paymentControlNote() {
     const b = detail.booking;
     if (paymentIsCleared(b.payment_status)) return { text: "Payment control OK. Money is marked as received/paid.", tone: "ok" };
@@ -147,7 +170,8 @@
     const b = detail.booking;
     if (bookingIsConfirmed(b.status) && !paymentIsCleared(b.payment_status)) return { title: "Verify or collect payment", href: "#customer-payment-panel", text: "Do this before further supplier/customer handover." };
     if ((b.booking_kind === "corporate" || detail.corporate) && detail.corporate && detail.corporate.lpo_required && !b.lpo_number) return { title: "Record LPO or approval", href: "#booking-corporate-panel", text: "Corporate approval must be clear before closing control." };
-    if (!b.supplier_reference) return { title: "Add supplier reference", href: "#booking-status-form", text: "Connect the booking to supplier confirmation." };
+    if (isDocumentHandoff() && !documentsReady()) return { title: "Prepare requested document", href: "#booking-document-panel", text: "Upload or record the requested " + documentHandoffType() + " and release it only when customer-safe." };
+    if (!b.supplier_reference && !isDocumentHandoff()) return { title: "Add supplier reference", href: "#booking-status-form", text: "Connect the booking to supplier confirmation." };
     if (!documentsReady()) return { title: "Prepare documents", href: "#booking-document-panel", text: "Upload or record required documents." };
     if ((workflow.tasks || []).filter(taskOpen).length) return { title: "Close open tasks", href: "#booking-task-panel", text: "Finish pending staff follow-ups." };
     return { title: "Ready for final review", href: "#booking-status-form", text: "Check details, then complete/close when appropriate." };
@@ -200,7 +224,7 @@
   function renderAll() {
     const b = detail.booking;
     document.getElementById("booking-title").textContent = b.booking_reference + " - " + b.title;
-    document.getElementById("booking-subtitle").textContent = label(b.service_type) + " / " + label(b.booking_kind) + (b.route_or_destination ? " / " + b.route_or_destination : "");
+    document.getElementById("booking-subtitle").textContent = isDocumentHandoff() ? "Document handoff / Corporate portal / " + documentHandoffRef() : label(b.service_type) + " / " + label(b.booking_kind) + (b.route_or_destination ? " / " + b.route_or_destination : "");
     document.getElementById("booking-detail-stats").innerHTML = [
       ["Selling price", moneyTile(b.selling_price, b.currency, detail.can_view_payments || detail.can_view_profit), "var(--status-quoted)"],
       ["Supplier cost", moneyTile(b.supplier_cost, b.currency, detail.can_view_profit || detail.can_view_payments), "var(--status-payment)"],
@@ -239,6 +263,24 @@
     if (!b.selling_price) required.push("Prepare quote");
     if (!paymentIsCleared(b.payment_status)) required.push("Control payment/LPO");
     if (!required.length) required.push("Continue fulfilment");
+    if (isDocumentHandoff()) {
+      shell.innerHTML =
+        '<div class="account-main portal-intake-card portal-document-intake">' +
+          '<div class="portal-intake-head">' +
+            '<div><span>Corporate document handoff</span><h2>' + esc(documentHandoffType()) + '</h2><p>Company requested a customer-safe file from the portal. Match it to the original booking, prepare the document, then mark it visible only when ready.</p></div>' +
+            '<a class="btn btn-primary" href="#booking-document-panel">Prepare document</a>' +
+          '</div>' +
+          '<div class="portal-intake-grid">' +
+            '<div><b>' + esc(company) + '</b><small>Company</small></div>' +
+            '<div><b>' + esc(requester) + '</b><small>Requested by</small></div>' +
+            '<div><b>' + esc(documentHandoffRef()) + '</b><small>Related booking</small></div>' +
+            '<div><b>' + esc(label(b.document_status)) + '</b><small>Document status</small></div>' +
+          '</div>' +
+          '<div class="portal-intake-note"><b>Company note</b><p>' + esc(documentHandoffNote()) + '</p></div>' +
+          '<div class="portal-intake-actions"><span>Upload received file</span><span>Hide supplier/internal data</span><span>Release to portal</span></div>' +
+        '</div>';
+      return;
+    }
     shell.innerHTML =
       '<div class="account-main portal-intake-card">' +
         '<div class="portal-intake-head">' +
