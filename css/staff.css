@@ -5067,3 +5067,8 @@ body .btn-outline {
   box-shadow: none;
 }
 
+
+/* A priority row with nothing in it should recede, not compete with the rows
+   that need work. Muted text, no button - the eye lands on the real items. */
+.ops-row-clear b { color: var(--text-muted); font-weight: 600; }
+.ops-row-clear p { color: var(--text-muted); }

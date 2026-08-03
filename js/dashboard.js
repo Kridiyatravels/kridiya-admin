@@ -110,8 +110,19 @@
     });
 
     const priority = priorityRows(d);
+    // A row reading "0 item(s) - High financial risk" is not a risk, it is
+    // the absence of one, and ten of them in a column trains the eye to skip
+    // the whole list. Rows with real work keep their count and their button;
+    // clear rows say so and drop the button, since there is nothing to open.
     document.getElementById("dashboard-priority").innerHTML = '<div class="ops-list">' + priority.map(function (p) {
-      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(p[0]) + '</b><p>' + esc(p[1]) + ' item(s) - ' + esc(p[3]) + '</p></div><a class="btn btn-outline" href="' + p[2] + '">Open</a></div>';
+      const count = Number(p[1]) || 0;
+      const detail = count > 0
+        ? esc(count) + (count === 1 ? " item - " : " items - ") + esc(p[3])
+        : "Clear";
+      const action = count > 0
+        ? '<a class="btn btn-outline" href="' + p[2] + '">Open</a>'
+        : '';
+      return '<div class="ops-row' + (count > 0 ? '' : ' ops-row-clear') + '"><div class="ops-row-main"><b>' + esc(p[0]) + '</b><p>' + detail + '</p></div>' + action + '</div>';
     }).join("") + '</div>';
     renderReminders();
     renderAdminSections(d);
@@ -119,7 +130,10 @@
     const activity = d.recent_activity || [];
     const shownActivity = dashboardIsAdmin ? activity : activity.filter(function (a) { return !a.actor_id || a.actor_id === dashboardUser.id; }).slice(0, 8);
     document.getElementById("dashboard-activity").innerHTML = shownActivity.length ? '<div class="ops-list">' + shownActivity.map(function (a) {
-      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(eventLabel(a.event_type)) + '</b><p>' + esc(label(a.entity_type || "system")) + ' - ' + new Date(a.created_at).toLocaleString("en-GB") + '</p></div></div>';
+      // toLocaleString("en-GB") with no options renders "02/08/2026, 22:15:52"
+      // — a different format from every other date in the app, and seconds
+      // nobody reads. whenText() is the format used elsewhere on this page.
+      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(eventLabel(a.event_type)) + '</b><p>' + esc(label(a.entity_type || "system")) + ' - ' + esc(whenText(a.created_at)) + '</p></div></div>';
     }).join("") + '</div>' : '<p class="form-note">' + esc(dashboardIsAdmin ? "No recent activity yet." : "No personal activity found yet.") + '</p>';
   }
 
