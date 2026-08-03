@@ -606,7 +606,8 @@
       return '<span class="doc-check ' + (receivedTypes[type] ? 'is-done' : '') + '">' + esc(receivedTypes[type] ? "Received: " : "Pending: ") + esc(label(type)) + '</span>';
     }).join("") + '</div>';
     const form = canEdit ? '<form id="booking-document-form" class="form-grid payment-mini-form" onsubmit="return false"><div class="field-row"><div class="field col-6"><label>DOCUMENT TYPE</label><select name="document_type">' + optionList(DOCUMENT_TYPES, required[0]) + '</select></div><div class="field col-6"><label>DOCUMENT NAME</label><input name="file_name" placeholder="Passport copy received"></div><div class="field col-8"><label>REFERENCE / NOTE</label><input name="external_reference" placeholder="WhatsApp, email, portal ref, file location"></div><div class="field col-4"><label>UPLOAD FILE</label><input name="document_file" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx"></div></div><button class="btn btn-primary" type="submit">Save document record</button></form>' : '<p class="form-note">Document permission required to record documents.</p>';
-    document.getElementById("booking-document-panel").innerHTML = checklist + form + renderDocumentRows(rows, canEdit);
+    const generatedActions = canEdit ? '<div class="ops-row"><div class="ops-row-main"><b>Customer booking document</b><p>Create a customer-safe booking confirmation or itinerary from the current booking and passenger details.</p></div><div class="ops-row-actions"><button class="btn btn-outline js-print-booking-confirmation" type="button">Booking confirmation</button></div></div>' : '';
+    document.getElementById("booking-document-panel").innerHTML = checklist + generatedActions + form + renderDocumentRows(rows, canEdit);
     const f = document.getElementById("booking-document-form");
     if (f) f.addEventListener("submit", recordDocument);
   }
@@ -838,6 +839,12 @@
       const receiptBtn = customer && r.status === "received"
         ? '<button class="btn btn-outline js-print-receipt" data-id="' + esc(r.id) + '" type="button">Receipt</button>'
         : '';
+      const refundBtn = customer && (amountNum(r.refund_amount) > 0 || ["refund_pending", "refunded"].indexOf(String(r.status || "")) !== -1)
+        ? '<button class="btn btn-outline js-print-refund-note" data-id="' + esc(r.id) + '" type="button">Refund note</button>'
+        : '';
+      const supplierNoteBtn = !customer
+        ? '<button class="btn btn-outline js-print-supplier-note" data-id="' + esc(r.id) + '" type="button">Payment note</button>'
+        : '';
       const ref = customer && r.payment_link ? '<span class="ops-chip">Ref/link saved</span>' : '';
       const proofChip = customer && r.proof_storage_path ? '<span class="ops-chip">Proof attached</span>' : '';
       const proofActions = customer
@@ -854,7 +861,7 @@
           + (r.sharepoint_invoice_url ? '<a class="btn btn-outline" target="_blank" rel="noopener" href="' + esc(r.sharepoint_invoice_url) + '">SharePoint</a>' : '')
           + (detail.can_edit_payments ? '<label class="btn btn-outline proof-upload-label">' + (r.supplier_invoice_path ? 'Replace invoice' : 'Upload invoice') + '<input type="file" class="js-supplier-invoice-file" data-id="' + esc(r.id) + '" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx" hidden></label>' : '')
         : '';
-      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(title) + '</b><p>' + esc(label(r.status)) + (r.notes ? ' - ' + esc(r.notes) : '') + '</p><div class="ops-kv">' + ref + proofChip + invoiceChip + sharepointChip + supplierBalanceChip + supplierDisputeChip + (customer && r.status === "proof_received" ? '<span class="ops-chip">Proof only - no receipt yet</span>' : '') + '</div></div><div class="ops-row-actions"><span class="finance-value">' + esc(amount) + '</span>' + receiptBtn + proofActions + invoiceActions + '</div></div>';
+      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(title) + '</b><p>' + esc(label(r.status)) + (r.notes ? ' - ' + esc(r.notes) : '') + '</p><div class="ops-kv">' + ref + proofChip + invoiceChip + sharepointChip + supplierBalanceChip + supplierDisputeChip + (customer && r.status === "proof_received" ? '<span class="ops-chip">Proof only - no receipt yet</span>' : '') + '</div></div><div class="ops-row-actions"><span class="finance-value">' + esc(amount) + '</span>' + receiptBtn + refundBtn + supplierNoteBtn + proofActions + invoiceActions + '</div></div>';
     }).join("") + '</div>';
   }
 
@@ -866,6 +873,66 @@
   function fmtDateTime(v) {
     if (!v) return new Date().toLocaleString("en-GB");
     return new Date(v).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
+  }
+
+  function generatedDocumentShell(title, number, body, footer) {
+    const settings = businessSettings || {};
+    const legalName = settings.legal_name || "KRIDIYA Travel and Tourism FZ-LLC";
+    return "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>" + esc(title) + " " + esc(number || "") + "</title><style>" +
+      "@page{size:A4;margin:14mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#1a1a1a;margin:0;background:#fff;font-size:13px;line-height:1.45}.head{display:flex;justify-content:space-between;gap:24px;border-bottom:3px solid #c9601c;padding-bottom:16px;margin-bottom:20px}.brand{display:flex;gap:13px}.brand img{width:54px;height:54px;object-fit:contain}.brand b{color:#a3480f;font-size:17px}.brand p{margin:4px 0 0;color:#555;font-size:11px;line-height:1.45}.meta{text-align:right}.label{font-size:11px;font-weight:800;letter-spacing:.08em;color:#a3480f;text-transform:uppercase}.num{font-size:20px;font-weight:800;margin-top:4px}.box{border:1px solid #eed6bd;background:#fff8f0;border-radius:9px;padding:14px;margin:12px 0;break-inside:avoid}.kv{display:grid;grid-template-columns:150px 1fr;gap:6px 16px}.k{color:#777}.v{font-weight:700}.amount{font-size:25px;color:#a3480f;font-weight:800}.people{margin:5px 0 0;padding-left:20px}.foot{margin-top:22px;border-top:1px solid #eee;padding-top:12px;color:#666;font-size:11px}.internal{color:#8b2f14;font-weight:800}@media print{body{print-color-adjust:exact;-webkit-print-color-adjust:exact}}" +
+      "</style></head><body><div class='head'><div class='brand'><img src='https://kridiyatravel.com/assets/logo.png' alt=''><div><b>" + esc(legalName) + "</b><p>FDRK7105, Compass Building, Al Shohada Road, Al Hamra Industrial Zone-FZ, Ras Al Khaimah, UAE<br>Trade licence: 5033347<br>info@kridiyatravel.com &middot; kridiyatravel.com</p></div></div><div class='meta'><div class='label'>" + esc(title) + "</div><div class='num'>" + esc(number || "") + "</div><p>" + esc(fmtDateTime(new Date().toISOString())) + "</p></div></div>" + body + "<div class='foot'>" + footer + "</div><script>setTimeout(function(){window.print()},300)</script></body></html>";
+  }
+
+  function openGeneratedDocument(html, labelText) {
+    const win = window.open("", "_blank");
+    if (!win) { toast("Please allow pop-ups to print the " + labelText + "."); return; }
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+  }
+
+  function bookingConfirmationHTML(doc) {
+    const payload = doc.payload || {};
+    const b = payload.booking || payload;
+    const people = payload.passengers || [];
+    const passengerList = people.length ? "<div class='box'><div class='label'>Travellers</div><ul class='people'>" + people.map(function (p) { return "<li>" + esc(p.passenger_name || "Traveller") + " — " + esc(label(p.passenger_type || "passenger")) + "</li>"; }).join("") + "</ul></div>" : "";
+    const body = "<div class='box'><div class='kv'><span class='k'>Customer</span><span class='v'>" + esc(doc.customer_name || "Customer") + "</span><span class='k'>Booking reference</span><span class='v'>" + esc(b.booking_reference || "—") + "</span><span class='k'>Service</span><span class='v'>" + esc(label(b.service_type || "travel")) + "</span><span class='k'>Route / destination</span><span class='v'>" + esc(b.route_or_destination || "—") + "</span><span class='k'>Travel dates</span><span class='v'>" + esc(dateText(b.travel_start)) + (b.travel_end ? " to " + esc(dateText(b.travel_end)) : "") + "</span><span class='k'>Status</span><span class='v'>" + esc(label(b.status || "confirmed")) + "</span>" + (b.supplier_reference ? "<span class='k'>Confirmation / PNR</span><span class='v'>" + esc(b.supplier_reference) + "</span>" : "") + "</div></div>" + passengerList + "<div class='box'><div class='label'>Booking value</div><div class='amount'>" + esc(money(doc.amount_total, doc.currency)) + "</div></div>";
+    return generatedDocumentShell(b.service_type === "flight" ? "Travel Itinerary" : "Booking Confirmation", doc.document_number, body, "Please verify names and travel details immediately. Supplier, airline, hotel, visa, refund and cancellation rules remain applicable. This document is not a boarding pass or visa approval.");
+  }
+
+  async function generateBookingConfirmation() {
+    const rpc = detail.booking.service_type === "flight" ? "generate_eticket_document" : "generate_corporate_confirmation_document";
+    const result = await sb.rpc(rpc, { p_booking_id: bookingId });
+    if (result.error) { toast("Could not generate booking confirmation: " + result.error.message); return; }
+    openGeneratedDocument(bookingConfirmationHTML(result.data), "booking confirmation");
+  }
+
+  function supplierPaymentNoteHTML(row) {
+    const b = detail.booking;
+    const balance = Math.max(0, amountNum(row.amount_payable) - amountNum(row.amount_paid));
+    const body = "<p class='internal'>INTERNAL SUPPLIER PAYMENT RECORD — NOT FOR CUSTOMERS</p><div class='box'><div class='kv'><span class='k'>Supplier</span><span class='v'>" + esc(row.supplier_name || b.supplier_name || "—") + "</span><span class='k'>Supplier reference</span><span class='v'>" + esc(row.supplier_reference || b.supplier_reference || "—") + "</span><span class='k'>Booking reference</span><span class='v'>" + esc(b.booking_reference || "—") + "</span><span class='k'>Service</span><span class='v'>" + esc(label(b.service_type)) + " / " + esc(b.route_or_destination || "—") + "</span><span class='k'>Status</span><span class='v'>" + esc(label(row.status)) + "</span></div></div><div class='box'><div class='kv'><span class='k'>Payable</span><span class='v'>" + esc(money(row.amount_payable, row.currency)) + "</span><span class='k'>Paid</span><span class='v'>" + esc(money(row.amount_paid, row.currency)) + "</span><span class='k'>Balance</span><span class='v'>" + esc(money(balance, row.currency)) + "</span></div></div>" + (row.notes ? "<div class='box'><div class='label'>Internal notes</div><p>" + esc(row.notes) + "</p></div>" : "");
+    return generatedDocumentShell("Supplier Payment Note", b.booking_reference, body, "Internal finance control document. Verify supplier bank details and invoice authenticity through an approved channel before payment.");
+  }
+
+  function printSupplierPaymentNote(id) {
+    const row = (detail.supplier_payments || []).find(function (item) { return item.id === id; });
+    if (!row) { toast("Supplier payment record not found."); return; }
+    openGeneratedDocument(supplierPaymentNoteHTML(row), "supplier payment note");
+  }
+
+  function refundNoteHTML(doc) {
+    const payload = doc.payload || {};
+    const p = payload.payment || {};
+    const booking = (payload.extras && payload.extras.booking) || {};
+    const body = "<div class='box'><div class='kv'><span class='k'>Customer</span><span class='v'>" + esc(doc.customer_name || "Customer") + "</span><span class='k'>Booking reference</span><span class='v'>" + esc(booking.booking_reference || "—") + "</span><span class='k'>Service</span><span class='v'>" + esc(label(booking.service_type || "travel")) + (booking.route_or_destination ? " / " + esc(booking.route_or_destination) : "") + "</span><span class='k'>Original payment reference</span><span class='v'>" + esc(p.payment_reference || "—") + "</span><span class='k'>Refund status</span><span class='v'>" + esc(label(p.status || "refund pending")) + "</span></div></div><div class='box'><div class='label'>Refund amount</div><div class='amount'>" + esc(money(p.refund_amount || doc.amount_total, doc.currency)) + "</div></div>" + (p.refund_reason ? "<div class='box'><div class='label'>Reason</div><p>" + esc(p.refund_reason) + "</p></div>" : "") + "<div class='box'><div class='kv'><span class='k'>Requested</span><span class='v'>" + esc(fmtDateTime(p.refund_requested_at)) + "</span>" + (p.refund_approved_at ? "<span class='k'>Approved</span><span class='v'>" + esc(fmtDateTime(p.refund_approved_at)) + "</span>" : "") + (p.refund_completed_at ? "<span class='k'>Completed</span><span class='v'>" + esc(fmtDateTime(p.refund_completed_at)) + "</span>" : "") + "</div></div>";
+    return generatedDocumentShell("Refund / Cancellation Note", doc.document_number, body, "Refund timing depends on the original payment method, bank, card network, airline, hotel, visa authority or supplier. This note records the refund status shown above.");
+  }
+
+  async function generateRefundNote(paymentId) {
+    const result = await sb.rpc("generate_refund_note_document", { p_payment_id: paymentId });
+    if (result.error) { toast("Could not generate refund note: " + result.error.message); return; }
+    openGeneratedDocument(refundNoteHTML(result.data), "refund note");
   }
 
   function paymentRequestHTML(doc) {
@@ -982,6 +1049,9 @@
     const documentButton = event.target.closest(".js-delete-document");
     const releaseDocumentButton = event.target.closest(".js-toggle-document-release");
     const receiptButton = event.target.closest(".js-print-receipt");
+    const confirmationButton = event.target.closest(".js-print-booking-confirmation");
+    const supplierNoteButton = event.target.closest(".js-print-supplier-note");
+    const refundNoteButton = event.target.closest(".js-print-refund-note");
     const viewDocumentButton = event.target.closest(".js-view-booking-document");
     const requestButton = event.target.closest(".js-payment-request");
     const viewProofButton = event.target.closest(".js-view-proof");
@@ -991,6 +1061,9 @@
     if (documentButton) deleteDocument(documentButton.dataset.id, documentButton.dataset.path);
     if (releaseDocumentButton) toggleDocumentRelease(releaseDocumentButton.dataset.id, releaseDocumentButton.dataset.visible === "true");
     if (receiptButton) generateReceipt(receiptButton.dataset.id);
+    if (confirmationButton) generateBookingConfirmation();
+    if (supplierNoteButton) printSupplierPaymentNote(supplierNoteButton.dataset.id);
+    if (refundNoteButton) generateRefundNote(refundNoteButton.dataset.id);
     if (viewDocumentButton) viewBookingDocument(viewDocumentButton.dataset.id, viewDocumentButton.dataset.path, viewDocumentButton.dataset.name);
     if (requestButton) generatePaymentRequest();
     if (viewProofButton) viewPaymentProof(viewProofButton.dataset.id, viewProofButton.dataset.path);
