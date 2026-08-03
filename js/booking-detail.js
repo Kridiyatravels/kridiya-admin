@@ -43,7 +43,16 @@
   function isMicrosoftPath(path) { return String(path || "").indexOf("Kridiya Business/") === 0; }
   async function invokeMicrosoftUpload(formData) {
     const result = await sb.functions.invoke("microsoft-documents", { body: formData });
-    if (result.error) throw result.error;
+    if (result.error) {
+      var message = result.error.message || "Microsoft storage failed";
+      try {
+        if (result.error.context && typeof result.error.context.json === "function") {
+          var payload = await result.error.context.json();
+          if (payload && payload.error) message = payload.error;
+        }
+      } catch (_) { /* Preserve the original invocation error. */ }
+      throw new Error(message);
+    }
     return result.data;
   }
   async function downloadMicrosoft(body) {
