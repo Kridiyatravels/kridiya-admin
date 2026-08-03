@@ -330,13 +330,13 @@ body { background: var(--bg); }
 }
 .corporate-approval-form input,
 .corporate-approval-form select {
-  min-height: 42px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface);
+  min-height: var(--control-sm); border: 1px solid var(--line); border-radius: 12px; background: var(--surface);
   color: var(--ink); padding: 0 0.8rem; font: inherit; font-weight: 650;
 }
 .corporate-permission-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.5rem; }
 .corporate-permission-grid label {
   display: flex; align-items: center; gap: 0.45rem; border: 1px solid var(--line); border-radius: 12px;
-  background: var(--surface); min-height: 42px; padding: 0 0.65rem; color: var(--ink-2); font-weight: 800;
+  background: var(--surface); min-height: var(--control-sm); padding: 0 0.65rem; color: var(--ink-2); font-weight: 800;
 }
 .corporate-permission-grid input { width: 16px; height: 16px; min-height: 0; accent-color: var(--brand-deep); }
 .corporate-permission-grid label > span { color: inherit; font-size: 0.875rem; text-transform: none; }
@@ -1255,15 +1255,15 @@ body { background: var(--bg); }
   color: var(--text-muted); font-size: 0.75rem; font-weight: 800; text-transform: uppercase;
 }
 .corporate-toolbar input {
-  min-height: 42px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface);
+  min-height: var(--control-sm); border: 1px solid var(--line); border-radius: 12px; background: var(--surface);
   color: var(--ink); padding: 0 0.8rem; font: inherit; font-weight: 650;
 }
 .corporate-segments {
-  display: flex; flex-wrap: wrap; gap: 0.35rem; min-height: 42px; align-items: center;
+  display: flex; flex-wrap: wrap; gap: 0.35rem; min-height: var(--control-sm); align-items: center;
   border: 1px solid var(--line); border-radius: 12px; background: var(--surface); padding: 0.28rem;
 }
 .corporate-segments button {
-  min-height: 32px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-2);
+  min-height: var(--control-sm); border: 0; border-radius: 8px; background: transparent; color: var(--ink-2);
   padding: 0 0.65rem; font: inherit; font-size: 0.875rem; font-weight: 800; cursor: pointer;
 }
 .corporate-segments button:hover { background: var(--surface-tint); color: var(--brand-deep); }
@@ -1779,7 +1779,7 @@ body { background: var(--bg); }
 .doc-addon-chips-label { font-size: 0.875rem; font-weight: 700; color: var(--ink-2); margin-right: 0.15rem; }
 .chip-add {
   border: 1px dashed var(--brand); background: var(--brand-soft, #fdf1e4); color: var(--brand-deep, #a3480f);
-  border-radius: 999px; padding: 0.3rem 0.7rem; font: inherit; font-size: 0.875rem; font-weight: 700; cursor: pointer;
+  border-radius: 999px; padding: 0.3rem 0.7rem; font: inherit; font-size: 0.875rem; font-weight: 700; cursor: pointer; min-height: var(--control-sm); display: inline-flex; align-items: center;
 }
 /* Subtle hover to match the neutral chip styling used across the portal —
    tint + brand border, not a solid orange fill. */
@@ -2276,15 +2276,15 @@ main .container,
 }
 
 .staff-logo {
-  min-height: 42px;
+  min-height: var(--control-sm);
 }
 
 .staff-nav {
-  min-height: 42px;
+  min-height: var(--control-sm);
 }
 
 .staff-nav-primary {
-  min-height: 42px;
+  min-height: var(--control-sm);
   gap: var(--sp-1);
 }
 
@@ -2293,7 +2293,7 @@ main .container,
 .staff-jump-btn,
 .staff-profile-btn {
   height: 42px;
-  min-height: 42px;
+  min-height: var(--control-sm);
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;
@@ -2323,7 +2323,7 @@ main .container,
 }
 
 .staff-actions {
-  min-height: 42px;
+  min-height: var(--control-sm);
 }
 
 .staff-profile-btn {
@@ -2351,7 +2351,7 @@ main .container,
 
 @media (max-width: 1079px) {
   .staff-nav {
-    min-height: 42px;
+    min-height: var(--control-sm);
   }
 }
 
@@ -3824,7 +3824,7 @@ table tbody tr:hover {
 }
 
 .admin-filter-check {
-  min-height: 42px;
+  min-height: var(--control-sm);
   align-items: center;
   padding-bottom: 0;
   white-space: nowrap;
@@ -4244,6 +4244,12 @@ table tbody tr:hover {
   flex: 0 0 auto;
   white-space: nowrap;
   line-height: 1;
+  /* Fourth of four .chip-add blocks in this file, so this is the one that
+     actually decides the height. The minimum is repeated here rather than
+     left in the first block, which loses the cascade. */
+  min-height: var(--control-sm);
+  display: inline-flex;
+  align-items: center;
 }
 
 .doc-addon-checks {
