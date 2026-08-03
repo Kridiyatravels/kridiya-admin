@@ -5024,3 +5024,45 @@ body [tabindex]:focus-visible {
   display: inline-flex;
   align-items: center;
 }
+
+/* --------------------------------------------------------------------------
+   Primary action
+
+   css/site-base.css styles .btn-primary as brand-soft cream with orange text.
+   That reads well on a marketing page, but in a dashboard it made the most
+   important control on the screen the faintest thing on it - "Save CRM
+   details" was paler than the WhatsApp button sitting next to it. A dashboard
+   primary action has to be solid.
+   -------------------------------------------------------------------------- */
+body .btn-primary {
+  background: var(--brand-deep, #b6530f);
+  background-image: none;
+  color: #fff;
+  border: 1px solid var(--brand-deep, #b6530f);
+  box-shadow: none;
+  font-weight: 700;
+}
+
+body .btn-primary:hover,
+body .btn-primary:focus-visible {
+  background: oklch(0.48 0.19 40);
+  border-color: oklch(0.48 0.19 40);
+  color: #fff;
+  box-shadow: none;
+}
+
+body .btn-primary:disabled,
+body .btn-primary[aria-disabled="true"] {
+  background: var(--line-strong, #e3d5be);
+  border-color: var(--line-strong, #e3d5be);
+  color: var(--text-muted, #79694f);
+}
+
+/* box-shadow on every button and card came from the marketing stylesheet and
+   made a dense operational screen look soft and cluttered. Depth now comes
+   from the border and the surface tint, the way it does in Microsoft and
+   Google admin consoles. */
+body .btn,
+body .btn-outline {
+  box-shadow: none;
+}
