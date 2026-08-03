@@ -265,7 +265,20 @@
       const rowClass = (isPortalRequest(b) ? " ops-row-portal" : "") + (docHandoff ? " ops-row-document" : "");
       const subline = docHandoff ? ["Document handoff", documentHandoffType(b), documentHandoffRef(b)].filter(Boolean).join(" - ") : [label(b.service_type), isPortalRequest(b) ? "Portal submitted" : label(b.status), b.route_or_destination || "No route/destination"].filter(Boolean).join(" - ");
       const documentHref = 'booking-detail.html?id=' + esc(b.id) + '#booking-document-panel';
-      return '<div class="ops-row' + rowClass + '"><div class="ops-row-main"><b>' + esc(b.booking_reference) + ' - ' + esc(b.title) + '</b><p>' + esc(subline) + '</p><div class="ops-kv">' + portal + handoff + corporate + source + '<span class="ops-chip">Payment: ' + esc(label(b.payment_status)) + '</span><span class="ops-chip">Docs: ' + esc(label(b.document_status)) + '</span><span class="ops-chip">Sell: ' + esc(money(b.selling_price, b.currency)) + '</span><span class="ops-chip">Cost: ' + esc(money(b.supplier_cost, b.currency)) + '</span><span class="ops-chip">Profit: ' + esc(money(b.gross_profit, b.currency)) + '</span></div></div><div class="ops-row-actions"><a class="btn btn-primary" href="booking-detail.html?id=' + esc(b.id) + '">Open</a><a class="btn btn-outline" href="' + documentHref + '">' + (docHandoff ? 'Prepare file' : 'Document') + '</a></div></div>';
+
+      // A chip reading "Sell: Hidden" tells the reader only that they are not
+      // allowed to see it, which they already know. Rows were carrying up to
+      // eight chips over two lines, most of them noise. Finance chips now
+      // appear only when there is a real value behind them.
+      const financeChip = function (name, value) {
+        if (value === null || value === undefined) return '';
+        return '<span class="ops-chip">' + name + ': ' + esc(money(value, b.currency)) + '</span>';
+      };
+      // Profit of exactly zero on an unpriced booking is not a fact worth a
+      // chip; it only means nothing has been quoted yet.
+      const profitChip = b.selling_price == null ? '' : financeChip('Profit', b.gross_profit);
+
+      return '<div class="ops-row' + rowClass + '"><div class="ops-row-main"><b>' + esc(b.booking_reference) + ' - ' + esc(b.title) + '</b><p>' + esc(subline) + '</p><div class="ops-kv">' + portal + handoff + corporate + source + '<span class="ops-chip">Payment: ' + esc(label(b.payment_status)) + '</span><span class="ops-chip">Docs: ' + esc(label(b.document_status)) + '</span>' + financeChip('Sell', b.selling_price) + financeChip('Cost', b.supplier_cost) + profitChip + '</div></div><div class="ops-row-actions"><a class="btn btn-primary" href="booking-detail.html?id=' + esc(b.id) + '">Open</a><a class="btn btn-outline" href="' + documentHref + '">' + (docHandoff ? 'Prepare file' : 'Document') + '</a></div></div>';
   }
   function renderBookings() {
     const rows = filteredBookings();
