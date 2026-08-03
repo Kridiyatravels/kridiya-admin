@@ -634,7 +634,7 @@ body { background: var(--bg); }
 }
 
 .dashboard-quick-actions .btn {
-  min-height: 40px;
+  min-height: 44px;
 }
 
 .command-center {
@@ -1708,7 +1708,7 @@ body { background: var(--bg); }
 .pro-quote-form .qf-grid .qf-date { display: flex; flex-direction: column; gap: 0.25rem; }
 .pro-quote-form .qf-grid .qf-date.qf-wide { grid-column: 1 / -1; }
 .pro-quote-form .qf-date .qf-cap { font-size: 0.75rem; font-weight: 700; color: var(--ink-2); }
-.pro-quote-form .qf-date .qf { min-height: 40px; }
+.pro-quote-form .qf-date .qf { min-height: 44px; }
 @media (max-width: 520px) { .pro-quote-form .qf-grid { grid-template-columns: 1fr; } }
 
 .quote-draft-list {
@@ -1770,7 +1770,7 @@ body { background: var(--bg); }
 /* ---------- Document generator: add-ons, quick chips, actions ---------- */
 .doc-addon-checks { display: flex; flex-wrap: wrap; gap: 0.5rem 0.9rem; margin-top: 0.3rem; }
 .doc-addon-check {
-  display: inline-flex; align-items: center; gap: 0.45rem; min-height: 40px;
+  display: inline-flex; align-items: center; gap: 0.45rem; min-height: 44px;
   border: 1px solid var(--line); border-radius: var(--r-sm, 10px);
   padding: 0 0.7rem; background: var(--surface); cursor: pointer; font-size: 0.875rem; font-weight: 600;
 }
@@ -2174,11 +2174,11 @@ body { background: var(--bg); }
 }
 .crm-field input,
 .crm-field select {
-  width: 100%; min-height: 40px; border: 1px solid var(--line);
+  width: 100%; min-height: 44px; border: 1px solid var(--line);
   border-radius: 8px; padding: 0.45rem 0.6rem; background: var(--surface); color: var(--ink);
 }
 .crm-field input[readonly] { background: var(--surface-tint); color: var(--ink-2); }
-.enquiry-crm-form > .btn { align-self: end; min-height: 40px; }
+.enquiry-crm-form > .btn { align-self: end; min-height: 44px; }
 
 @media (max-width: 640px) {
   .staff-tools-menu { grid-template-columns: 1fr; }
@@ -2387,7 +2387,7 @@ main .container,
 .staff-nav a,
 .staff-tools-btn,
 .staff-jump-btn {
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 0.65rem;
   border-radius: 8px;
 }
@@ -2544,7 +2544,7 @@ main .container,
 }
 
 .btn {
-  min-height: 40px;
+  min-height: 44px;
   border-radius: 8px;
   white-space: nowrap;
 }
@@ -5066,3 +5066,4 @@ body .btn,
 body .btn-outline {
   box-shadow: none;
 }
+
