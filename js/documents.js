@@ -367,6 +367,42 @@
     ".print-quote-option-head div{display:grid;gap:0.15rem}.print-quote-option-head span{font-size:0.72rem;color:#777;text-transform:uppercase}.print-quote-option-head b{font-size:1rem;color:#1a1a1a}.print-quote-option-head strong{font-size:1rem;color:#a3480f;white-space:nowrap}" +
     ".quote-option-meta{margin-bottom:0.75rem}.quote-connection-row td{background:#fafafa;color:#666;font-size:0.76rem;font-style:italic;padding:0.3rem 0.7rem}" +
     ".footer-note{margin-top:2.4rem;padding-top:1rem;border-top:1px solid #eee;font-family:Arial,sans-serif;font-size:0.74rem;color:#888}" +
+    /* ---- Typography and colour system ------------------------------------
+       Appended last so it wins over the rules above without disturbing the
+       forty structural rules that lay these documents out.
+
+       The documents were set in Georgia with Arial tables: a serif letterhead
+       over sans-serif data. That mix is what reads as dated. Airlines, banks
+       and every modern statement use one sans family throughout and let
+       weight and spacing carry the hierarchy instead. Colours move onto the
+       same brand tokens as the website and the rest of the admin.
+       --------------------------------------------------------------------- */
+    "body{font-family:'Plus Jakarta Sans','Segoe UI',Helvetica,Arial,sans-serif;color:#2f2415;line-height:1.5;font-size:13px;-webkit-print-color-adjust:exact;print-color-adjust:exact}" +
+    ".doc-letterhead{border-bottom:2px solid #e3d5be;padding-bottom:1.1rem;margin-bottom:1.8rem}" +
+    ".doc-brand b{font-family:inherit;font-size:17px;font-weight:800;color:#1e1509;letter-spacing:-0.01em}" +
+    ".doc-brand p{font-family:inherit;font-size:11px;color:#79694f;line-height:1.55}" +
+    ".doc-logo{width:46px;height:46px}" +
+    ".doc-meta{font-family:inherit}" +
+    ".doc-type-label{font-size:11px;font-weight:800;letter-spacing:0.09em;color:#b6530f}" +
+    ".doc-number{font-size:20px;font-weight:800;color:#1e1509;letter-spacing:-0.01em;margin-top:5px}" +
+    ".doc-date{font-size:12px;color:#79694f;margin-top:4px}" +
+    "h2{font-family:inherit;font-size:11px;font-weight:800;letter-spacing:0.09em;color:#79694f;text-transform:uppercase;margin:1.7rem 0 0.6rem;padding-bottom:7px;border-bottom:1px solid #f1e8d8}" +
+    "h3,h3.quote-journey-title{font-family:inherit;font-size:13px;font-weight:700;color:#1e1509}" +
+    "table{font-family:inherit;font-size:13px}" +
+    "table th{background:#fff4e6;border-bottom:1px solid #e3d5be;font-size:11px;font-weight:800;letter-spacing:0.05em;color:#b6530f;padding:0.55rem 0.7rem}" +
+    "table td{border-bottom:1px solid #f1e8d8;color:#2f2415;padding:0.6rem 0.7rem}" +
+    "table.totals .label{color:#79694f}" +
+    "table.totals .grand td{border-top:2px solid #e3d5be;font-size:15px;font-weight:800;color:#1e1509}" +
+    ".kv{font-family:inherit;font-size:13px}" +
+    ".kv .k{color:#79694f}" +
+    ".footer-note{font-family:inherit;font-size:11.5px;color:#79694f;border-top:1px solid #f1e8d8;line-height:1.6}" +
+    ".ticket-meta-grid,.ticket-code-box,.print-quote-option-head{font-family:inherit}" +
+    ".ticket-meta-item span,.ticket-passenger-name span,.ticket-passenger-extra span{font-size:10.5px;color:#79694f;letter-spacing:0.05em}" +
+    ".ticket-meta-item b,.ticket-passenger-name b,.ticket-passenger-extra b{font-size:13px;color:#2f2415;font-weight:700}" +
+    ".print-quote-option{border-top:1px solid #e3d5be}" +
+    ".print-quote-option-head strong{color:#b6530f;font-weight:800}" +
+    ".print-quote-option-head b{color:#1e1509;font-weight:800}" +
+    ".quote-connection-row td{background:#fdf8f0;color:#79694f;font-style:normal;font-size:12px}" +
     "@media print{body{padding:0.4in}.ticket-passenger-row{grid-template-columns:150px 1fr 1fr}.ticket-meta-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}";
 
   function letterheadHTML(docLabel, docNumber, docDate) {
