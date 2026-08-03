@@ -40,6 +40,20 @@
   function dateText(v) { return v ? new Date(v + "T00:00:00").toLocaleDateString("en-GB") : "Not set"; }
   function dateTimeText(v) { return v ? new Date(v).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "Not set"; }
   function safeFileName(name) { return String(name || "document").replace(/[^A-Za-z0-9._-]/g, "-").replace(/-+/g, "-").slice(0, 90) || "document"; }
+  function isMicrosoftPath(path) { return String(path || "").indexOf("Kridiya Business/") === 0; }
+  async function invokeMicrosoftUpload(formData) {
+    const result = await sb.functions.invoke("microsoft-documents", { body: formData });
+    if (result.error) throw result.error;
+    return result.data;
+  }
+  async function downloadMicrosoft(body) {
+    const result = await sb.functions.invoke("microsoft-documents", { body: body });
+    if (result.error || !result.data) throw result.error || new Error("Empty document response");
+    const blob = result.data instanceof Blob ? result.data : new Blob([result.data]);
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank", "noopener");
+    setTimeout(function () { URL.revokeObjectURL(url); }, 30000);
+  }
   function amountNum(v) { return Number(v || 0); }
   function paymentReceivedTotal() { return (detail.payments || []).filter(function (p) { return p.status === "received"; }).reduce(function (sum, p) { return sum + amountNum(p.amount); }, 0); }
   function bookingBalance() { return Math.max(0, amountNum(detail.booking.selling_price) - paymentReceivedTotal()); }
@@ -579,7 +593,7 @@
       const releaseButton = canEdit && r.storage_path
         ? '<button class="btn btn-outline js-toggle-document-release" data-id="' + esc(r.id) + '" data-visible="' + esc(r.visible_to_customer ? "false" : "true") + '" type="button">' + esc(r.visible_to_customer ? "Hide from customer" : "Release to customer") + '</button>'
         : '';
-      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(label(r.document_type)) + '</b><p>' + esc(r.file_name) + (r.external_reference ? ' - ' + esc(r.external_reference) : '') + '</p><div class="ops-kv"><span class="ops-chip">' + (r.visible_to_customer ? 'Customer visible' : 'Internal only') + '</span>' + (r.storage_path ? '<span class="ops-chip">File saved</span>' : '<span class="ops-chip">No file attached</span>') + '</div></div><div class="ops-row-actions">' + (r.storage_path ? '<button class="btn btn-outline js-view-booking-document" data-path="' + esc(r.storage_path) + '" type="button">View</button>' : '') + releaseButton + (canEdit ? '<button class="btn btn-outline js-delete-document" data-id="' + esc(r.id) + '" data-path="' + esc(r.storage_path || "") + '" type="button">Remove</button>' : '') + '</div></div>';
+      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(label(r.document_type)) + '</b><p>' + esc(r.file_name) + (r.external_reference ? ' - ' + esc(r.external_reference) : '') + '</p><div class="ops-kv"><span class="ops-chip">' + (r.visible_to_customer ? 'Customer visible' : 'Internal only') + '</span>' + (r.storage_path ? '<span class="ops-chip">File saved</span>' : '<span class="ops-chip">No file attached</span>') + '</div></div><div class="ops-row-actions">' + (r.storage_path ? '<button class="btn btn-outline js-view-booking-document" data-id="' + esc(r.id) + '" data-path="' + esc(r.storage_path) + '" type="button">View</button>' : '') + releaseButton + (canEdit ? '<button class="btn btn-outline js-delete-document" data-id="' + esc(r.id) + '" data-path="' + esc(r.storage_path || "") + '" type="button">Remove</button>' : '') + '</div></div>';
     }).join("") + '</div>';
   }
 
@@ -605,32 +619,36 @@
     const form = document.getElementById("booking-document-form");
     const button = form.querySelector('button[type="submit"]');
     const file = form.document_file && form.document_file.files.length ? form.document_file.files[0] : null;
-    let storagePath = null;
     button.disabled = true;
     button.textContent = file ? "Uploading..." : "Saving...";
     if (file) {
-      const path = bookingId + "/" + Date.now() + "-" + safeFileName(file.name);
-      const upload = await sb.storage.from("booking-documents").upload(path, file, { upsert: false });
-      if (upload.error) {
+      const uploadForm = new FormData();
+      uploadForm.append("action", "upload_booking_document");
+      uploadForm.append("booking_id", bookingId);
+      uploadForm.append("document_type", form.document_type.value);
+      uploadForm.append("external_reference", form.external_reference.value || "");
+      uploadForm.append("visible_to_customer", "false");
+      uploadForm.append("file", file, form.file_name.value || file.name);
+      try {
+        await invokeMicrosoftUpload(uploadForm);
+      } catch (error) {
         button.disabled = false;
         button.textContent = "Save document record";
-        toast("Could not upload file: " + upload.error.message);
+        toast("Could not upload file: " + (error.message || "Microsoft storage failed"));
         return;
       }
-      storagePath = upload.data.path;
     }
-    const result = await sb.rpc("record_booking_document", {
-      p_booking_id: bookingId,
-      p_document_type: form.document_type.value,
-      p_file_name: form.file_name.value || (file ? file.name : "Document received"),
-      p_external_reference: form.external_reference.value || null,
-      p_storage_path: storagePath,
-      p_visible_to_customer: false
-    });
+    const result = file ? { error: null } : await sb.rpc("record_booking_document", {
+        p_booking_id: bookingId,
+        p_document_type: form.document_type.value,
+        p_file_name: form.file_name.value || "Document received",
+        p_external_reference: form.external_reference.value || null,
+        p_storage_path: null,
+        p_visible_to_customer: false
+      });
     button.disabled = false;
     button.textContent = "Save document record";
     if (result.error) {
-      if (storagePath) await sb.storage.from("booking-documents").remove([storagePath]);
       toast("Could not record document: " + result.error.message);
       return;
     }
@@ -646,7 +664,12 @@
     await loadDetail();
   }
 
-  async function viewBookingDocument(path) {
+  async function viewBookingDocument(id, path) {
+    if (isMicrosoftPath(path)) {
+      try { await downloadMicrosoft({ action: "download_booking_document", document_id: id }); }
+      catch (error) { toast("Could not open document: " + (error.message || "Microsoft storage failed")); }
+      return;
+    }
     const result = await sb.storage.from("booking-documents").createSignedUrl(path, 180);
     if (result.error || !result.data) {
       toast("Could not open document: " + (result.error ? result.error.message : "unknown error"));
@@ -672,20 +695,22 @@
 
   async function uploadPaymentProof(paymentId, file) {
     if (!file) return;
-    const path = bookingId + "/" + paymentId + "-" + Date.now() + "-" + safeFileName(file.name);
-    const upload = await sb.storage.from("booking-payment-proofs").upload(path, file, { upsert: false });
-    if (upload.error) { toast("Could not upload proof: " + upload.error.message); return; }
-    const result = await sb.rpc("attach_payment_proof", { p_payment_id: paymentId, p_storage_path: upload.data.path });
-    if (result.error) {
-      await sb.storage.from("booking-payment-proofs").remove([upload.data.path]);
-      toast("Could not attach proof: " + result.error.message);
-      return;
-    }
+    const form = new FormData();
+    form.append("action", "upload_payment_proof");
+    form.append("payment_id", paymentId);
+    form.append("file", file, file.name);
+    try { await invokeMicrosoftUpload(form); }
+    catch (error) { toast("Could not upload proof: " + (error.message || "Microsoft storage failed")); return; }
     toast("Payment proof uploaded.");
     await loadDetail();
   }
 
-  async function viewPaymentProof(path) {
+  async function viewPaymentProof(id, path) {
+    if (isMicrosoftPath(path)) {
+      try { await downloadMicrosoft({ action: "download_staff_file", kind: "payment_proof", record_id: id }); }
+      catch (error) { toast("Could not open proof: " + (error.message || "Microsoft storage failed")); }
+      return;
+    }
     const result = await sb.storage.from("booking-payment-proofs").createSignedUrl(path, 180);
     if (result.error || !result.data) {
       toast("Could not open proof: " + (result.error ? result.error.message : "unknown error"));
@@ -696,25 +721,22 @@
 
   async function uploadSupplierInvoice(supplierPaymentId, file) {
     if (!file) return;
-    const sharepointUrl = window.prompt("Optional: paste the SharePoint invoice link if this file is already backed up there.", "") || "";
-    const path = bookingId + "/" + supplierPaymentId + "-" + Date.now() + "-" + safeFileName(file.name);
-    const upload = await sb.storage.from("supplier-invoices").upload(path, file, { upsert: false });
-    if (upload.error) { toast("Could not upload supplier invoice: " + upload.error.message); return; }
-    const result = await sb.rpc("attach_supplier_invoice", {
-      p_supplier_payment_id: supplierPaymentId,
-      p_storage_path: upload.data.path,
-      p_sharepoint_invoice_url: sharepointUrl.trim() || null
-    });
-    if (result.error) {
-      await sb.storage.from("supplier-invoices").remove([upload.data.path]);
-      toast("Could not attach supplier invoice: " + result.error.message);
-      return;
-    }
+    const form = new FormData();
+    form.append("action", "upload_supplier_invoice");
+    form.append("supplier_payment_id", supplierPaymentId);
+    form.append("file", file, file.name);
+    try { await invokeMicrosoftUpload(form); }
+    catch (error) { toast("Could not upload supplier invoice: " + (error.message || "Microsoft storage failed")); return; }
     toast("Supplier invoice uploaded.");
     await loadDetail();
   }
 
-  async function viewSupplierInvoice(path) {
+  async function viewSupplierInvoice(id, path) {
+    if (isMicrosoftPath(path)) {
+      try { await downloadMicrosoft({ action: "download_staff_file", kind: "supplier_invoice", record_id: id }); }
+      catch (error) { toast("Could not open supplier invoice: " + (error.message || "Microsoft storage failed")); }
+      return;
+    }
     const result = await sb.storage.from("supplier-invoices").createSignedUrl(path, 180);
     if (result.error || !result.data) {
       toast("Could not open supplier invoice: " + (result.error ? result.error.message : "unknown error"));
@@ -724,6 +746,13 @@
   }
 
   async function deleteDocument(id, path) {
+    if (isMicrosoftPath(path)) {
+      const removal = await sb.functions.invoke("microsoft-documents", { body: { action: "delete_booking_document", document_id: id } });
+      if (removal.error) { toast("Could not remove document: " + removal.error.message); return; }
+      toast("Document removed.");
+      await loadDetail();
+      return;
+    }
     const result = await sb.rpc("delete_booking_document", { p_document_id: id });
     if (result.error) { toast("Could not remove document: " + result.error.message); return; }
     if (path) await sb.storage.from("booking-documents").remove([path]);
@@ -788,7 +817,7 @@
       const ref = customer && r.payment_link ? '<span class="ops-chip">Ref/link saved</span>' : '';
       const proofChip = customer && r.proof_storage_path ? '<span class="ops-chip">Proof attached</span>' : '';
       const proofActions = customer
-        ? (r.proof_storage_path ? '<button class="btn btn-outline js-view-proof" data-path="' + esc(r.proof_storage_path) + '" type="button">View proof</button>' : '')
+        ? (r.proof_storage_path ? '<button class="btn btn-outline js-view-proof" data-id="' + esc(r.id) + '" data-path="' + esc(r.proof_storage_path) + '" type="button">View proof</button>' : '')
           + (detail.can_edit_payments ? '<label class="btn btn-outline proof-upload-label">' + (r.proof_storage_path ? 'Replace proof' : 'Upload proof') + '<input type="file" class="js-proof-file" data-id="' + esc(r.id) + '" accept="image/*,application/pdf" hidden></label>' : '')
         : '';
       const invoiceChip = !customer && r.supplier_invoice_path ? '<span class="ops-chip">Invoice attached</span>' : '';
@@ -797,7 +826,7 @@
       const supplierBalanceChip = !customer && supplierBalance > 0 ? '<span class="ops-chip">Balance: ' + esc(money(supplierBalance, r.currency)) + '</span>' : '';
       const supplierDisputeChip = !customer && r.status === "disputed" ? '<span class="ops-chip">Disputed</span>' : '';
       const invoiceActions = !customer
-        ? (r.supplier_invoice_path ? '<button class="btn btn-outline js-view-supplier-invoice" data-path="' + esc(r.supplier_invoice_path) + '" type="button">View invoice</button>' : '')
+        ? (r.supplier_invoice_path ? '<button class="btn btn-outline js-view-supplier-invoice" data-id="' + esc(r.id) + '" data-path="' + esc(r.supplier_invoice_path) + '" type="button">View invoice</button>' : '')
           + (r.sharepoint_invoice_url ? '<a class="btn btn-outline" target="_blank" rel="noopener" href="' + esc(r.sharepoint_invoice_url) + '">SharePoint</a>' : '')
           + (detail.can_edit_payments ? '<label class="btn btn-outline proof-upload-label">' + (r.supplier_invoice_path ? 'Replace invoice' : 'Upload invoice') + '<input type="file" class="js-supplier-invoice-file" data-id="' + esc(r.id) + '" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx" hidden></label>' : '')
         : '';
@@ -938,10 +967,10 @@
     if (documentButton) deleteDocument(documentButton.dataset.id, documentButton.dataset.path);
     if (releaseDocumentButton) toggleDocumentRelease(releaseDocumentButton.dataset.id, releaseDocumentButton.dataset.visible === "true");
     if (receiptButton) generateReceipt(receiptButton.dataset.id);
-    if (viewDocumentButton) viewBookingDocument(viewDocumentButton.dataset.path);
+    if (viewDocumentButton) viewBookingDocument(viewDocumentButton.dataset.id, viewDocumentButton.dataset.path);
     if (requestButton) generatePaymentRequest();
-    if (viewProofButton) viewPaymentProof(viewProofButton.dataset.path);
-    if (viewSupplierInvoiceButton) viewSupplierInvoice(viewSupplierInvoiceButton.dataset.path);
+    if (viewProofButton) viewPaymentProof(viewProofButton.dataset.id, viewProofButton.dataset.path);
+    if (viewSupplierInvoiceButton) viewSupplierInvoice(viewSupplierInvoiceButton.dataset.id, viewSupplierInvoiceButton.dataset.path);
   });
   document.addEventListener("change", function (event) {
     const proofInput = event.target.closest(".js-proof-file");
