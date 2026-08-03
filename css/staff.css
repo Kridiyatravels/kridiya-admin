@@ -5085,3 +5085,52 @@ body .btn-outline {
    that need work. Muted text, no button - the eye lands on the real items. */
 .ops-row-clear b { color: var(--text-muted); font-weight: 600; }
 .ops-row-clear p { color: var(--text-muted); }
+
+/* --------------------------------------------------------------------------
+   Native selects, matched to the custom controls
+
+   The Customers page puts a native <select> immediately beside the custom
+   sort popover. The two were visibly different objects doing the same job —
+   different height, border, radius and type — which makes the toolbar read as
+   assembled rather than designed.
+
+   A native select cannot be made to open like a custom popover, and it should
+   not be: the native list is faster, keyboard-accessible and correct on
+   mobile. What it can do is match in its resting state, which is what
+   Microsoft and Google do with theirs. The chevron is an inline SVG so no
+   network request is added.
+   -------------------------------------------------------------------------- */
+body select:not([multiple]):not([size]) {
+  min-height: var(--control-md);
+  padding: 0 2rem 0 var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background-color: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.2;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5l5-5' fill='none' stroke='%2379694f' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--sp-3) center;
+  background-size: 12px 8px;
+}
+
+body select:not([multiple]):not([size]):hover {
+  border-color: var(--brand-deep);
+}
+
+/* The select resolved to 44px against the sort button's 48px because an
+   earlier rule sets its height outright rather than a minimum. Both are
+   toolbar controls doing the same job, so both take the same step and the
+   same weight - a 4px difference between neighbours reads as a mistake. */
+body select:not([multiple]):not([size]) {
+  height: var(--control-md);
+  font-weight: 700;
+}
+
+.booking-sort-btn {
+  font-weight: 700;
+}
