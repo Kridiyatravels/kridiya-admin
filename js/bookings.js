@@ -48,6 +48,12 @@
     form.booking_kind.addEventListener("change", syncCorporateFields);
     form.corporate_account_id.addEventListener("change", syncCorporateContacts);
     form.corporate_contact_id.addEventListener("change", fillCorporateContact);
+    // Stop the bad date being enterable at all, rather than only catching it
+    // on submit: the picker itself refuses to offer a day before departure.
+    form.travel_start.addEventListener("change", function () {
+      form.travel_end.min = form.travel_start.value || "";
+      if (travelDatesOutOfOrder(form)) form.travel_end.value = "";
+    });
     await loadCorporateAccounts();
     syncCorporateFields();
     await loadBookings();
@@ -112,9 +118,28 @@
     form.customer_phone.value = contact.phone || contact.whatsapp || "";
   }
 
+  // Date inputs give YYYY-MM-DD, which sorts correctly as a plain string.
+  // Comparing them as strings avoids Date()/toISOString(), which shifts a
+  // local date across the day boundary depending on the timezone.
+  function travelDatesOutOfOrder(form) {
+    const start = form.travel_start.value;
+    const end = form.travel_end.value;
+    return Boolean(start && end && end < start);
+  }
+
   async function createBooking() {
     const form = document.getElementById("booking-form");
     const btn = form.querySelector('button[type="submit"]');
+
+    // Nothing was validating this, and a live booking already carries
+    // "Travel: 2026-07-29 - 2026-07-14" — an end date two weeks before its
+    // start. Every downstream document reads these dates.
+    if (travelDatesOutOfOrder(form)) {
+      toast("Return date is before the departure date. Check the travel dates.");
+      form.travel_end.focus();
+      return;
+    }
+
     btn.disabled = true;
     const isCorporate = form.booking_kind.value === "corporate";
     const payload = {
