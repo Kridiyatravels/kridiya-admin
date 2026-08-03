@@ -55,12 +55,27 @@
     }
     return result.data;
   }
-  async function downloadMicrosoft(body) {
-    const result = await sb.functions.invoke("microsoft-documents", { body: body });
-    if (result.error || !result.data) throw result.error || new Error("Empty document response");
-    const blob = result.data instanceof Blob ? result.data : new Blob([result.data]);
+  async function downloadMicrosoft(body, fileName) {
+    const sessionResult = await sb.auth.getSession();
+    const token = sessionResult.data && sessionResult.data.session && sessionResult.data.session.access_token;
+    if (!token) throw new Error("Please log in again.");
+    const response = await fetch(SUPABASE_URL + "/functions/v1/microsoft-documents", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + token, apikey: SUPABASE_ANON_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    if (!response.ok) {
+      const failure = await response.json().catch(function () { return {}; });
+      throw new Error(failure.error || "Could not download the document.");
+    }
+    const blob = await response.blob();
     const url = URL.createObjectURL(blob);
-    window.open(url, "_blank", "noopener");
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = safeFileName(fileName || "document");
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
     setTimeout(function () { URL.revokeObjectURL(url); }, 30000);
   }
   function amountNum(v) { return Number(v || 0); }
@@ -602,7 +617,7 @@
       const releaseButton = canEdit && r.storage_path
         ? '<button class="btn btn-outline js-toggle-document-release" data-id="' + esc(r.id) + '" data-visible="' + esc(r.visible_to_customer ? "false" : "true") + '" type="button">' + esc(r.visible_to_customer ? "Hide from customer" : "Release to customer") + '</button>'
         : '';
-      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(label(r.document_type)) + '</b><p>' + esc(r.file_name) + (r.external_reference ? ' - ' + esc(r.external_reference) : '') + '</p><div class="ops-kv"><span class="ops-chip">' + (r.visible_to_customer ? 'Customer visible' : 'Internal only') + '</span>' + (r.storage_path ? '<span class="ops-chip">File saved</span>' : '<span class="ops-chip">No file attached</span>') + '</div></div><div class="ops-row-actions">' + (r.storage_path ? '<button class="btn btn-outline js-view-booking-document" data-id="' + esc(r.id) + '" data-path="' + esc(r.storage_path) + '" type="button">View</button>' : '') + releaseButton + (canEdit ? '<button class="btn btn-outline js-delete-document" data-id="' + esc(r.id) + '" data-path="' + esc(r.storage_path || "") + '" type="button">Remove</button>' : '') + '</div></div>';
+      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(label(r.document_type)) + '</b><p>' + esc(r.file_name) + (r.external_reference ? ' - ' + esc(r.external_reference) : '') + '</p><div class="ops-kv"><span class="ops-chip">' + (r.visible_to_customer ? 'Customer visible' : 'Internal only') + '</span>' + (r.storage_path ? '<span class="ops-chip">File saved</span>' : '<span class="ops-chip">No file attached</span>') + '</div></div><div class="ops-row-actions">' + (r.storage_path ? '<button class="btn btn-outline js-view-booking-document" data-id="' + esc(r.id) + '" data-path="' + esc(r.storage_path) + '" data-name="' + esc(r.file_name) + '" type="button">View</button>' : '') + releaseButton + (canEdit ? '<button class="btn btn-outline js-delete-document" data-id="' + esc(r.id) + '" data-path="' + esc(r.storage_path || "") + '" type="button">Remove</button>' : '') + '</div></div>';
     }).join("") + '</div>';
   }
 
@@ -637,7 +652,7 @@
       uploadForm.append("document_type", form.document_type.value);
       uploadForm.append("external_reference", form.external_reference.value || "");
       uploadForm.append("visible_to_customer", "false");
-      uploadForm.append("file", file, form.file_name.value || file.name);
+      uploadForm.append("file", file, file.name);
       try {
         await invokeMicrosoftUpload(uploadForm);
       } catch (error) {
@@ -673,9 +688,9 @@
     await loadDetail();
   }
 
-  async function viewBookingDocument(id, path) {
+  async function viewBookingDocument(id, path, fileName) {
     if (isMicrosoftPath(path)) {
-      try { await downloadMicrosoft({ action: "download_booking_document", document_id: id }); }
+      try { await downloadMicrosoft({ action: "download_booking_document", document_id: id }, fileName); }
       catch (error) { toast("Could not open document: " + (error.message || "Microsoft storage failed")); }
       return;
     }
@@ -976,7 +991,7 @@
     if (documentButton) deleteDocument(documentButton.dataset.id, documentButton.dataset.path);
     if (releaseDocumentButton) toggleDocumentRelease(releaseDocumentButton.dataset.id, releaseDocumentButton.dataset.visible === "true");
     if (receiptButton) generateReceipt(receiptButton.dataset.id);
-    if (viewDocumentButton) viewBookingDocument(viewDocumentButton.dataset.id, viewDocumentButton.dataset.path);
+    if (viewDocumentButton) viewBookingDocument(viewDocumentButton.dataset.id, viewDocumentButton.dataset.path, viewDocumentButton.dataset.name);
     if (requestButton) generatePaymentRequest();
     if (viewProofButton) viewPaymentProof(viewProofButton.dataset.id, viewProofButton.dataset.path);
     if (viewSupplierInvoiceButton) viewSupplierInvoice(viewSupplierInvoiceButton.dataset.id, viewSupplierInvoiceButton.dataset.path);
