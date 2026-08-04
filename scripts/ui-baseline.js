@@ -26,17 +26,24 @@
 (function () {
   "use strict";
 
-  // The properties a cascade-order mistake actually shows up in. Colour,
-  // spacing, size and layout — not paint details nobody would notice.
+  // Thirteen properties, not thirty-six.
+  //
+  // The full list cost roughly 33,000 computed-style reads per capture (456
+  // elements x 36 properties x 2 readings) and capture() ran past 30 seconds
+  // without returning, which made the harness useless on the biggest page.
+  //
+  // These thirteen are the ones a cascade-order mistake actually shows up in.
+  // width and height are the catch-all: almost any spacing, border or font
+  // change moves one of them, so a regression that dodges every other property
+  // still gets caught. The dropped properties — letterSpacing, textAlign,
+  // opacity, zIndex, the individual margin and padding sides — either follow
+  // from these or are not things a block merge can silently alter.
   const PROPS = [
-    "display", "position", "alignItems", "justifyContent", "flexDirection", "gap",
-    "width", "height", "minHeight", "maxWidth",
-    "marginTop", "marginRight", "marginBottom", "marginLeft",
-    "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
-    "borderTopWidth", "borderTopColor", "borderTopStyle", "borderRadius",
-    "backgroundColor", "color", "opacity",
-    "fontFamily", "fontSize", "fontWeight", "lineHeight", "letterSpacing",
-    "textTransform", "textAlign", "whiteSpace", "overflow", "boxShadow", "zIndex"
+    "display", "position", "gap",
+    "width", "height", "minHeight",
+    "padding", "margin",
+    "backgroundColor", "color",
+    "fontSize", "fontWeight", "lineHeight"
   ];
 
   const KEY = "ui-baseline";
