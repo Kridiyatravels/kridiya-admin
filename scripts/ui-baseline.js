@@ -106,10 +106,30 @@
 
   async function settle() {
     // Fonts first: a web font arriving after the snapshot is what poisoned the
-    // baseline last time. Then two animation frames, then a beat for any
+    // baseline originally. Then two animation frames, then a beat for any
     // layout the page's own scripts trigger on load.
-    if (document.fonts && document.fonts.ready) await document.fonts.ready;
-    await new Promise(function (r) { requestAnimationFrame(function () { requestAnimationFrame(r); }); });
+    //
+    // document.fonts.ready is raced against a timeout because on this admin it
+    // does not always resolve — the page loads Google Fonts across three
+    // families, and if one request never settles the promise waits forever.
+    // That single await was the whole "capture is too slow" problem: measured
+    // directly, the actual work is 36ms for 456 elements (24ms to filter, 3ms
+    // for paths, 9ms to read styles). Nothing was slow; one promise hung.
+    if (document.fonts && document.fonts.ready) {
+      await Promise.race([
+        document.fonts.ready,
+        new Promise(function (r) { setTimeout(r, 3000); })
+      ]);
+    }
+    // Two animation frames, but raced against a timer. requestAnimationFrame
+    // does not fire at all while the tab or preview pane is hidden, so an
+    // unguarded await here waits forever in the background — which is the
+    // actual reason capture() appeared to be "too slow to finish". It was not
+    // slow: the real work measures 36ms for 456 elements. It was suspended.
+    await Promise.race([
+      new Promise(function (r) { requestAnimationFrame(function () { requestAnimationFrame(r); }); }),
+      new Promise(function (r) { setTimeout(r, 1000); })
+    ]);
     await new Promise(function (r) { setTimeout(r, 600); });
   }
 
