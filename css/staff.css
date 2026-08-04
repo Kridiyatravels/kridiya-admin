@@ -919,7 +919,6 @@ body { background: var(--bg); }
   .handover-card-head .btn { width: 100%; justify-content: center; }
 }
 
-
 /* ---------- BOOKING DETAIL PAGE ---------- */
 .stat-text { font-size: 1.125rem !important; line-height: 1.15 !important; overflow-wrap: anywhere; }
 .payment-mini-form { margin-bottom: 1rem; }
@@ -1777,10 +1776,7 @@ body { background: var(--bg); }
 .doc-addon-check input { width: 17px; height: 17px; accent-color: var(--brand); cursor: pointer; }
 .doc-addon-chips { flex-wrap: wrap; }
 .doc-addon-chips-label { font-size: 0.875rem; font-weight: 700; color: var(--ink-2); margin-right: 0.15rem; }
-.chip-add {
-  border: 1px dashed var(--brand); background: var(--brand-soft, #fdf1e4); color: var(--brand-deep, #a3480f);
-  border-radius: 999px; padding: 0.3rem 0.7rem; font: inherit; font-size: 0.875rem; font-weight: 700; cursor: pointer; min-height: var(--control-sm); display: inline-flex; align-items: center;
-}
+
 /* Subtle hover to match the neutral chip styling used across the portal —
    tint + brand border, not a solid orange fill. */
 .chip-add:hover { background: var(--brand-soft); border-color: var(--brand); color: var(--brand-deep); }
@@ -2604,15 +2600,6 @@ main .container,
 .doc-addon-chips {
   margin-top: 0;
   border-radius: 8px;
-}
-
-.chip-add {
-  min-height: 36px;
-  border-style: solid;
-  border-color: var(--line-strong);
-  border-radius: 8px;
-  padding: 0 0.65rem;
-  background: var(--surface);
 }
 
 .doc-action-row + .form-note {
@@ -4241,6 +4228,20 @@ table tbody tr:hover {
 }
 
 .chip-add {
+  border: 1px dashed var(--brand);
+  background: var(--surface);
+  color: var(--brand-deep, #a3480f);
+  border-radius: 8px;
+  padding: 0 0.65rem;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  border-style: solid;
+  border-color: var(--line-strong);
   flex: 0 0 auto;
   white-space: nowrap;
   line-height: 1;
@@ -4248,8 +4249,6 @@ table tbody tr:hover {
      actually decides the height. The minimum is repeated here rather than
      left in the first block, which loses the cascade. */
   min-height: var(--control-sm);
-  display: inline-flex;
-  align-items: center;
 }
 
 .doc-addon-checks {
@@ -5079,7 +5078,6 @@ body .btn,
 body .btn-outline {
   box-shadow: none;
 }
-
 
 /* A priority row with nothing in it should recede, not compete with the rows
    that need work. Muted text, no button - the eye lands on the real items. */

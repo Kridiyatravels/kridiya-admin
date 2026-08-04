@@ -41,23 +41,35 @@
 
   const KEY = "ui-baseline";
 
-  // A stable identity for each element: tag + sorted class list + its index
-  // among identical siblings. Enough to line the same element up across two
-  // page loads, which is all the comparison needs.
+  // A stable identity for each element: its structural path from <body>, as
+  // child indexes — "body>3>1>0>2".
   //
-  // Built in a single pass. The first version called this per element and
-  // re-queried the whole DOM inside it — 450 elements meant 450 full DOM
-  // scans, and capture() timed out before returning anything.
+  // Identity used to be tag + class list + index among identical elements.
+  // That looked reasonable and was not: the admin's JavaScript adds .is-active
+  // to a nav link after load, which changes that element's class string, which
+  // renumbers every element sharing the old string. A revert that genuinely
+  // restored the CSS still reported 31 differences on .staff-nav-link for this
+  // reason alone.
+  //
+  // Structural position cannot be changed by styling or by a class being
+  // added, so a difference now means the CSS really did move something.
+  function pathOf(node) {
+    const parts = [];
+    let n = node;
+    while (n && n !== document.body) {
+      const parent = n.parentNode;
+      if (!parent) break;
+      parts.push([].indexOf.call(parent.children, n));
+      n = parent;
+    }
+    return "body>" + parts.reverse().join(">");
+  }
+
+  // Built in a single pass. The first version re-queried the whole DOM per
+  // element — 456 elements meant 456 full scans and capture() timed out.
   function buildIdentities(nodes) {
-    const seen = Object.create(null);
     const ids = new Map();
-    nodes.forEach(function (node) {
-      const cls = (node.getAttribute("class") || "").trim().split(/\s+/).filter(Boolean).sort().join(".");
-      const base = node.tagName.toLowerCase() + (cls ? "." + cls : "");
-      const n = seen[base] === undefined ? 0 : seen[base] + 1;
-      seen[base] = n;
-      ids.set(node, base + "#" + n);
-    });
+    nodes.forEach(function (node) { ids.set(node, pathOf(node)); });
     return ids;
   }
 
