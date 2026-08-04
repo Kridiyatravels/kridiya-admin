@@ -73,6 +73,7 @@
   }
 
   function mailReplyLink(enq) {
+    if (!enq.email || /@phone\.invalid$/i.test(enq.email)) return "";
     const firstName = enq.full_name ? enq.full_name.split(" ")[0] : "";
     const subject = "Re: " + enq.reference + " — your Kridiya Travel enquiry";
     const body = "Hi " + firstName + ",\n\nThanks for your enquiry (" + enq.summary + ").\n\n";
@@ -117,7 +118,11 @@
     ].filter(Boolean).join(" ");
     if (/google|search/i.test(fields)) return "Google/Search";
     if (/instagram|facebook|meta|social/i.test(fields)) return "Social";
-    if (/whatsapp|call/i.test(fields)) return "Direct";
+    if (/whatsapp/i.test(fields)) return "WhatsApp";
+    if (/phone|call/i.test(fields)) return "Phone";
+    if (/email/i.test(fields)) return "Email";
+    if (/referral/i.test(fields)) return "Referral";
+    if (/manual/i.test(fields)) return "Manual";
     if (/corporate|b2b/i.test(fields) || isCorporateEnquiry(enq)) return "Corporate";
     return "Website";
   }
@@ -871,6 +876,7 @@
       const quotes = sortQuoteOptions(quotesByEnquiry[enq.id] || []);
       const quoteDrafts = quoteDraftsByEnquiry[enq.id] || [];
       const wa = waReplyLink(enq);
+      const mail = mailReplyLink(enq);
       const initial = (enq.full_name || "?").trim().charAt(0).toUpperCase();
       const corporate = isCorporateEnquiry(enq);
       const booking = bookingByEnquiry[enq.id];
@@ -892,7 +898,7 @@
           '<div class="enq-row-body">' +
           '<p style="margin:0 0 0.2rem"><b>Contact</b> · ' +
             (enq.phone ? '<a href="tel:' + KridiyaAuth.escapeHTML(enq.phone) + '">' + KridiyaAuth.escapeHTML(enq.phone) + "</a> · " : "") +
-            '<a href="mailto:' + KridiyaAuth.escapeHTML(enq.email) + '">' + KridiyaAuth.escapeHTML(enq.email) + "</a></p>" +
+            (mail ? '<a href="mailto:' + KridiyaAuth.escapeHTML(enq.email) + '">' + KridiyaAuth.escapeHTML(enq.email) + "</a>" : "No email") + "</p>" +
           corporatePreview(enq) +
           marketingFollowUp(enq, notes, quotes, booking) +
           crmFieldsHTML(enq) +
@@ -903,7 +909,7 @@
               }).join("") +
             "</select>" +
             (wa ? '<a class="btn btn-wa" target="_blank" rel="noopener" href="' + wa + '">' + icon("whatsapp") + " WhatsApp</a>" : "") +
-            '<a class="btn btn-outline" href="' + mailReplyLink(enq) + '">' + icon("mail") + " Email</a>" +
+            (mail ? '<a class="btn btn-outline" href="' + mail + '">' + icon("mail") + " Email</a>" : "") +
             '<button type="button" class="btn btn-outline notes-toggle" data-id="' + enq.id + '">Notes (' + notes.length + ")</button>" +
             '<button type="button" class="btn btn-outline requests-toggle" data-id="' + enq.id + '">Requests (' + requests.length + ")</button>" +
             '<button type="button" class="btn btn-outline quotes-toggle" data-id="' + enq.id + '">Quote (' + quotes.length + ")</button>" +
@@ -911,7 +917,7 @@
               ? '<a class="btn btn-primary" href="booking-detail.html?id=' + KridiyaAuth.escapeHTML(booking.id) + '">Open booking</a>'
               : (corporate ? '<button type="button" class="btn btn-outline convert-toggle" data-id="' + enq.id + '">Convert</button>' : "")) +
             '<a class="btn btn-outline" href="documents.html?enquiry=' + enq.id + '">Document</a>' +
-            '<a class="btn btn-outline" href="customers.html?email=' + encodeURIComponent(enq.email || "") + '">' + icon("user") + " Customer</a>" +
+            (mail ? '<a class="btn btn-outline" href="customers.html?email=' + encodeURIComponent(enq.email) + '">' + icon("user") + " Customer</a>" : "") +
           "</div>" +
           '<div class="admin-notes" data-notes-for="' + enq.id + '" hidden>' +
             '<div class="admin-notes-list">' +
@@ -1030,6 +1036,44 @@
     allEnquiries = result.data || [];
   }
 
+  async function createManualEnquiry(form) {
+    const phone = String(form.phone.value || "").trim();
+    const suppliedEmail = String(form.email.value || "").trim().toLowerCase();
+    if (!phone && !suppliedEmail) {
+      toast("Enter at least a phone number or email address.");
+      form.phone.focus();
+      return;
+    }
+    const source = form.source.value;
+    const submit = form.querySelector('button[type="submit"]');
+    submit.disabled = true;
+    const result = await sb.rpc("create_staff_enquiry", {
+      p_full_name: form.full_name.value.trim(),
+      p_phone: phone || null,
+      p_email: suppliedEmail || null,
+      p_service_type: form.service_type.value,
+      p_source: source,
+      p_summary: form.summary.value.trim(),
+      p_internal_note: String(form.internal_note.value || "").trim() || null
+    });
+    submit.disabled = false;
+    if (result.error) {
+      toast("Could not create enquiry: " + result.error.message);
+      return;
+    }
+    if (form.internal_note.value.trim()) await loadNotes();
+    allEnquiries.unshift(result.data);
+    form.reset();
+    document.getElementById("enquiry-new-panel").hidden = true;
+    renderList();
+    logActivity(sb, currentStaffId, "enquiry.staff_created", "enquiry", result.data.id, {
+      reference: result.data.reference,
+      source: source,
+      service_type: result.data.service_type
+    });
+    toast("Enquiry created.");
+  }
+
   async function loadNotes() {
     const result = await sb.from("enquiry_notes").select("id, enquiry_id, note, created_at").order("created_at", { ascending: false });
     if (result.error) throw result.error;
@@ -1090,6 +1134,22 @@
   }
 
   function wireEvents() {
+    const newToggle = document.getElementById("enquiry-new-toggle");
+    const newPanel = document.getElementById("enquiry-new-panel");
+    const newForm = document.getElementById("enquiry-new-form");
+    newToggle.addEventListener("click", function () {
+      newPanel.hidden = !newPanel.hidden;
+      if (!newPanel.hidden) document.getElementById("manual-full-name").focus();
+    });
+    document.getElementById("enquiry-new-cancel").addEventListener("click", function () {
+      newPanel.hidden = true;
+      newForm.reset();
+    });
+    newForm.addEventListener("submit", async function (event) {
+      event.preventDefault();
+      await createManualEnquiry(newForm);
+    });
+
     ["flt-status", "flt-service", "flt-attention", "flt-today"].forEach(function (id) {
       document.getElementById(id).addEventListener("change", renderList);
     });

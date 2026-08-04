@@ -26,9 +26,29 @@
         <div class="account-head">
           <div>
             <h1>Enquiries</h1>
-            <p>Every enquiry submitted through the website, newest first. Staff only.</p>
+            <p>Website and staff-created enquiries, newest first. Staff only.</p>
           </div>
-          <span class="form-note" id="admin-count"></span>
+          <div class="section-actions">
+            <span class="form-note" id="admin-count"></span>
+            <button type="button" class="btn btn-primary" id="enquiry-new-toggle">Add enquiry</button>
+          </div>
+        </div>
+
+        <div class="account-main" id="enquiry-new-panel" hidden>
+          <div class="account-section-head">
+            <div><h2>Add customer enquiry</h2><p>Record a phone, WhatsApp, email, referral, or other staff-originated lead before quoting.</p></div>
+          </div>
+          <form id="enquiry-new-form" class="enquiry-new-form">
+            <div class="crm-field"><label for="manual-full-name">Customer name</label><input id="manual-full-name" name="full_name" maxlength="160" required></div>
+            <div class="crm-field"><label for="manual-phone">Phone / WhatsApp</label><input id="manual-phone" name="phone" type="tel" maxlength="40" placeholder="+971 ..."></div>
+            <div class="crm-field"><label for="manual-email">Email</label><input id="manual-email" name="email" type="email" maxlength="254" placeholder="Optional if phone is provided"></div>
+            <div class="crm-field"><label for="manual-service">Service</label><select id="manual-service" name="service_type" required><option value="flight">Flight</option><option value="hotel">Hotel</option><option value="holiday">Holiday</option><option value="visa">Visa</option><option value="umrah">Umrah</option><option value="cruise">Cruise</option><option value="other">Other</option></select></div>
+            <div class="crm-field"><label for="manual-source">Source</label><select id="manual-source" name="source" required><option value="phone">Phone</option><option value="whatsapp">WhatsApp</option><option value="email">Email</option><option value="referral">Referral</option><option value="manual">Manual</option><option value="other">Other</option></select></div>
+            <div class="crm-field crm-field-wide"><label for="manual-summary">What does the customer need?</label><textarea id="manual-summary" name="summary" maxlength="500" required placeholder="Route or destination, dates, travellers, and important requirements"></textarea></div>
+            <div class="crm-field crm-field-wide"><label for="manual-note">Internal note</label><textarea id="manual-note" name="internal_note" maxlength="2000" placeholder="Optional staff-only context"></textarea></div>
+            <p class="form-note crm-field-wide">Marketing consent defaults to not opted in. Record consent separately only when the customer explicitly agrees.</p>
+            <div class="section-actions crm-field-wide"><button type="submit" class="btn btn-primary">Create enquiry</button><button type="button" class="btn btn-outline" id="enquiry-new-cancel">Cancel</button></div>
+          </form>
         </div>
 
         <div class="stat-row" id="stat-row"></div>
@@ -76,6 +96,6 @@
 <script src="js/staff-common.js?v=20260726c" defer></script>
 <script src="js/airports.js" defer></script>
 <script src="js/airport-ac.js" defer></script>
-<script src="js/admin.js?v=20260804a" defer></script>
+<script src="js/admin.js?v=20260804b" defer></script>
 </body>
 </html>
