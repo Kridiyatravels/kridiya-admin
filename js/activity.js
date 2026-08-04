@@ -31,7 +31,14 @@
     "settings.updated": { icon: "settings", color: "var(--text-muted)", bg: "var(--surface-tint)" },
     "auth.login": { icon: "check", color: "var(--status-confirmed)", bg: "var(--status-confirmed-bg)" },
     "auth.logout": { icon: "logout", color: "var(--text-muted)", bg: "var(--surface-tint)" },
-    "enquiry.marketing_outcome_added": { icon: "note", color: "var(--status-quoted)", bg: "var(--status-quoted-bg)" }
+    "enquiry.marketing_outcome_added": { icon: "note", color: "var(--status-quoted)", bg: "var(--status-quoted-bg)" },
+    "task.bulk_done": { icon: "check", color: "var(--status-confirmed)", bg: "var(--status-confirmed-bg)" },
+    "task.bulk_reopen": { icon: "clock", color: "var(--status-checking)", bg: "var(--status-checking-bg)" },
+    "task.bulk_snooze": { icon: "clock", color: "var(--status-payment)", bg: "var(--status-payment-bg)" },
+    "task.bulk_reassign": { icon: "user", color: "var(--status-confirmed)", bg: "var(--status-confirmed-bg)" },
+    "task.bulk_escalate": { icon: "clock", color: "var(--status-closed)", bg: "var(--status-closed-bg)" },
+    "operations.digest_daily": { icon: "mail", color: "var(--status-confirmed)", bg: "var(--status-confirmed-bg)" },
+    "operations.digest_overdue": { icon: "mail", color: "var(--status-closed)", bg: "var(--status-closed-bg)" }
   };
 
   function eventMeta(type) {
@@ -70,6 +77,20 @@
         return who + " signed in" + (m.method === "pin" ? " with a PIN" : "");
       case "auth.logout":
         return who + " signed out";
+      case "task.bulk_done":
+        return who + " completed " + (m.count || 0) + " operational work item(s)";
+      case "task.bulk_reopen":
+        return who + " reopened " + (m.count || 0) + " operational work item(s)";
+      case "task.bulk_snooze":
+        return who + " snoozed " + (m.count || 0) + " operational work item(s)";
+      case "task.bulk_reassign":
+        return who + " reassigned " + (m.count || 0) + " operational work item(s)";
+      case "task.bulk_escalate":
+        return who + " escalated " + (m.count || 0) + " operational work item(s)";
+      case "operations.digest_daily":
+        return "The daily operations digest completed";
+      case "operations.digest_overdue":
+        return "The overdue-work digest completed";
       default:
         return who + " — " + row.event_type;
     }

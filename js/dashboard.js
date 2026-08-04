@@ -90,12 +90,19 @@
   }
 
   async function loadDashboard() {
-    const result = await sb.rpc("staff_dashboard_summary");
-    const taskResult = await sb.rpc("list_dashboard_booking_tasks", { limit_count: 80 });
+    const results = await Promise.all([
+      sb.rpc("staff_dashboard_summary"),
+      sb.rpc("list_operations_tasks", { p_limit: 120 }),
+      sb.rpc("operations_command_metrics")
+    ]);
+    const result = results[0];
+    const taskResult = results[1];
+    const metricsResult = results[2];
     if (result.error) { toast("Could not load dashboard: " + result.error.message); return; }
     if (taskResult.error) { toast("Could not load reminders: " + taskResult.error.message); }
+    if (metricsResult.error) { toast("Could not load command metrics: " + metricsResult.error.message); }
     dashboardTasks = taskResult.data || [];
-    const d = result.data || {};
+    const d = Object.assign({}, result.data || {}, metricsResult.data || {});
     renderDashboardChrome(d);
     renderCommandCenter(d);
 
@@ -178,7 +185,7 @@
           ["Open enquiries", "admin.html"],
           ["My bookings", "bookings.html"],
           ["Create document", "documents.html"],
-          ["Booking tasks", "bookings.html"],
+          ["Work queue", "tasks.html"],
           ["Templates", "templates.html"]
         ];
     box.innerHTML = actions.map(function (a) {
@@ -217,8 +224,8 @@
       ];
     }
     return [
-      ["Overdue booking tasks", countTasks("overdue"), "bookings.html", "Finish first"],
-      ["Tasks due today", countTasks("today"), "bookings.html", "Customer follow-up"],
+      ["Overdue work", countTasks("overdue"), "tasks.html", "Finish first"],
+      ["Work due today", countTasks("today"), "tasks.html", "Customer follow-up"],
       ["Prepare documents", d.documents_pending || 0, "documents.html", "Before customer handover"],
       ["Open enquiries", d.enquiries_open || 0, "admin.html", "Quote and follow-up"],
       ["Open bookings", d.bookings_open || 0, "bookings.html", "Keep customer updated"]
@@ -231,11 +238,11 @@
     const riskActions = dashboardIsAdmin ? [
       { title: "Collect or verify payment", text: (d.bookings_confirmed_unpaid || 0) + " confirmed booking(s) need payment control", href: "bookings.html" },
       { title: "Clear refund queue", text: money(d.refund_value_pending || 0) + " pending approval/completion", href: "payments.html" },
-      { title: "Close overdue tasks", text: (d.tasks_overdue || 0) + " overdue task(s), " + (d.tasks_today || 0) + " due today", href: "bookings.html" },
+      { title: "Close overdue work", text: (d.tasks_overdue || 0) + " overdue item(s), " + (d.tasks_today || 0) + " due today", href: "tasks.html" },
       { title: "Prepare documents", text: (d.documents_pending || 0) + " booking(s) still need document progress", href: "documents.html" }
     ] : [
       { title: "Follow up enquiries", text: (d.enquiries_open || 0) + " open enquiry(s) in the sales queue", href: "admin.html" },
-      { title: "Handle my tasks", text: staffVisibleTasks().length + " visible booking task(s)", href: "bookings.html" },
+      { title: "Handle my work", text: staffVisibleTasks().length + " visible operational item(s)", href: "tasks.html" },
       { title: "Prepare documents", text: (d.documents_pending || 0) + " booking(s) need document progress", href: "documents.html" },
       { title: "Use templates", text: "Send consistent WhatsApp and email replies", href: "templates.html" }
     ];
@@ -243,15 +250,17 @@
       ["Open sales", money(d.sales_value_open), "Bookings not closed"],
       ["Open supplier cost", money(d.supplier_cost_open), "Cost exposure"],
       ["Open gross profit", money(d.gross_profit_open), "Expected margin"],
-      ["Net collected 30d", money(d.net_collected_30d), "After refunds"]
+      ["Net collected 30d", money(d.net_collected_30d), "After refunds"],
+      ["Conversion 30d", Number(d.conversion_rate_30d || 0).toFixed(1) + "%", (d.enquiries_won_30d || 0) + " won of " + (d.enquiries_30d || 0)],
+      ["Open SLA breaches", d.sla_breaches_open || 0, "First response overdue"]
     ] : [
-      ["Visible tasks", staffVisibleTasks().length, "Assigned or unassigned"],
-      ["Due today", countTasks("today"), "Finish before end of day"],
-      ["Overdue", countTasks("overdue"), "Needs immediate action"],
-      ["Open bookings", d.bookings_open || 0, "Keep customer updated"]
+      ["My active work", d.my_active_tasks || 0, "Assigned to you"],
+      ["Due today", d.my_due_today || 0, "Finish before end of day"],
+      ["Overdue", d.my_overdue_tasks || 0, "Needs immediate action"],
+      ["Completed 7d", d.my_completed_7d || 0, "Recent throughput"]
     ];
     document.getElementById("dashboard-command").innerHTML =
-      '<div class="command-health command-' + esc(tone) + '"><div><span>' + esc(dashboardIsAdmin ? "Business health" : "My work health") + '</span><b>' + esc(score) + '%</b><p>' + esc(tone === "ok" ? (dashboardIsAdmin ? "Operations are controlled." : "Your visible queue is controlled.") : tone === "warn" ? "Some queues need attention today." : "High-priority risks need owner focus.") + '</p></div><a class="btn btn-primary" href="' + esc(dashboardIsAdmin ? "payments.html" : "bookings.html") + '">' + esc(dashboardIsAdmin ? "Open finance" : "Open tasks") + '</a></div>' +
+      '<div class="command-health command-' + esc(tone) + '"><div><span>' + esc(dashboardIsAdmin ? "Business health" : "My work health") + '</span><b>' + esc(score) + '%</b><p>' + esc(tone === "ok" ? (dashboardIsAdmin ? "Operations are controlled." : "Your visible queue is controlled.") : tone === "warn" ? "Some queues need attention today." : "High-priority risks need owner focus.") + '</p></div><a class="btn btn-primary" href="' + esc(dashboardIsAdmin ? "payments.html" : "tasks.html") + '">' + esc(dashboardIsAdmin ? "Open finance" : "Open work") + '</a></div>' +
       '<div class="command-finance">' + finance.map(function (f) {
         return '<div class="command-metric"><b>' + esc(f[1]) + '</b><span>' + esc(f[0]) + '</span><p>' + esc(f[2]) + '</p></div>';
       }).join("") + '</div>' +
@@ -269,14 +278,17 @@
       const unassigned = (dashboardTasks || []).filter(function (t) { return !t.assigned_to; }).length;
       const overdue = (dashboardTasks || []).filter(function (t) { return t.due_bucket === "overdue"; }).length;
       const rows = [
-        ["Unassigned booking tasks", unassigned, "Assign owner or complete"],
+        ["Unassigned operational work", unassigned, "Assign owner or complete"],
         ["Overdue tasks", overdue, "Staff follow-up required"],
-        ["Open booking reminders", dashboardTasks.length, "Across all staff-visible work"],
+        ["Open operational items", dashboardTasks.length, "Across all work types"],
         ["Activity audit", (d.recent_activity || []).length, "Latest logged actions"]
       ];
+      const workload = (d.workload || []).map(function (person) {
+        return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(person.full_name) + '</b><p>' + esc(person.active_tasks || 0) + ' active · ' + esc(person.overdue || 0) + ' overdue · ' + esc(person.completed_7d || 0) + ' completed in 7 days</p></div></div>';
+      }).join("");
       accountability.innerHTML = '<div class="ops-list">' + rows.map(function (r) {
         return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(r[0]) + '</b><p>' + esc(r[1]) + ' - ' + esc(r[2]) + '</p></div></div>';
-      }).join("") + '</div>';
+      }).join("") + workload + '</div>';
     }
   }
 
@@ -537,16 +549,16 @@
     const panel = document.getElementById("dashboard-reminders");
     const tasks = dashboardTasks || [];
     if (!tasks.length) {
-      panel.innerHTML = '<p class="form-note">No open booking reminders.</p>';
+      panel.innerHTML = '<p class="form-note">No open operational tasks.</p>';
       return;
     }
     const counts = tasks.reduce(function (acc, t) { acc[t.due_bucket] = (acc[t.due_bucket] || 0) + 1; return acc; }, {});
     const summary = '<div class="ops-kv"><span class="ops-chip">Overdue: ' + esc(counts.overdue || 0) + '</span><span class="ops-chip">Today: ' + esc(counts.today || 0) + '</span><span class="ops-chip">Next 7 days: ' + esc(counts.next_7_days || 0) + '</span></div>';
     panel.innerHTML = summary + '<div class="ops-list payment-history">' + tasks.map(function (t) {
       const bucket = label(t.due_bucket);
-      const href = 'booking-detail.html?id=' + encodeURIComponent(t.entity_id);
-      const meta = esc(t.booking_reference || "Booking") + ' / ' + esc(label(t.service_type)) + ' / ' + esc(label(t.priority));
-      return '<div class="ops-row reminder-row reminder-' + esc(t.due_bucket) + '"><div class="ops-row-main"><b>' + esc(t.title) + '</b><p>' + meta + ' / Due: ' + esc(whenText(t.due_at)) + '</p><div class="ops-kv"><span class="ops-chip">' + esc(bucket) + '</span><span class="ops-chip">' + esc(t.booking_title || "Untitled booking") + '</span>' + (t.assigned_to_name ? '<span class="ops-chip">' + esc(t.assigned_to_name) + '</span>' : '') + '</div></div><div class="ops-row-actions"><a class="btn btn-outline" href="' + href + '">Open</a><button class="btn btn-outline js-dashboard-task-done" data-id="' + esc(t.id) + '" type="button">Done</button></div></div>';
+      const href = t.action_url || "tasks.html";
+      const meta = esc(t.entity_reference || label(t.entity_type)) + ' / ' + esc(label(t.entity_type)) + ' / ' + esc(label(t.priority));
+      return '<div class="ops-row reminder-row reminder-' + esc(t.due_bucket) + '"><div class="ops-row-main"><b>' + esc(t.title) + '</b><p>' + meta + ' / Due: ' + esc(whenText(t.due_at)) + '</p><div class="ops-kv"><span class="ops-chip">' + esc(bucket) + '</span><span class="ops-chip">' + esc(t.entity_title || "Operational task") + '</span>' + (t.assigned_to_name ? '<span class="ops-chip">' + esc(t.assigned_to_name) + '</span>' : '') + '</div></div><div class="ops-row-actions"><a class="btn btn-outline" href="' + esc(href) + '">Open</a><button class="btn btn-outline js-dashboard-task-done" data-id="' + esc(t.id) + '" type="button">Done</button></div></div>';
     }).join("") + '</div>';
   }
 
@@ -586,7 +598,7 @@
     const doneButton = event.target.closest(".js-dashboard-task-done");
     if (!doneButton) return;
     doneButton.disabled = true;
-    const result = await sb.rpc("complete_booking_task", { p_task_id: doneButton.dataset.id });
+    const result = await sb.rpc("bulk_update_operations_tasks", { p_task_ids: [doneButton.dataset.id], p_action: "done", p_assigned_to: null, p_snoozed_until: null, p_reason: null });
     if (result.error) {
       doneButton.disabled = false;
       toast("Could not complete task: " + result.error.message);

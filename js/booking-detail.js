@@ -117,7 +117,7 @@
     if (bookingIsConfirmed(b.status)) return { text: "Risk: booking is confirmed before payment is fully received.", tone: "risk" };
     return { text: "Rule: collect payment before booking/supplier confirmation.", tone: "warn" };
   }
-  function taskOpen(t) { return t.status !== "completed"; }
+  function taskOpen(t) { return t.status !== "completed" && t.status !== "done"; }
   function hasSupplierInvoice() { return (detail.supplier_payments || []).some(function (p) { return !!p.supplier_invoice_path; }); }
   function supplierPaidEnough() {
     const rows = detail.supplier_payments || [];
@@ -512,8 +512,8 @@
     const panel = document.getElementById("booking-task-panel");
     const rows = workflow.tasks || [];
     const canEdit = workflow.can_edit_tasks;
-    const openTasks = rows.filter(function (t) { return t.status !== "completed"; });
-    const doneTasks = rows.filter(function (t) { return t.status === "completed"; });
+    const openTasks = rows.filter(taskOpen);
+    const doneTasks = rows.filter(function (t) { return !taskOpen(t); });
     const form = canEdit ? '<form id="booking-task-form" class="form-grid payment-mini-form" onsubmit="return false"><div class="field-row"><div class="field col-6"><label>TASK</label><input name="title" required placeholder="Call customer, check supplier, collect LPO"></div><div class="field col-3"><label>TYPE</label><select name="task_type">' + optionList(TASK_TYPES, "follow_up") + '</select></div><div class="field col-3"><label>PRIORITY</label><select name="priority">' + optionList(TASK_PRIORITIES, "normal") + '</select></div><div class="field col-6"><label>DUE DATE / TIME</label><input name="due_at" type="datetime-local"></div><div class="field col-6"><label>NOTES</label><input name="notes" placeholder="Short internal instruction"></div></div><button class="btn btn-primary" type="submit">Add task</button></form>' : '<p class="form-note">Booking permission required to add tasks.</p>';
     panel.innerHTML = form + '<div class="ops-kv"><span class="ops-chip">Open: ' + esc(openTasks.length) + '</span><span class="ops-chip">Done: ' + esc(doneTasks.length) + '</span></div>' + renderTaskRows(rows, canEdit);
     const f = document.getElementById("booking-task-form");
@@ -523,7 +523,7 @@
   function renderTaskRows(rows, canEdit) {
     if (!rows.length) return '<p class="form-note">No tasks yet.</p>';
     return '<div class="ops-list payment-history">' + rows.map(function (t) {
-      const done = t.status === "completed";
+      const done = !taskOpen(t);
       const meta = label(t.task_type) + ' / ' + label(t.priority) + ' / Due: ' + dateTimeText(t.due_at);
       return '<div class="ops-row ' + (done ? 'is-muted' : '') + '"><div class="ops-row-main"><b>' + esc(t.title) + '</b><p>' + esc(meta) + (t.assigned_to_name ? ' / ' + esc(t.assigned_to_name) : '') + '</p><div class="ops-kv"><span class="ops-chip">' + esc(label(t.status)) + '</span>' + (t.notes ? '<span class="ops-chip">' + esc(t.notes) + '</span>' : '') + '</div></div><div class="ops-row-actions">' + (!done && canEdit ? '<button class="btn btn-outline js-complete-task" data-id="' + esc(t.id) + '" type="button">Done</button>' : '') + '</div></div>';
     }).join("") + '</div>';
