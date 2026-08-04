@@ -97,17 +97,30 @@ function mergeSelector(css, selector) {
 
   const block = selector + " {\n" + order.map(function (p) { return "  " + value[p] + ";"; }).join("\n") + "\n}";
 
+  // Where the merged block lands decides whether the cascade result survives.
+  //
+  // "last" is right when the selector's own later blocks are what win today.
+  // "first" is right when another rule of EQUAL specificity sits between the
+  // originals and currently beats the later blocks — moving them down past it
+  // would flip the winner. That is what broke the header: .staff-topbar-inner
+  // is also matched by .container, both 0-1-0, where only source order decides.
+  //
+  // There is no way to know which is correct by reading the file alone, so try
+  // one and let scripts/ui-baseline.js rule on it.
+  const atFirst = process.argv.includes("--at-first");
+  const keepIndex = atFirst ? 0 : hits.length - 1;
+
   let out = css;
   for (let i = hits.length - 1; i >= 0; i--) {
     const h = hits[i];
-    out = out.slice(0, h.start) + (i === hits.length - 1 ? block : "") + out.slice(h.end);
+    out = out.slice(0, h.start) + (i === keepIndex ? block : "") + out.slice(h.end);
   }
 
-  return { css: out, blocks: hits.length, properties: order.length, merged: true };
+  return { css: out, blocks: hits.length, properties: order.length, merged: true, position: atFirst ? "first" : "last" };
 }
 
 function main() {
-  const selectors = process.argv.slice(2);
+  const selectors = process.argv.slice(2).filter(function (a) { return !a.startsWith("--"); });
   if (!selectors.length) {
     console.error("usage: node scripts/merge-duplicate-rules.js .selector [.selector ...]");
     process.exit(1);

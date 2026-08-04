@@ -84,13 +84,14 @@
     const nodes = [...document.querySelectorAll("body *")].filter(visible);
     const ids = buildIdentities(nodes);
     const out = {};
+    // No getBoundingClientRect here. Calling it per element forced a layout
+    // each time — 456 elements read twice meant 912 forced reflows and
+    // capture() ran past 30 seconds. Computed width and height already carry
+    // the resolved size, so the rect added nothing but cost.
     nodes.forEach(function (node) {
       const cs = getComputedStyle(node);
       const rec = {};
       PROPS.forEach(function (p) { rec[p] = cs[p]; });
-      const r = node.getBoundingClientRect();
-      rec._w = Math.round(r.width);
-      rec._h = Math.round(r.height);
       out[ids.get(node)] = rec;
     });
     return out;
