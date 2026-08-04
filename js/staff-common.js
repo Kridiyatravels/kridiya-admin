@@ -55,6 +55,7 @@ function icon(name, cls) {
 const STAFF_NAV_MODEL = [
   { group: "Daily work", items: [
     { href: "dashboard.html", page: "dashboard", label: "Dashboard", icon: "grid", desc: "Overview & shortcuts", primary: true },
+    { href: "tasks.html", page: "tasks", label: "Work queue", icon: "check", desc: "Unified tasks & deadlines", primary: true },
     { href: "admin.html", page: "admin", label: "Enquiries", icon: "inbox", desc: "Website enquiries", primary: true },
     { href: "customers.html", page: "customers", label: "Customers", icon: "user", desc: "Customer profiles", primary: true },
     { href: "bookings.html", page: "bookings", label: "Bookings", icon: "ticket", desc: "Confirmed bookings", primary: true },
@@ -84,6 +85,7 @@ const STAFF_COMMAND_SHORTCUTS = [
   { keys: "S", label: "Focus search", action: "focus-search", desc: "Focus the current page search field" },
   { keys: "F", label: "Open filters", action: "focus-filter", desc: "Focus the current page filter or sort control" },
   { keys: "G D", label: "Dashboard", href: "dashboard.html", desc: "Go to operations overview" },
+  { keys: "G T", label: "Work queue", href: "tasks.html", desc: "Go to unified operations tasks" },
   { keys: "G E", label: "Enquiries", href: "admin.html", desc: "Go to website enquiries" },
   { keys: "G B", label: "Bookings", href: "bookings.html", desc: "Go to confirmed bookings" },
   { keys: "G C", label: "Customers", href: "customers.html", desc: "Go to customer profiles" },

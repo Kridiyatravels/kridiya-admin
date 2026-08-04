@@ -1,0 +1,30 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
+<title>Work Queue - Kridiya Staff Tools</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="icon" href="https://kridiyatravel.com/assets/favicon-32.png" sizes="32x32"><link rel="stylesheet" href="css/site-base.css"><link rel="stylesheet" href="css/staff.css?v=20260804a">
+</head><body data-page="tasks"><header id="site-header" class="site-header"></header>
+<main><section class="section"><div class="container">
+  <div id="tasks-gate"><div class="account-main empty-state"><p>Checking access...</p></div></div>
+  <div id="tasks-app" hidden>
+    <div class="account-head"><div><h1>Operations workspace</h1><p>One controlled queue for enquiries, bookings, payments, documents, suppliers, and follow-ups.</p></div><div class="workspace-live"><span></span>Live work queue</div></div>
+    <div id="tasks-summary" class="stat-row"></div>
+    <div class="account-main task-workbench">
+      <div class="task-viewbar"><div id="task-saved-views" class="saved-view-list"></div><button class="btn btn-outline" id="task-save-view" type="button">Save current view</button></div>
+      <div class="task-filters">
+        <label><span>Queue</span><select id="task-queue"><option value="active">Active work</option><option value="mine">My work</option><option value="unassigned">Unassigned</option><option value="overdue">Overdue</option><option value="today">Due today</option><option value="snoozed">Snoozed</option><option value="done">Completed</option><option value="all">All tasks</option></select></label>
+        <label><span>Work type</span><select id="task-entity"><option value="">All work</option><option value="enquiry">Enquiries</option><option value="booking">Bookings</option><option value="payment">Payments</option><option value="document">Documents</option><option value="supplier">Suppliers</option></select></label>
+        <label><span>Priority</span><select id="task-priority"><option value="">All priorities</option><option value="urgent">Urgent</option><option value="high">High</option><option value="normal">Normal</option><option value="low">Low</option></select></label>
+        <label class="task-search"><span>Search</span><input id="task-search" type="search" placeholder="Task, reference, customer, assignee"></label>
+      </div>
+      <div class="task-bulkbar" id="task-bulkbar" hidden><b><span id="task-selected-count">0</span> selected</b><div>
+        <button class="btn btn-outline" data-bulk="done" type="button">Mark done</button><button class="btn btn-outline" data-bulk="snooze" type="button">Snooze</button><button class="btn btn-outline" data-bulk="reassign" type="button">Reassign</button><button class="btn btn-outline task-escalate" data-bulk="escalate" type="button">Escalate</button>
+      </div></div>
+    </div>
+    <div class="task-list-head"><label><input type="checkbox" id="task-select-all"> Select visible</label><span id="task-count"></span></div>
+    <div id="tasks-list" class="task-list"></div>
+  </div>
+</div></section></main><footer id="site-footer" class="site-footer"></footer>
+<script src="https://kridiyatravel.com/js/auth.js" defer></script><script src="js/staff-common.js?v=20260804a" defer></script><script src="js/tasks.js?v=20260804a" defer></script>
+</body></html>
