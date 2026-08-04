@@ -27,6 +27,7 @@
   let canCreateBookings = false;
   let canEditCorporates = false;
   let activeSort = "created_desc";
+  let staffDirectory = [];
 
   function esc(v) {
     return KridiyaAuth.escapeHTML(String(v == null ? "" : v));
@@ -268,6 +269,47 @@
         '<button type="button" class="btn btn-outline convert-corporate-btn" data-id="' + enq.id + '">Convert booking only</button>' +
       '</div>' +
     '</div>';
+  }
+
+  function staffName(userId) {
+    const person = staffDirectory.find(function (row) { return row.user_id === userId; });
+    return person ? (person.full_name || person.email || "Staff") : "Unassigned";
+  }
+
+  function slaState(enq) {
+    if (enq.first_response_at) return { label: "Responded", tone: "met", detail: fmtWhen(enq.first_response_at) };
+    if (!enq.sla_first_response_due_at) return { label: "No SLA", tone: "neutral", detail: "" };
+    const ms = new Date(enq.sla_first_response_due_at).getTime() - Date.now();
+    if (!Number.isFinite(ms)) return { label: "No SLA", tone: "neutral", detail: "" };
+    if (ms < 0) {
+      const overdue = Math.abs(ms) / 36e5;
+      return { label: "Overdue " + ageLabel(overdue), tone: "breached", detail: fmtWhen(enq.sla_first_response_due_at) };
+    }
+    const minutes = Math.max(1, Math.ceil(ms / 60000));
+    return {
+      label: minutes < 60 ? minutes + "m left" : Math.ceil(minutes / 60) + "h left",
+      tone: minutes <= 15 ? "risk" : "active",
+      detail: fmtWhen(enq.sla_first_response_due_at)
+    };
+  }
+
+  function workflowControlsHTML(enq) {
+    const sla = slaState(enq);
+    const stages = ["new", "contacted", "qualified", "checking_availability", "quote_preparation", "quote_sent", "follow_up", "accepted", "booking", "won", "lost", "not_eligible", "duplicate", "test_archived", "no_response"];
+    const assignees = '<option value="">Unassigned</option>' + staffDirectory.filter(function (row) { return row.active !== false; }).map(function (row) {
+      return '<option value="' + esc(row.user_id) + '"' + (row.user_id === enq.assigned_staff_id ? " selected" : "") + '>' + esc(row.full_name || row.email) + '</option>';
+    }).join("");
+    return '<section class="enquiry-workflow" aria-label="Ownership and service level">' +
+      '<div class="workflow-heading"><div><span class="workflow-eyebrow">Ownership &amp; SLA</span><b>' + esc(staffName(enq.assigned_staff_id)) + '</b></div>' +
+        '<span class="sla-chip sla-' + sla.tone + '" title="' + esc(sla.detail) + '">' + esc(sla.label) + '</span></div>' +
+      '<div class="workflow-grid">' +
+        '<label><span>Assigned to</span><select class="js-enquiry-assignee" data-id="' + enq.id + '">' + assignees + '</select></label>' +
+        '<label><span>Priority</span><select class="js-enquiry-priority" data-id="' + enq.id + '">' +
+          ["low", "normal", "high", "urgent"].map(function (value) { return '<option value="' + value + '"' + (value === enq.priority ? " selected" : "") + '>' + esc(KridiyaAuth.statusLabel(value)) + '</option>'; }).join("") + '</select></label>' +
+        '<label><span>Pipeline stage</span><select class="js-enquiry-stage" data-id="' + enq.id + '">' +
+          stages.map(function (value) { return '<option value="' + value + '"' + (value === enq.pipeline_stage ? " selected" : "") + '>' + esc(KridiyaAuth.statusLabel(value)) + '</option>'; }).join("") + '</select></label>' +
+        (!enq.first_response_at ? '<button type="button" class="btn btn-primary js-first-response" data-id="' + enq.id + '">Mark first response</button>' : '') +
+      '</div></section>';
   }
 
   const QUOTE_TERMS_BY_SERVICE = {
@@ -900,6 +942,7 @@
             (enq.phone ? '<a href="tel:' + KridiyaAuth.escapeHTML(enq.phone) + '">' + KridiyaAuth.escapeHTML(enq.phone) + "</a> · " : "") +
             (mail ? '<a href="mailto:' + KridiyaAuth.escapeHTML(enq.email) + '">' + KridiyaAuth.escapeHTML(enq.email) + "</a>" : "No email") + "</p>" +
           corporatePreview(enq) +
+          workflowControlsHTML(enq) +
           marketingFollowUp(enq, notes, quotes, booking) +
           crmFieldsHTML(enq) +
           '<div class="admin-enq-actions">' +
@@ -1034,6 +1077,12 @@
     const result = await sb.from("enquiries").select("*").order("created_at", { ascending: false });
     if (result.error) throw result.error;
     allEnquiries = result.data || [];
+  }
+
+  async function loadStaffDirectory() {
+    const result = await sb.rpc("list_staff");
+    if (result.error) throw result.error;
+    staffDirectory = result.data || [];
   }
 
   async function createManualEnquiry(form) {
@@ -1191,6 +1240,47 @@
     }
 
     listEl.addEventListener("change", async function (e) {
+      const assignee = e.target.closest(".js-enquiry-assignee");
+      const priority = e.target.closest(".js-enquiry-priority");
+      if (assignee || priority) {
+        const control = assignee || priority;
+        const id = control.dataset.id;
+        const row = allEnquiries.find(function (item) { return item.id === id; });
+        if (!row) return;
+        const assignedStaffId = assignee ? (assignee.value || null) : (row.assigned_staff_id || null);
+        const priorityValue = priority ? priority.value : (row.priority || "normal");
+        control.disabled = true;
+        const result = await sb.rpc("assign_enquiry", {
+          p_enquiry_id: id,
+          p_assigned_staff_id: assignedStaffId,
+          p_priority: priorityValue
+        });
+        control.disabled = false;
+        if (result.error) { toast("Could not update ownership: " + result.error.message); renderList(); return; }
+        Object.assign(row, result.data || {});
+        logActivity(sb, currentStaffId, "enquiry.assignment_updated", "enquiry", id, {
+          reference: row.reference, assigned_staff_id: assignedStaffId, priority: priorityValue
+        });
+        renderList();
+        toast(assignee ? "Enquiry assignment updated." : "Priority updated.");
+        return;
+      }
+
+      const stage = e.target.closest(".js-enquiry-stage");
+      if (stage) {
+        const id = stage.dataset.id;
+        const row = allEnquiries.find(function (item) { return item.id === id; });
+        stage.disabled = true;
+        const result = await sb.from("enquiries").update({ pipeline_stage: stage.value, last_activity_at: new Date().toISOString() }).eq("id", id).select("*").single();
+        stage.disabled = false;
+        if (result.error) { toast("Could not update pipeline: " + result.error.message); renderList(); return; }
+        if (row) Object.assign(row, result.data);
+        logActivity(sb, currentStaffId, "enquiry.pipeline_changed", "enquiry", id, { reference: row ? row.reference : null, stage: stage.value });
+        renderList();
+        toast("Pipeline stage updated.");
+        return;
+      }
+
       if (!e.target.classList.contains("status-select")) return;
       const select = e.target;
       const id = select.dataset.id;
@@ -1319,6 +1409,22 @@
       const closeEnquiryBtn = e.target.closest(".js-close-enquiry");
       if (closeEnquiryBtn) {
         await closeEnquiry(closeEnquiryBtn);
+        return;
+      }
+      const responseBtn = e.target.closest(".js-first-response");
+      if (responseBtn) {
+        const id = responseBtn.dataset.id;
+        const row = allEnquiries.find(function (item) { return item.id === id; });
+        const now = new Date().toISOString();
+        responseBtn.disabled = true;
+        const result = await sb.from("enquiries").update({ first_response_at: now, pipeline_stage: "contacted", last_activity_at: now }).eq("id", id).select("*").single();
+        responseBtn.disabled = false;
+        if (result.error) { toast("Could not record first response: " + result.error.message); return; }
+        if (row) Object.assign(row, result.data);
+        await sb.from("tasks_reminders").update({ status: "done", completed_at: now }).eq("entity_type", "enquiry").eq("entity_id", id).eq("task_type", "follow_up").eq("status", "open");
+        logActivity(sb, currentStaffId, "enquiry.first_response_recorded", "enquiry", id, { reference: row ? row.reference : null });
+        renderList();
+        toast("First response recorded. SLA met.");
         return;
       }
       const removeQuoteBtn = e.target.closest(".js-remove-quote");
@@ -1722,7 +1828,8 @@
     }
 
     try {
-      await Promise.all([loadEnquiries(), loadNotes(), loadRequests(), loadQuotes(), loadBookingLinks()]);
+      await sb.rpc("refresh_operations_automations");
+      await Promise.all([loadEnquiries(), loadNotes(), loadRequests(), loadQuotes(), loadBookingLinks(), loadStaffDirectory()]);
       const perms = await Promise.all([
         sb.rpc("has_staff_permission", { permission_name: "create_bookings" }),
         sb.rpc("has_staff_permission", { permission_name: "edit_corporates" })
