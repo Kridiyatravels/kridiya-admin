@@ -160,7 +160,10 @@
         '<button type="button" class="btn btn-outline js-copy-followup" data-id="' + enq.id + '" data-kind="email">Copy email follow-up</button>' +
         '<button type="button" class="btn btn-outline js-quick-note" data-id="' + enq.id + '" data-note="Marketing follow-up: customer interested, next action required.">Interested</button>' +
         '<button type="button" class="btn btn-outline js-quick-note" data-id="' + enq.id + '" data-note="Marketing follow-up: customer not ready now, keep warm for later.">Keep warm</button>' +
-        '<button type="button" class="btn btn-outline js-quick-note" data-id="' + enq.id + '" data-note="Marketing follow-up: lead lost or unresponsive.">Lost/unresponsive</button>' +
+        (enq.status !== "closed"
+          ? '<button type="button" class="btn btn-outline js-close-enquiry" data-id="' + enq.id + '" data-reason="no_response" data-note="Lead closed as lost or unresponsive.">Lost/unresponsive</button>' +
+            '<button type="button" class="btn btn-outline js-close-enquiry" data-id="' + enq.id + '" data-reason="invalid_enquiry" data-note="Internal integration test archived — no customer action required.">Archive test</button>'
+          : '') +
       '</div>' +
     '</div>';
   }
@@ -752,6 +755,7 @@
     const attentionF = document.getElementById("flt-attention").value;
     const searchF = (document.getElementById("flt-search").value || "").trim().toLowerCase();
     const todayOnly = document.getElementById("flt-today").checked;
+    if (!statusF && enq.status === "closed") return false;
     if (statusF && enq.status !== statusF) return false;
     if (serviceF && enq.service_type !== serviceF) return false;
     if (todayOnly && new Date(enq.created_at).toDateString() !== new Date().toDateString()) return false;
@@ -1252,6 +1256,11 @@
         await saveQuickMarketingNote(quickNoteBtn);
         return;
       }
+      const closeEnquiryBtn = e.target.closest(".js-close-enquiry");
+      if (closeEnquiryBtn) {
+        await closeEnquiry(closeEnquiryBtn);
+        return;
+      }
       const removeQuoteBtn = e.target.closest(".js-remove-quote");
       if (removeQuoteBtn) {
         if (!confirm("Remove this option from the quote?")) return;
@@ -1490,6 +1499,52 @@
     const enq = allEnquiries.find(function (r) { return r.id === id; });
     logActivity(sb, currentStaffId, "enquiry.marketing_outcome_added", "enquiry", id, { reference: enq ? enq.reference : null, note: note });
     toast("Marketing outcome saved.");
+  }
+
+  async function closeEnquiry(btn) {
+    const id = btn.dataset.id;
+    const reason = btn.dataset.reason || "other";
+    const note = btn.dataset.note || "Enquiry closed.";
+    const enq = allEnquiries.find(function (row) { return row.id === id; });
+    if (!enq) return;
+    const isTest = reason === "invalid_enquiry";
+    if (!confirm(isTest
+      ? "Archive this internal test enquiry? It will leave the active queue but remain available under Closed."
+      : "Close this enquiry as lost or unresponsive?")) return;
+
+    btn.disabled = true;
+    const update = {
+      status: "closed",
+      lost_reason: reason,
+      next_action: null,
+      next_action_at: null
+    };
+    let result = await sb.from("enquiries").update(update).eq("id", id);
+    if (result.error && (result.error.code === "PGRST204" || result.error.code === "42703")) {
+      result = await sb.from("enquiries").update({ status: "closed" }).eq("id", id);
+    }
+    if (result.error) {
+      btn.disabled = false;
+      toast("Could not close enquiry: " + result.error.message);
+      return;
+    }
+
+    const noteResult = await sb
+      .from("enquiry_notes")
+      .insert({ enquiry_id: id, note: note, created_by: currentStaffId })
+      .select("id, enquiry_id, note, created_at")
+      .single();
+    Object.assign(enq, update);
+    if (!noteResult.error) {
+      if (!notesByEnquiry[id]) notesByEnquiry[id] = [];
+      notesByEnquiry[id].unshift(noteResult.data);
+    }
+    logActivity(sb, currentStaffId, isTest ? "enquiry.test_archived" : "enquiry.closed_lost", "enquiry", id, {
+      reference: enq.reference,
+      lost_reason: reason
+    });
+    renderList();
+    toast(isTest ? "Test enquiry archived." : "Enquiry closed as lost/unresponsive.");
   }
 
   async function convertCorporateEnquiry(btn) {
