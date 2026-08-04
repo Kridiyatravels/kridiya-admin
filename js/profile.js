@@ -67,7 +67,10 @@
     const adminRes = await sb.rpc("is_admin");
     const isAdmin = adminRes.data === true;
     const profRes = await sb.from("staff_profiles").select("full_name, department, active, created_at").eq("user_id", user.id).maybeSingle();
-    const permRes = await sb.from("staff_permissions").select("*").eq("user_id", user.id).maybeSingle();
+    const [permRes, prefRes] = await Promise.all([
+      sb.from("staff_permissions").select("*").eq("user_id", user.id).maybeSingle(),
+      sb.from("staff_notification_preferences").select("*").eq("user_id", user.id).maybeSingle()
+    ]);
     const prof = profRes.data || {};
     const perms = permRes.data || {};
 
@@ -75,6 +78,7 @@
     renderAccount(user, prof, isAdmin);
     renderSecurity();
     renderPermissions(perms, isAdmin);
+    renderNotificationPreferences(user.id, prefRes.data || {});
   }
 
   function renderIdentity(user, prof, isAdmin) {
@@ -152,6 +156,55 @@
       }).join("");
       return '<div class="perm-group"><h3>' + esc(g[0]) + "</h3><div class=\"perm-list\">" + items + "</div></div>";
     }).join("");
+  }
+
+  function renderNotificationPreferences(userId, prefs) {
+    const box = document.getElementById("profile-notifications");
+    if (!box) return;
+    const days = [{ n:1,l:"Mon" },{ n:2,l:"Tue" },{ n:3,l:"Wed" },{ n:4,l:"Thu" },{ n:5,l:"Fri" },{ n:6,l:"Sat" },{ n:0,l:"Sun" }];
+    const activeDays = Array.isArray(prefs.working_days) ? prefs.working_days : [1,2,3,4,5,6];
+    const timeValue = function (value, fallback) { return String(value || fallback).slice(0,5); };
+    const checked = function (key, fallback) { return (prefs[key] == null ? fallback : prefs[key]) ? " checked" : ""; };
+    box.innerHTML = '<form id="profile-notification-form" class="preference-form">' +
+      '<div class="preference-grid">' +
+        '<label class="preference-toggle"><input type="checkbox" name="in_app_enabled"' + checked("in_app_enabled", true) + '><span><b>In-app notifications</b><small>Show the notification centre and operational alerts.</small></span></label>' +
+        '<label class="preference-toggle"><input type="checkbox" name="email_new_enquiry"' + checked("email_new_enquiry", true) + '><span><b>New enquiry emails</b><small>Email me when a new enquiry needs attention.</small></span></label>' +
+        '<label class="preference-toggle"><input type="checkbox" name="email_assignment"' + checked("email_assignment", true) + '><span><b>Assignment emails</b><small>Email me when work is assigned to me.</small></span></label>' +
+        '<label class="preference-toggle"><input type="checkbox" name="email_sla_escalation"' + checked("email_sla_escalation", true) + '><span><b>SLA escalation emails</b><small>Notify me about overdue operational commitments.</small></span></label>' +
+        '<label class="preference-toggle"><input type="checkbox" name="email_daily_digest"' + checked("email_daily_digest", true) + '><span><b>Daily summary</b><small>Receive the daily work summary when enabled.</small></span></label>' +
+        '<label class="preference-toggle"><input type="checkbox" name="email_overdue_digest"' + checked("email_overdue_digest", true) + '><span><b>Overdue summary</b><small>Receive a digest of overdue tasks.</small></span></label>' +
+      '</div>' +
+      '<div class="working-hours-grid"><label><span>Workday starts</span><input type="time" name="workday_start" value="' + esc(timeValue(prefs.workday_start,"09:00")) + '"></label><label><span>Workday ends</span><input type="time" name="workday_end" value="' + esc(timeValue(prefs.workday_end,"18:00")) + '"></label><label><span>Timezone</span><select name="timezone"><option value="Asia/Dubai">Asia/Dubai (UAE)</option></select></label></div>' +
+      '<fieldset class="working-days"><legend>Working days</legend>' + days.map(function (day) { return '<label><input type="checkbox" name="working_day" value="' + day.n + '"' + (activeDays.indexOf(day.n) !== -1 ? " checked" : "") + '><span>' + day.l + '</span></label>'; }).join("") + '</fieldset>' +
+      '<button type="submit" class="btn btn-primary">Save preferences</button>' +
+    '</form>';
+    const form = document.getElementById("profile-notification-form");
+    form.addEventListener("submit", async function (event) {
+      event.preventDefault();
+      const workingDays = Array.from(form.querySelectorAll('input[name="working_day"]:checked')).map(function (input) { return Number(input.value); });
+      if (!workingDays.length) { toast("Select at least one working day."); return; }
+      if (form.workday_start.value >= form.workday_end.value) { toast("Workday end must be later than the start."); return; }
+      const payload = {
+        user_id: userId,
+        in_app_enabled: form.in_app_enabled.checked,
+        email_new_enquiry: form.email_new_enquiry.checked,
+        email_assignment: form.email_assignment.checked,
+        email_sla_escalation: form.email_sla_escalation.checked,
+        email_daily_digest: form.email_daily_digest.checked,
+        email_overdue_digest: form.email_overdue_digest.checked,
+        workday_start: form.workday_start.value,
+        workday_end: form.workday_end.value,
+        working_days: workingDays,
+        timezone: form.timezone.value,
+        updated_at: new Date().toISOString()
+      };
+      const button = form.querySelector('button[type="submit"]');
+      button.disabled = true;
+      const result = await sb.from("staff_notification_preferences").upsert(payload, { onConflict: "user_id" });
+      button.disabled = false;
+      if (result.error) { toast("Could not save preferences: " + result.error.message); return; }
+      toast("Notification preferences saved.");
+    });
   }
 
   document.addEventListener("DOMContentLoaded", boot);
