@@ -74,6 +74,53 @@ body { background: var(--bg); }
 .staff-actions { grid-column: 2; grid-row: 1; display: flex; justify-self: end; gap: 0.5rem; position: relative; }
 .staff-actions .btn { min-height: 38px; padding: 0 0.9rem; font-size: 0.875rem; }
 
+/* ---------- Unified notification centre ---------- */
+.staff-notification-btn {
+  position: relative; width: 42px; height: 42px; padding: 0; display: grid; place-items: center;
+  border: 1px solid var(--line); border-radius: 11px; background: var(--surface); color: var(--ink);
+  cursor: pointer; transition: background-color .16s ease, border-color .16s ease, transform .16s ease;
+}
+.staff-notification-btn:hover { background: var(--surface-tint); border-color: var(--brand); }
+.staff-notification-btn:active { transform: translateY(1px); }
+.staff-notification-btn svg { width: 20px; height: 20px; fill: currentColor; }
+.staff-notification-count {
+  position: absolute; right: -5px; top: -6px; min-width: 19px; height: 19px; padding: 0 5px;
+  display: grid; place-items: center; border: 2px solid var(--surface); border-radius: 999px;
+  background: #c2410c; color: #fff; font-size: 10px; font-weight: 800; line-height: 1;
+}
+.staff-notification-count[hidden] { display: none; }
+.staff-notification-panel {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 75;
+  width: min(430px, calc(100vw - 24px)); max-height: min(620px, calc(100vh - 90px));
+  overflow: hidden; border: 1px solid var(--line); border-radius: 16px;
+  background: var(--surface); box-shadow: var(--staff-shadow-md);
+}
+.staff-notification-panel[hidden] { display: none; }
+.staff-notification-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 1rem; border-bottom: 1px solid var(--line); background: var(--surface);
+}
+.staff-notification-head div { display: grid; gap: .1rem; }
+.staff-notification-head b { color: var(--ink); font-size: 1rem; }
+.staff-notification-head span { color: var(--text-muted); font-size: .78rem; }
+.staff-notification-head button { border: 0; background: none; color: var(--brand-deep); font: inherit; font-size: .78rem; font-weight: 750; cursor: pointer; }
+.staff-notification-list { max-height: min(540px, calc(100vh - 165px)); overflow-y: auto; padding: .45rem; }
+.staff-notification-item { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 34px; align-items: center; border-radius: 11px; }
+.staff-notification-item:hover { background: var(--surface-tint); }
+.staff-notification-item.is-unread { background: color-mix(in srgb, var(--brand-soft) 58%, var(--surface)); }
+.staff-notification-open { min-width: 0; display: grid; grid-template-columns: 8px minmax(0, 1fr); gap: .65rem; padding: .82rem .65rem; border: 0; background: none; text-align: left; cursor: pointer; font: inherit; }
+.staff-notification-open > span:last-child { min-width: 0; display: grid; gap: .2rem; }
+.staff-notification-open b { color: var(--ink); font-size: .84rem; }
+.staff-notification-open small { overflow: hidden; color: var(--text-muted); font-size: .76rem; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
+.staff-notification-open em { color: var(--text-muted); font-size: .7rem; font-style: normal; }
+.staff-notification-dot { width: 7px; height: 7px; margin-top: .3rem; border-radius: 50%; background: var(--line); }
+.staff-notification-item.is-unread .staff-notification-dot { background: var(--brand); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 16%, transparent); }
+.staff-notification-item.priority-urgent .staff-notification-dot { background: #dc2626; }
+.staff-notification-item.priority-high .staff-notification-dot { background: #ea580c; }
+.staff-notification-done { width: 30px; height: 30px; border: 1px solid transparent; border-radius: 9px; background: none; color: var(--text-muted); cursor: pointer; }
+.staff-notification-done:hover { border-color: var(--line); background: var(--surface); color: var(--brand-deep); }
+.staff-notification-empty { margin: 0; padding: 2.2rem 1rem; color: var(--text-muted); font-size: .84rem; text-align: center; }
+
 /* ---------- Header profile menu ---------- */
 /* Typography/colour only. Box (display, align-items, border, background,
    border-radius, padding) is owned by the shared header-control rule and the

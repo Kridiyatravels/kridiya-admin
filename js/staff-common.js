@@ -38,6 +38,7 @@ const ICONS_STAFF = {
   users: "M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z",
   download: "M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z",
   search: "M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"
+  ,bell: "M12 22a2.25 2.25 0 0 0 2.12-1.5H9.88A2.25 2.25 0 0 0 12 22zm7-5v-5a7 7 0 0 0-5.5-6.84V4a1.5 1.5 0 0 0-3 0v1.16A7 7 0 0 0 5 12v5l-2 2h18l-2-2z"
 };
 
 function icon(name, cls) {
@@ -396,6 +397,13 @@ function renderStaffChrome() {
           '<button type="button" class="staff-jump-btn" id="staff-jump-btn" aria-label="Jump to (Ctrl+K)">' + icon("search") + "<span>Jump to…</span></button>" +
         "</nav>" +
         '<div class="staff-actions">' +
+          '<button type="button" class="staff-notification-btn" id="staff-notification-btn" aria-label="Notifications" aria-haspopup="true" aria-expanded="false">' +
+            icon("bell") + '<span class="staff-notification-count" id="staff-notification-count" hidden>0</span>' +
+          '</button>' +
+          '<section class="staff-notification-panel" id="staff-notification-panel" hidden aria-label="Notifications">' +
+            '<div class="staff-notification-head"><div><b>Notifications</b><span id="staff-notification-summary">Your operational inbox</span></div><button type="button" id="staff-notification-read-all">Mark all read</button></div>' +
+            '<div class="staff-notification-list" id="staff-notification-list"><p class="staff-notification-empty">Loading…</p></div>' +
+          '</section>' +
           '<button type="button" class="staff-profile-btn" id="staff-profile-btn" aria-haspopup="true" aria-expanded="false">' +
             '<span class="staff-profile-av" id="staff-profile-av">' + icon("user") + "</span>" +
             '<span class="staff-profile-name" id="staff-profile-name">Account</span>' +
@@ -423,6 +431,23 @@ function renderStaffChrome() {
         if (!profMenu.hidden && !profMenu.contains(e.target) && !profBtn.contains(e.target)) {
           profMenu.hidden = true;
           profBtn.setAttribute("aria-expanded", "false");
+        }
+      });
+    }
+    const notificationBtn = document.getElementById("staff-notification-btn");
+    const notificationPanel = document.getElementById("staff-notification-panel");
+    if (notificationBtn && notificationPanel) {
+      notificationBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        const willOpen = notificationPanel.hidden;
+        notificationPanel.hidden = !willOpen;
+        notificationBtn.setAttribute("aria-expanded", String(willOpen));
+        if (willOpen) loadStaffNotifications();
+      });
+      document.addEventListener("click", function (e) {
+        if (!notificationPanel.hidden && !notificationPanel.contains(e.target) && !notificationBtn.contains(e.target)) {
+          notificationPanel.hidden = true;
+          notificationBtn.setAttribute("aria-expanded", "false");
         }
       });
     }
@@ -766,9 +791,84 @@ async function showStaffNav() {
     }
     __staffAccess = { isAdmin: isAdmin, perms: perms };
     pruneStaffAccess(document);
+    loadStaffNotifications();
   } catch (e) { /* best-effort: show everything on error */ }
   if (nav) nav.hidden = false;
 }
+
+let __staffNotifications = [];
+
+function staffNotificationWhen(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  const seconds = Math.max(0, Math.round((Date.now() - date.getTime()) / 1000));
+  if (seconds < 60) return "Just now";
+  if (seconds < 3600) return Math.floor(seconds / 60) + "m ago";
+  if (seconds < 86400) return Math.floor(seconds / 3600) + "h ago";
+  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+
+function renderStaffNotifications() {
+  const list = document.getElementById("staff-notification-list");
+  const badge = document.getElementById("staff-notification-count");
+  const summary = document.getElementById("staff-notification-summary");
+  if (!list || !badge) return;
+  const unread = __staffNotifications.filter(function (item) { return item.status === "unread"; }).length;
+  badge.textContent = unread > 99 ? "99+" : String(unread);
+  badge.hidden = unread === 0;
+  if (summary) summary.textContent = unread ? unread + " unread" : "You are all caught up";
+  list.innerHTML = __staffNotifications.length ? __staffNotifications.map(function (item) {
+    return '<article class="staff-notification-item priority-' + KridiyaAuth.escapeHTML(item.priority || "normal") + (item.status === "unread" ? " is-unread" : "") + '" data-notification-id="' + KridiyaAuth.escapeHTML(item.id) + '">' +
+      '<button type="button" class="staff-notification-open" data-notification-open="' + KridiyaAuth.escapeHTML(item.id) + '"><span class="staff-notification-dot"></span><span><b>' + KridiyaAuth.escapeHTML(item.title) + '</b><small>' + KridiyaAuth.escapeHTML(item.body || "") + '</small><em>' + KridiyaAuth.escapeHTML(staffNotificationWhen(item.created_at)) + '</em></span></button>' +
+      '<button type="button" class="staff-notification-done" data-notification-done="' + KridiyaAuth.escapeHTML(item.id) + '" aria-label="Complete notification">✓</button>' +
+    '</article>';
+  }).join("") : '<p class="staff-notification-empty">No notifications need your attention.</p>';
+}
+
+async function updateStaffNotification(id, changes) {
+  try {
+    const sb = await KridiyaAuth.client();
+    const result = await sb.from("staff_notifications").update(changes).eq("id", id);
+    if (result.error) throw result.error;
+    __staffNotifications = __staffNotifications.map(function (item) { return item.id === id ? Object.assign({}, item, changes) : item; }).filter(function (item) { return item.status !== "done"; });
+    renderStaffNotifications();
+  } catch (e) { toast("Could not update notification."); }
+}
+
+async function loadStaffNotifications() {
+  const list = document.getElementById("staff-notification-list");
+  if (!list || !window.KridiyaAuth) return;
+  try {
+    const sb = await KridiyaAuth.client();
+    const result = await sb.from("staff_notifications")
+      .select("id, category, priority, title, body, action_url, status, created_at")
+      .in("status", ["unread", "read"])
+      .order("created_at", { ascending: false })
+      .limit(40);
+    if (result.error) throw result.error;
+    __staffNotifications = result.data || [];
+    renderStaffNotifications();
+  } catch (e) {
+    list.innerHTML = '<p class="staff-notification-empty">Notifications are temporarily unavailable.</p>';
+  }
+}
+
+document.addEventListener("click", async function (event) {
+  const open = event.target.closest("[data-notification-open]");
+  if (open) {
+    const id = open.getAttribute("data-notification-open");
+    const item = __staffNotifications.find(function (row) { return row.id === id; });
+    if (item && item.status === "unread") await updateStaffNotification(id, { status: "read", read_at: new Date().toISOString() });
+    if (item && item.action_url) location.href = item.action_url;
+  }
+  const done = event.target.closest("[data-notification-done]");
+  if (done) await updateStaffNotification(done.getAttribute("data-notification-done"), { status: "done" });
+  const readAll = event.target.closest("#staff-notification-read-all");
+  if (readAll) {
+    const unread = __staffNotifications.filter(function (item) { return item.status === "unread"; });
+    await Promise.all(unread.map(function (item) { return updateStaffNotification(item.id, { status: "read", read_at: new Date().toISOString() }); }));
+  }
+});
 
 document.addEventListener("DOMContentLoaded", renderStaffChrome);
 
