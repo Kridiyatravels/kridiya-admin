@@ -72,15 +72,67 @@
     dialog.close();
     await bulk("snooze", ids, { until: until.toISOString() });
   }
+  function openReassignDialog(ids) {
+    const dialog = document.getElementById("task-reassign-dialog");
+    const select = document.getElementById("task-reassign-staff");
+    dialog.dataset.taskIds = JSON.stringify(ids);
+    select.innerHTML = '<option value="">Unassigned</option>' + staff.map((member) => '<option value="'+esc(member.user_id)+'">'+esc(member.full_name||member.email)+'</option>').join("");
+    dialog.showModal();
+    select.focus();
+  }
+  async function confirmReassign() {
+    const dialog = document.getElementById("task-reassign-dialog");
+    const ids = JSON.parse(dialog.dataset.taskIds || "[]");
+    const assigned = document.getElementById("task-reassign-staff").value || null;
+    dialog.close();
+    await bulk("reassign", ids, { assigned });
+  }
+  function openEscalateDialog(ids) {
+    const dialog = document.getElementById("task-escalate-dialog");
+    dialog.dataset.taskIds = JSON.stringify(ids);
+    document.getElementById("task-escalate-reason").value = "";
+    dialog.querySelectorAll(".task-reason-choice").forEach((choice) => choice.classList.remove("selected"));
+    dialog.showModal();
+  }
+  async function confirmEscalate() {
+    const dialog = document.getElementById("task-escalate-dialog");
+    const reason = document.getElementById("task-escalate-reason").value.trim();
+    if (!reason) return toast("Add an escalation reason.");
+    const ids = JSON.parse(dialog.dataset.taskIds || "[]");
+    dialog.close();
+    await bulk("escalate", ids, { reason });
+  }
+  function openSaveViewDialog() {
+    const dialog = document.getElementById("task-save-view-dialog");
+    const input = document.getElementById("task-view-name");
+    input.value = "";
+    dialog.showModal();
+    input.focus();
+  }
+  function confirmSaveView() {
+    const dialog = document.getElementById("task-save-view-dialog");
+    const name = document.getElementById("task-view-name").value.trim();
+    if (!name) return toast("Enter a name for this view.");
+    const views = getSaved();
+    views.push(Object.assign({ name }, filters()));
+    localStorage.setItem(VIEW_KEY, JSON.stringify(views.slice(-8)));
+    dialog.close();
+    renderViews();
+    toast("View saved.");
+  }
   async function load(){const result=await sb.rpc("list_operations_tasks",{p_limit:600});if(result.error)throw result.error;tasks=result.data||[];render();}
   function wire(){["task-queue","task-entity","task-priority"].forEach(id=>document.getElementById(id).addEventListener("change",()=>{selected.clear();render();}));document.getElementById("task-search").addEventListener("input",()=>{selected.clear();render();});
     document.getElementById("task-select-all").addEventListener("change",e=>{visibleTasks().forEach(t=>e.target.checked?selected.add(t.id):selected.delete(t.id));render();});
     document.getElementById("tasks-list").addEventListener("change",e=>{const cb=e.target.closest("[data-task-id]");if(!cb)return;cb.checked?selected.add(cb.dataset.taskId):selected.delete(cb.dataset.taskId);updateBulk();});
     document.getElementById("tasks-list").addEventListener("click",e=>{const done=e.target.closest("[data-task-done]"),reopen=e.target.closest("[data-task-reopen]");if(done)bulk("done",[done.dataset.taskDone]);if(reopen)bulk("reopen",[reopen.dataset.taskReopen]);});
-    document.getElementById("task-bulkbar").addEventListener("click",async e=>{const b=e.target.closest("[data-bulk]");if(!b)return;const ids=Array.from(selected),a=b.dataset.bulk;if(a==="done")return bulk(a,ids);if(a==="snooze")return openSnoozeDialog(ids);if(a==="reassign"){if(!isAdmin)return toast("Owner/admin access required.");const names=staff.map((s,i)=>(i+1)+". "+(s.full_name||s.email)).join("\n"),choice=prompt("Assign to:\n0. Unassigned\n"+names,"0");if(choice===null)return;const n=Number(choice),assigned=n>0&&staff[n-1]?staff[n-1].user_id:null;return bulk(a,ids,{assigned});}if(a==="escalate"){const reason=prompt("Escalation reason:","Owner review required");if(!reason)return;return bulk(a,ids,{reason});}});
+    document.getElementById("task-bulkbar").addEventListener("click",async e=>{const b=e.target.closest("[data-bulk]");if(!b)return;const ids=Array.from(selected),a=b.dataset.bulk;if(a==="done")return bulk(a,ids);if(a==="snooze")return openSnoozeDialog(ids);if(a==="reassign"){if(!isAdmin)return toast("Owner/admin access required.");return openReassignDialog(ids);}if(a==="escalate")return openEscalateDialog(ids);});
     document.getElementById("task-snooze-dialog").addEventListener("click",e=>{const choice=e.target.closest(".task-snooze-choice");if(choice)selectSnoozeUntil(choice);});
     document.getElementById("task-snooze-confirm").addEventListener("click",confirmSnooze);
-    document.getElementById("task-save-view").addEventListener("click",()=>{const name=prompt("Name this view:");if(!name)return;const views=getSaved();views.push(Object.assign({name:name.trim()},filters()));localStorage.setItem(VIEW_KEY,JSON.stringify(views.slice(-8)));renderViews();});
+    document.getElementById("task-reassign-confirm").addEventListener("click",confirmReassign);
+    document.getElementById("task-escalate-dialog").addEventListener("click",e=>{const choice=e.target.closest(".task-reason-choice");if(!choice)return;document.getElementById("task-escalate-reason").value=choice.dataset.reason;document.querySelectorAll(".task-reason-choice").forEach((item)=>item.classList.toggle("selected",item===choice));});
+    document.getElementById("task-escalate-confirm").addEventListener("click",confirmEscalate);
+    document.getElementById("task-save-view").addEventListener("click",openSaveViewDialog);
+    document.getElementById("task-save-view-confirm").addEventListener("click",confirmSaveView);
     document.getElementById("task-saved-views").addEventListener("click",e=>{const b=e.target.closest("[data-view-index]");if(!b)return;applyView(b.dataset.viewIndex==="default"?{queue:"active"}:getSaved()[Number(b.dataset.viewIndex)]||{});});
   }
   async function boot(){const gate=document.getElementById("tasks-gate"),app=document.getElementById("tasks-app");user=await KridiyaAuth.currentUser();if(!user){renderLoginForm(gate,boot);return;}sb=await KridiyaAuth.client();const [staffCheck,adminCheck,staffList]=await Promise.all([sb.rpc("is_staff"),sb.rpc("is_admin"),sb.rpc("list_staff")]);if(staffCheck.error||staffCheck.data!==true){gate.innerHTML='<div class="account-main empty-state"><p>Staff access required.</p></div>';return;}isAdmin=adminCheck.data===true;staff=(staffList.data||[]).filter(s=>s.active!==false);showStaffNav();gate.hidden=true;app.hidden=false;renderViews();wire();try{await load();}catch(err){gate.hidden=false;app.hidden=true;gate.innerHTML='<div class="account-main empty-state"><p>'+esc(err.message)+'</p></div>';}}

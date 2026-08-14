@@ -3,7 +3,7 @@
 <title>Work Queue - Kridiya Staff Tools</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="icon" href="https://kridiyatravel.com/assets/favicon-32.png" sizes="32x32"><link rel="stylesheet" href="css/site-base.css"><link rel="stylesheet" href="css/staff.css?v=20260814a">
+<link rel="icon" href="https://kridiyatravel.com/assets/favicon-32.png" sizes="32x32"><link rel="stylesheet" href="css/site-base.css"><link rel="stylesheet" href="css/staff.css?v=20260814b">
 </head><body data-page="tasks"><header id="site-header" class="site-header"></header>
 <main><section class="section"><div class="container">
   <div id="tasks-gate"><div class="account-main empty-state"><p>Checking access...</p></div></div>
@@ -39,5 +39,32 @@
     <div class="task-dialog-actions"><button class="btn btn-outline" value="cancel" type="submit">Cancel</button><button class="btn btn-primary" id="task-snooze-confirm" type="button">Snooze work</button></div>
   </form>
 </dialog>
-<script src="https://kridiyatravel.com/js/auth.js" defer></script><script src="js/staff-common.js?v=20260804a" defer></script><script src="js/tasks.js?v=20260814a" defer></script>
+<dialog id="task-reassign-dialog" class="task-action-dialog" aria-labelledby="task-reassign-title">
+  <form method="dialog">
+    <div class="task-dialog-head"><div><h2 id="task-reassign-title">Reassign selected work</h2><p>Move responsibility to an active staff member or leave it unassigned.</p></div><button class="task-dialog-close" value="cancel" type="submit" aria-label="Close">&times;</button></div>
+    <label class="task-custom-snooze"><span>Assign to</span><select id="task-reassign-staff"></select></label>
+    <div class="task-dialog-actions"><button class="btn btn-outline" value="cancel" type="submit">Cancel</button><button class="btn btn-primary" id="task-reassign-confirm" type="button">Reassign work</button></div>
+  </form>
+</dialog>
+<dialog id="task-escalate-dialog" class="task-action-dialog" aria-labelledby="task-escalate-title">
+  <form method="dialog">
+    <div class="task-dialog-head"><div><h2 id="task-escalate-title">Escalate selected work</h2><p>Flag this work for urgent owner or management attention.</p></div><button class="task-dialog-close" value="cancel" type="submit" aria-label="Close">&times;</button></div>
+    <div class="task-reason-presets" role="group" aria-label="Common escalation reasons">
+      <button class="task-reason-choice" data-reason="Customer response overdue" type="button">Customer response overdue</button>
+      <button class="task-reason-choice" data-reason="Supplier action required" type="button">Supplier action required</button>
+      <button class="task-reason-choice" data-reason="Payment or approval blocked" type="button">Payment or approval blocked</button>
+      <button class="task-reason-choice" data-reason="Owner review required" type="button">Owner review required</button>
+    </div>
+    <label class="task-custom-snooze"><span>Escalation reason</span><textarea id="task-escalate-reason" rows="3" maxlength="500" placeholder="Explain what is blocked and what decision is needed."></textarea></label>
+    <div class="task-dialog-actions"><button class="btn btn-outline" value="cancel" type="submit">Cancel</button><button class="btn btn-primary" id="task-escalate-confirm" type="button">Escalate work</button></div>
+  </form>
+</dialog>
+<dialog id="task-save-view-dialog" class="task-action-dialog task-small-dialog" aria-labelledby="task-save-view-title">
+  <form method="dialog">
+    <div class="task-dialog-head"><div><h2 id="task-save-view-title">Save current view</h2><p>Reuse these queue filters whenever you need them.</p></div><button class="task-dialog-close" value="cancel" type="submit" aria-label="Close">&times;</button></div>
+    <label class="task-custom-snooze"><span>View name</span><input id="task-view-name" type="text" maxlength="40" autocomplete="off" placeholder="For example: High-priority enquiries"></label>
+    <div class="task-dialog-actions"><button class="btn btn-outline" value="cancel" type="submit">Cancel</button><button class="btn btn-primary" id="task-save-view-confirm" type="button">Save view</button></div>
+  </form>
+</dialog>
+<script src="https://kridiyatravel.com/js/auth.js" defer></script><script src="js/staff-common.js?v=20260804a" defer></script><script src="js/tasks.js?v=20260814b" defer></script>
 </body></html>
