@@ -10,7 +10,7 @@
   function visibleTasks() {
     const f=filters(), q=f.search.toLowerCase();
     return tasks.filter((t) => {
-      if (f.queue === "active" && ["done","cancelled"].includes(t.status)) return false;
+      if (f.queue === "active" && (["done","cancelled","snoozed"].includes(t.status) || t.due_bucket === "snoozed")) return false;
       if (f.queue === "mine" && t.assigned_to !== user.id) return false;
       if (f.queue === "unassigned" && t.assigned_to) return false;
       if (["overdue","today","snoozed"].includes(f.queue) && t.due_bucket !== f.queue) return false;
@@ -21,7 +21,7 @@
     });
   }
   function renderSummary() {
-    const active=tasks.filter(t=>!["done","cancelled"].includes(t.status));
+    const active=tasks.filter(t=>!["done","cancelled","snoozed"].includes(t.status)&&t.due_bucket!=="snoozed");
     const data=[[active.length,"Active"],[active.filter(t=>t.due_bucket==="overdue").length,"Overdue"],[active.filter(t=>t.due_bucket==="today").length,"Due today"],[active.filter(t=>!t.assigned_to).length,"Unassigned"],[active.filter(t=>t.escalated_at).length,"Escalated"]];
     document.getElementById("tasks-summary").innerHTML=data.map(x=>'<div class="stat-tile"><div class="num">'+x[0]+'</div><div class="label">'+x[1]+'</div></div>').join("");
   }
@@ -38,12 +38,48 @@
   function renderViews(){const box=document.getElementById("task-saved-views"), views=getSaved();box.innerHTML='<button class="saved-view active" data-view-index="default" type="button">Default</button>'+views.map((v,i)=>'<button class="saved-view" data-view-index="'+i+'" type="button">'+esc(v.name)+'</button>').join("");}
   function applyView(v){document.getElementById("task-queue").value=v.queue||"active";document.getElementById("task-entity").value=v.entity||"";document.getElementById("task-priority").value=v.priority||"";document.getElementById("task-search").value=v.search||"";selected.clear();render();}
   async function bulk(action, ids, extra={}){if(!ids.length)return;const result=await sb.rpc("bulk_update_operations_tasks",{p_task_ids:ids,p_action:action,p_assigned_to:extra.assigned||null,p_snoozed_until:extra.until||null,p_reason:extra.reason||null});if(result.error){toast("Could not update tasks: "+result.error.message);return;}selected.clear();await load();toast(result.data+" task(s) updated.");}
+  function tomorrowAtNine() {
+    const date = new Date();
+    date.setDate(date.getDate() + 1);
+    if (date.getDay() === 0) date.setDate(date.getDate() + 1);
+    date.setHours(9, 0, 0, 0);
+    return date;
+  }
+  function openSnoozeDialog(ids) {
+    const dialog = document.getElementById("task-snooze-dialog");
+    const input = document.getElementById("task-snooze-until");
+    dialog.dataset.taskIds = JSON.stringify(ids);
+    input.value = "";
+    dialog.querySelectorAll(".task-snooze-choice").forEach((choice) => choice.classList.remove("selected"));
+    dialog.showModal();
+  }
+  function selectSnoozeUntil(button) {
+    const dialog = document.getElementById("task-snooze-dialog");
+    const input = document.getElementById("task-snooze-until");
+    const date = button.hasAttribute("data-snooze-tomorrow")
+      ? tomorrowAtNine()
+      : new Date(Date.now() + Number(button.dataset.snoozeMinutes) * 60000);
+    const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    input.value = local;
+    dialog.querySelectorAll(".task-snooze-choice").forEach((choice) => choice.classList.toggle("selected", choice === button));
+  }
+  async function confirmSnooze() {
+    const dialog = document.getElementById("task-snooze-dialog");
+    const input = document.getElementById("task-snooze-until");
+    const until = new Date(input.value);
+    if (!input.value || Number.isNaN(until.getTime()) || until <= new Date()) return toast("Choose a future snooze time.");
+    const ids = JSON.parse(dialog.dataset.taskIds || "[]");
+    dialog.close();
+    await bulk("snooze", ids, { until: until.toISOString() });
+  }
   async function load(){const result=await sb.rpc("list_operations_tasks",{p_limit:600});if(result.error)throw result.error;tasks=result.data||[];render();}
   function wire(){["task-queue","task-entity","task-priority"].forEach(id=>document.getElementById(id).addEventListener("change",()=>{selected.clear();render();}));document.getElementById("task-search").addEventListener("input",()=>{selected.clear();render();});
     document.getElementById("task-select-all").addEventListener("change",e=>{visibleTasks().forEach(t=>e.target.checked?selected.add(t.id):selected.delete(t.id));render();});
     document.getElementById("tasks-list").addEventListener("change",e=>{const cb=e.target.closest("[data-task-id]");if(!cb)return;cb.checked?selected.add(cb.dataset.taskId):selected.delete(cb.dataset.taskId);updateBulk();});
     document.getElementById("tasks-list").addEventListener("click",e=>{const done=e.target.closest("[data-task-done]"),reopen=e.target.closest("[data-task-reopen]");if(done)bulk("done",[done.dataset.taskDone]);if(reopen)bulk("reopen",[reopen.dataset.taskReopen]);});
-    document.getElementById("task-bulkbar").addEventListener("click",async e=>{const b=e.target.closest("[data-bulk]");if(!b)return;const ids=Array.from(selected),a=b.dataset.bulk;if(a==="done")return bulk(a,ids);if(a==="snooze"){const hours=prompt("Snooze for how many hours?","24");if(!hours)return;return bulk(a,ids,{until:new Date(Date.now()+Number(hours)*36e5).toISOString()});}if(a==="reassign"){if(!isAdmin)return toast("Owner/admin access required.");const names=staff.map((s,i)=>(i+1)+". "+(s.full_name||s.email)).join("\n"),choice=prompt("Assign to:\n0. Unassigned\n"+names,"0");if(choice===null)return;const n=Number(choice),assigned=n>0&&staff[n-1]?staff[n-1].user_id:null;return bulk(a,ids,{assigned});}if(a==="escalate"){const reason=prompt("Escalation reason:","Owner review required");if(!reason)return;return bulk(a,ids,{reason});}});
+    document.getElementById("task-bulkbar").addEventListener("click",async e=>{const b=e.target.closest("[data-bulk]");if(!b)return;const ids=Array.from(selected),a=b.dataset.bulk;if(a==="done")return bulk(a,ids);if(a==="snooze")return openSnoozeDialog(ids);if(a==="reassign"){if(!isAdmin)return toast("Owner/admin access required.");const names=staff.map((s,i)=>(i+1)+". "+(s.full_name||s.email)).join("\n"),choice=prompt("Assign to:\n0. Unassigned\n"+names,"0");if(choice===null)return;const n=Number(choice),assigned=n>0&&staff[n-1]?staff[n-1].user_id:null;return bulk(a,ids,{assigned});}if(a==="escalate"){const reason=prompt("Escalation reason:","Owner review required");if(!reason)return;return bulk(a,ids,{reason});}});
+    document.getElementById("task-snooze-dialog").addEventListener("click",e=>{const choice=e.target.closest(".task-snooze-choice");if(choice)selectSnoozeUntil(choice);});
+    document.getElementById("task-snooze-confirm").addEventListener("click",confirmSnooze);
     document.getElementById("task-save-view").addEventListener("click",()=>{const name=prompt("Name this view:");if(!name)return;const views=getSaved();views.push(Object.assign({name:name.trim()},filters()));localStorage.setItem(VIEW_KEY,JSON.stringify(views.slice(-8)));renderViews();});
     document.getElementById("task-saved-views").addEventListener("click",e=>{const b=e.target.closest("[data-view-index]");if(!b)return;applyView(b.dataset.viewIndex==="default"?{queue:"active"}:getSaved()[Number(b.dataset.viewIndex)]||{});});
   }

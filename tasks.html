@@ -3,7 +3,7 @@
 <title>Work Queue - Kridiya Staff Tools</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="icon" href="https://kridiyatravel.com/assets/favicon-32.png" sizes="32x32"><link rel="stylesheet" href="css/site-base.css"><link rel="stylesheet" href="css/staff.css?v=20260804a">
+<link rel="icon" href="https://kridiyatravel.com/assets/favicon-32.png" sizes="32x32"><link rel="stylesheet" href="css/site-base.css"><link rel="stylesheet" href="css/staff.css?v=20260814a">
 </head><body data-page="tasks"><header id="site-header" class="site-header"></header>
 <main><section class="section"><div class="container">
   <div id="tasks-gate"><div class="account-main empty-state"><p>Checking access...</p></div></div>
@@ -26,5 +26,18 @@
     <div id="tasks-list" class="task-list"></div>
   </div>
 </div></section></main><footer id="site-footer" class="site-footer"></footer>
-<script src="https://kridiyatravel.com/js/auth.js" defer></script><script src="js/staff-common.js?v=20260804a" defer></script><script src="js/tasks.js?v=20260804a" defer></script>
+<dialog id="task-snooze-dialog" class="task-action-dialog" aria-labelledby="task-snooze-title">
+  <form method="dialog">
+    <div class="task-dialog-head"><div><h2 id="task-snooze-title">Snooze selected work</h2><p>Hide it from Active work until it needs attention again.</p></div><button class="task-dialog-close" value="cancel" type="submit" aria-label="Close">&times;</button></div>
+    <div class="task-snooze-presets" role="group" aria-label="Snooze duration">
+      <button class="task-snooze-choice" data-snooze-minutes="10" type="button"><b>10 minutes</b><span>Quick pause</span></button>
+      <button class="task-snooze-choice" data-snooze-minutes="60" type="button"><b>1 hour</b><span>Later today</span></button>
+      <button class="task-snooze-choice" data-snooze-minutes="240" type="button"><b>4 hours</b><span>End of shift</span></button>
+      <button class="task-snooze-choice" data-snooze-tomorrow type="button"><b>Tomorrow 9:00</b><span>Next workday</span></button>
+    </div>
+    <label class="task-custom-snooze"><span>Or choose a specific date and time</span><input id="task-snooze-until" type="datetime-local"></label>
+    <div class="task-dialog-actions"><button class="btn btn-outline" value="cancel" type="submit">Cancel</button><button class="btn btn-primary" id="task-snooze-confirm" type="button">Snooze work</button></div>
+  </form>
+</dialog>
+<script src="https://kridiyatravel.com/js/auth.js" defer></script><script src="js/staff-common.js?v=20260804a" defer></script><script src="js/tasks.js?v=20260814a" defer></script>
 </body></html>
