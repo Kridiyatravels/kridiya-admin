@@ -102,9 +102,12 @@
     const noteMatch = bookingNotes().match(/Document needed:\s*([^\n]+)/i);
     return noteMatch && noteMatch[1] ? noteMatch[1].trim() : "Requested document";
   }
+  function documentHandoffHasBookingRef() {
+    return /Booking:\s*KRI-\d{4}-\d+/i.test(bookingNotes());
+  }
   function documentHandoffRef() {
     const match = bookingNotes().match(/Booking:\s*(KRI-\d{4}-\d+)/i);
-    return match && match[1] ? match[1] : "Original booking";
+    return match && match[1] ? match[1] : "Linked booking missing";
   }
   function documentHandoffNote() {
     const match = bookingNotes().match(/Company note:\s*([^\n]+)/i);
@@ -618,7 +621,8 @@
       return '<span class="doc-check ' + (receivedTypes[type] ? 'is-done' : '') + '">' + esc(receivedTypes[type] ? "Received: " : "Pending: ") + esc(label(type)) + '</span>';
     }).join("") + '</div>';
     const requestedKey = isDocumentHandoff() ? documentHandoffTypeKey() : required[0];
-    const handoffPanel = isDocumentHandoff() ? '<div class="notice-card notice-warn"><b>Corporate document handoff</b><p>Requested: ' + esc(documentHandoffType()) + ' for ' + esc(documentHandoffRef()) + '. Company note: ' + esc(documentHandoffNote()) + '</p><p>Upload or record the customer-safe file, then release it to the corporate portal. Supplier cost and internal notes stay hidden.</p></div>' : '';
+    const missingLinkNote = isDocumentHandoff() && !documentHandoffHasBookingRef() ? '<p><b>Linked booking missing:</b> ask the company which booking this file belongs to, then add the real booking reference in the note before handover.</p>' : '';
+    const handoffPanel = isDocumentHandoff() ? '<div class="notice-card notice-warn"><b>Corporate document handoff</b><p>Requested: ' + esc(documentHandoffType()) + ' for ' + esc(documentHandoffRef()) + '. Company note: ' + esc(documentHandoffNote()) + '</p>' + missingLinkNote + '<p>Upload the customer-safe file before releasing it to the corporate portal. Supplier cost and internal notes stay hidden.</p></div>' : '';
     const releaseCheck = isDocumentHandoff() ? ' checked' : '';
     const form = canEdit ? handoffPanel + '<form id="booking-document-form" class="form-grid payment-mini-form" onsubmit="return false"><div class="field-row"><div class="field col-6"><label>DOCUMENT TYPE</label><select name="document_type">' + optionList(DOCUMENT_TYPES, requestedKey) + '</select></div><div class="field col-6"><label>DOCUMENT NAME</label><input name="file_name" value="' + esc(isDocumentHandoff() ? documentHandoffType() + ' - ' + documentHandoffRef() : '') + '" placeholder="Passport copy received"></div><div class="field col-8"><label>REFERENCE / NOTE</label><input name="external_reference" value="' + esc(isDocumentHandoff() ? 'Corporate portal request - ' + documentHandoffRef() : '') + '" placeholder="WhatsApp, email, portal ref, file location"></div><div class="field col-4"><label>UPLOAD FILE</label><input name="document_file" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx"></div></div><label class="checkline document-release-check"><input name="visible_to_customer" type="checkbox"' + releaseCheck + '> Release to corporate portal after saving</label><button class="btn btn-primary" type="submit">Save document record</button></form>' : '<p class="form-note">Document permission required to record documents.</p>';
     const generatedActions = canEdit ? '<div class="ops-row"><div class="ops-row-main"><b>Customer booking document</b><p>Create a customer-safe booking confirmation or itinerary from the current booking and passenger details.</p></div><div class="ops-row-actions"><button class="btn btn-outline js-print-booking-confirmation" type="button">Booking confirmation</button></div></div>' : '';
@@ -659,6 +663,12 @@
     const form = document.getElementById("booking-document-form");
     const button = form.querySelector('button[type="submit"]');
     const file = form.document_file && form.document_file.files.length ? form.document_file.files[0] : null;
+    const wantsRelease = !!(form.visible_to_customer && form.visible_to_customer.checked);
+    if (wantsRelease && !file) {
+      toast("Attach a file before releasing a document to the corporate portal.");
+      if (form.document_file) form.document_file.focus();
+      return;
+    }
     button.disabled = true;
     button.textContent = file ? "Uploading..." : "Saving...";
     if (file) {
@@ -667,7 +677,7 @@
       uploadForm.append("booking_id", bookingId);
       uploadForm.append("document_type", form.document_type.value);
       uploadForm.append("external_reference", form.external_reference.value || "");
-      uploadForm.append("visible_to_customer", form.visible_to_customer && form.visible_to_customer.checked ? "true" : "false");
+      uploadForm.append("visible_to_customer", wantsRelease ? "true" : "false");
       uploadForm.append("file", file, file.name);
       try {
         await invokeMicrosoftUpload(uploadForm);
@@ -684,7 +694,7 @@
         p_file_name: form.file_name.value || "Document received",
         p_external_reference: form.external_reference.value || null,
         p_storage_path: null,
-        p_visible_to_customer: !!(form.visible_to_customer && form.visible_to_customer.checked)
+        p_visible_to_customer: wantsRelease
       });
     button.disabled = false;
     button.textContent = "Save document record";
@@ -692,7 +702,7 @@
       toast("Could not record document: " + result.error.message);
       return;
     }
-    const released = !!(form.visible_to_customer && form.visible_to_customer.checked);
+    const released = wantsRelease;
     toast(released ? "Document saved and released to corporate portal." : (file ? "Document uploaded and recorded internally." : "Document recorded internally."));
     form.reset();
     await loadDetail();
