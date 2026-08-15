@@ -7,6 +7,7 @@
   let activeSearch = "";
   let activeFilter = "";
   let activeSort = "created_desc";
+  let canApproveDiscounts = false;
 
   const SORT_OPTIONS = [
     { value: "created_desc", label: "Newest first", desc: "Recently created" },
@@ -32,6 +33,8 @@
       gate.innerHTML = '<div class="account-main empty-state"><p><b>You do not have access.</b><br>Bookings are for staff only.</p></div>';
       return;
     }
+    const discountCheck = await sb.rpc("has_staff_permission", { permission_name: "approve_discounts" });
+    canApproveDiscounts = !discountCheck.error && discountCheck.data === true;
     showStaffNav();
     gate.hidden = true;
     app.hidden = false;
@@ -140,6 +143,22 @@
       return;
     }
 
+    const sellingPrice = form.selling_price.value ? Number(form.selling_price.value) : null;
+    const supplierCost = form.supplier_cost.value ? Number(form.supplier_cost.value) : null;
+    if (sellingPrice != null && supplierCost != null && sellingPrice < supplierCost) {
+      if (!canApproveDiscounts) {
+        toast("Selling price is below supplier cost. An owner or authorized discount approver must create this exception.");
+        form.selling_price.focus();
+        return;
+      }
+      if (form.notes.value.trim().length < 10) {
+        toast("Add a written reason of at least 10 characters for the negative-margin exception.");
+        form.notes.focus();
+        return;
+      }
+      if (!window.confirm("Approve this below-cost booking as a negative-margin exception? Your identity, time, values, and written reason will be retained.")) return;
+    }
+
     btn.disabled = true;
     const isCorporate = form.booking_kind.value === "corporate";
     const payload = {
@@ -154,8 +173,8 @@
       p_route_or_destination: form.route_or_destination.value.trim() || null,
       p_travel_start: form.travel_start.value || null,
       p_travel_end: form.travel_end.value || null,
-      p_selling_price: form.selling_price.value ? Number(form.selling_price.value) : null,
-      p_supplier_cost: form.supplier_cost.value ? Number(form.supplier_cost.value) : null,
+      p_selling_price: sellingPrice,
+      p_supplier_cost: supplierCost,
       p_supplier_name: form.supplier_name.value.trim() || null,
       p_notes: form.notes.value.trim() || null
     };
