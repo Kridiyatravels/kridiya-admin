@@ -7,6 +7,7 @@
   let quoteContext = { quotes: [], can_edit_quotes: false };
   let workflow = { tasks: [], timeline: [], can_edit_tasks: false, can_view_activity: false };
   let businessSettings = null;
+  let canApproveSupplierPayments = false;
 
   const BOOKING_STATUS = ["enquiry", "quote_sent", "payment_pending", "confirmed", "paid", "ticketed", "completed", "cancelled", "refunded"];
   const PAYMENT_STATUS = ["not_requested", "request_sent", "proof_received", "partially_paid", "paid", "supplier_payment_pending", "supplier_paid", "refund_pending", "refunded", "failed", "cancelled"];
@@ -246,6 +247,8 @@
       gate.innerHTML = '<div class="account-main empty-state"><p><b>You do not have access.</b><br>Bookings are for staff only.</p></div>';
       return;
     }
+    const adminCheck = await sb.rpc("is_admin");
+    canApproveSupplierPayments = !adminCheck.error && adminCheck.data === true;
     showStaffNav();
     gate.hidden = true;
     app.hidden = false;
@@ -861,7 +864,7 @@
   function renderSupplierPayments() {
     const rows = detail.supplier_payments || [];
     const b = detail.booking;
-    const form = detail.can_edit_payments ? '<form id="supplier-payment-form" class="form-grid payment-mini-form" onsubmit="return false"><div class="field-row"><div class="field col-6"><label>SUPPLIER</label><input name="supplier_name" required value="' + esc(b.supplier_name || "") + '"></div><div class="field col-6"><label>SUPPLIER REF</label><input name="supplier_reference" value="' + esc(b.supplier_reference || "") + '"></div><div class="field col-4"><label>PAYABLE</label><input name="amount_payable" type="number" min="0" step="0.01" required value="' + esc(b.supplier_cost || "") + '"></div><div class="field col-4"><label>PAID</label><input name="amount_paid" type="number" min="0" step="0.01" value="0"></div><div class="field col-4"><label>STATUS</label><select name="status"><option value="pending">Pending</option><option value="partial">Partial</option><option value="paid">Paid</option><option value="disputed">Disputed</option></select></div><div class="field col-12"><label>NOTES</label><input name="notes" placeholder="Supplier invoice or portal note"></div></div><button class="btn btn-primary" type="submit">Record supplier payment</button></form>' : '<p class="form-note">Finance permission required to record supplier payments.</p>';
+    const form = detail.can_edit_payments ? '<form id="supplier-payment-form" class="form-grid payment-mini-form" onsubmit="return false"><div class="field-row"><div class="field col-6"><label>SUPPLIER</label><input name="supplier_name" required value="' + esc(b.supplier_name || "") + '"></div><div class="field col-6"><label>SUPPLIER REF</label><input name="supplier_reference" value="' + esc(b.supplier_reference || "") + '"></div><div class="field col-4"><label>PAYABLE</label><input name="amount_payable" type="number" min="0.01" step="0.01" required value="' + esc(b.supplier_cost || "") + '"></div><div class="field col-8"><label>NOTES</label><input name="notes" placeholder="Supplier invoice or portal note"></div></div><p class="form-note">This records a payable request only. A different owner/admin must release the payment.</p><button class="btn btn-primary" type="submit">Record supplier payable</button></form>' : '<p class="form-note">Finance permission required to record supplier payables.</p>';
     document.getElementById("supplier-payment-panel").innerHTML = renderSupplierControl() + form + renderPaymentRows(rows, false);
     const f = document.getElementById("supplier-payment-form");
     if (f) f.addEventListener("submit", recordSupplierPayment);
@@ -892,12 +895,15 @@
       const supplierBalance = !customer ? Math.max(0, amountNum(r.amount_payable) - amountNum(r.amount_paid)) : 0;
       const supplierBalanceChip = !customer && supplierBalance > 0 ? '<span class="ops-chip">Balance: ' + esc(money(supplierBalance, r.currency)) + '</span>' : '';
       const supplierDisputeChip = !customer && r.status === "disputed" ? '<span class="ops-chip">Disputed</span>' : '';
+      const supplierApprovalBtn = !customer && canApproveSupplierPayments && ["pending", "partial"].indexOf(String(r.status || "")) !== -1 && supplierBalance > 0
+        ? '<button class="btn btn-primary js-approve-supplier-payment" data-id="' + esc(r.id) + '" data-balance="' + esc(supplierBalance) + '" type="button">Release payment</button>'
+        : '';
       const invoiceActions = !customer
         ? (r.supplier_invoice_path ? '<button class="btn btn-outline js-view-supplier-invoice" data-id="' + esc(r.id) + '" data-path="' + esc(r.supplier_invoice_path) + '" type="button">View invoice</button>' : '')
           + (r.sharepoint_invoice_url ? '<a class="btn btn-outline" target="_blank" rel="noopener" href="' + esc(r.sharepoint_invoice_url) + '">SharePoint</a>' : '')
           + (detail.can_edit_payments ? '<label class="btn btn-outline proof-upload-label">' + (r.supplier_invoice_path ? 'Replace invoice' : 'Upload invoice') + '<input type="file" class="js-supplier-invoice-file" data-id="' + esc(r.id) + '" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx" hidden></label>' : '')
         : '';
-      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(title) + '</b><p>' + esc(label(r.status)) + (r.notes ? ' - ' + esc(r.notes) : '') + '</p><div class="ops-kv">' + ref + proofChip + invoiceChip + sharepointChip + supplierBalanceChip + supplierDisputeChip + (customer && r.status === "proof_received" ? '<span class="ops-chip">Proof only - no receipt yet</span>' : '') + '</div></div><div class="ops-row-actions"><span class="finance-value">' + esc(amount) + '</span>' + receiptBtn + refundBtn + supplierNoteBtn + proofActions + invoiceActions + '</div></div>';
+      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(title) + '</b><p>' + esc(label(r.status)) + (r.notes ? ' - ' + esc(r.notes) : '') + '</p><div class="ops-kv">' + ref + proofChip + invoiceChip + sharepointChip + supplierBalanceChip + supplierDisputeChip + (customer && r.status === "proof_received" ? '<span class="ops-chip">Proof only - no receipt yet</span>' : '') + '</div></div><div class="ops-row-actions"><span class="finance-value">' + esc(amount) + '</span>' + receiptBtn + refundBtn + supplierNoteBtn + supplierApprovalBtn + proofActions + invoiceActions + '</div></div>';
     }).join("") + '</div>';
   }
 
@@ -1068,14 +1074,35 @@
       p_booking_id: bookingId,
       p_supplier_name: form.supplier_name.value,
       p_amount_payable: Number(form.amount_payable.value),
-      p_amount_paid: form.amount_paid.value ? Number(form.amount_paid.value) : 0,
-      p_status: form.status.value,
+      p_amount_paid: 0,
+      p_status: "pending",
       p_currency: (detail.booking && (detail.booking.supplier_currency || detail.booking.currency)) || "AED",
       p_supplier_reference: form.supplier_reference.value || null,
       p_notes: form.notes.value || null
     });
     if (result.error) { toast("Could not record supplier payment: " + result.error.message); return; }
-    toast("Supplier payment recorded.");
+    toast("Supplier payable recorded for separate approval.");
+    await loadDetail();
+  }
+
+  async function approveSupplierPayment(id, balance) {
+    const amountText = window.prompt("Amount to release (maximum " + Number(balance).toFixed(2) + "):", Number(balance).toFixed(2));
+    if (amountText === null) return;
+    const amount = Number(amountText);
+    if (!Number.isFinite(amount) || amount <= 0 || amount > Number(balance)) { toast("Enter a valid amount within the outstanding balance."); return; }
+    const reference = window.prompt("Bank/transaction reference (required):", "");
+    if (reference === null) return;
+    if (!reference.trim()) { toast("Transaction reference is required."); return; }
+    const note = window.prompt("Approval note (optional):", "");
+    if (!window.confirm("Release " + money(amount, (detail.booking && detail.booking.currency) || "AED") + " to this supplier?")) return;
+    const result = await sb.rpc("approve_supplier_payment", {
+      p_supplier_payment_id: id,
+      p_amount: amount,
+      p_reference: reference.trim(),
+      p_note: note && note.trim() ? note.trim() : null
+    });
+    if (result.error) { toast("Could not release supplier payment: " + result.error.message); return; }
+    toast("Supplier payment released and audited.");
     await loadDetail();
   }
 
@@ -1092,6 +1119,7 @@
     const requestButton = event.target.closest(".js-payment-request");
     const viewProofButton = event.target.closest(".js-view-proof");
     const viewSupplierInvoiceButton = event.target.closest(".js-view-supplier-invoice");
+    const approveSupplierPaymentButton = event.target.closest(".js-approve-supplier-payment");
     if (taskButton) completeBookingTask(taskButton.dataset.id);
     if (passengerButton) deletePassenger(passengerButton.dataset.id);
     if (documentButton) deleteDocument(documentButton.dataset.id, documentButton.dataset.path);
@@ -1104,6 +1132,7 @@
     if (requestButton) generatePaymentRequest();
     if (viewProofButton) viewPaymentProof(viewProofButton.dataset.id, viewProofButton.dataset.path);
     if (viewSupplierInvoiceButton) viewSupplierInvoice(viewSupplierInvoiceButton.dataset.id, viewSupplierInvoiceButton.dataset.path);
+    if (approveSupplierPaymentButton) approveSupplierPayment(approveSupplierPaymentButton.dataset.id, approveSupplierPaymentButton.dataset.balance);
   });
   document.addEventListener("change", function (event) {
     const proofInput = event.target.closest(".js-proof-file");
