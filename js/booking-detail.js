@@ -15,7 +15,7 @@
   const PAYMENT_STATUS = ["not_requested", "request_sent", "proof_received", "partially_paid", "paid", "supplier_payment_pending", "supplier_paid", "refund_pending", "refunded", "failed", "cancelled"];
   const DOC_STATUS = ["not_started", "draft", "generated", "sent", "archived"];
   const PASSENGER_TYPES = ["adult", "child", "infant"];
-  const TASK_TYPES = ["follow_up", "customer_call", "supplier_check", "payment", "documents", "ticketing", "visa", "corporate_approval", "other"];
+  const TASK_TYPES = ["follow_up", "appointment", "customer_call", "supplier_check", "payment", "documents", "ticketing", "visa", "corporate_approval", "other"];
   const TASK_PRIORITIES = ["low", "normal", "high", "urgent"];
   const DOCUMENT_TYPES = ["passport_copy", "photo", "visa_form", "ticket_or_pnr", "emirates_id", "trade_license", "trn_certificate", "lpo", "approval_email", "invoice", "insurance_policy", "voucher", "other"];
   const REQUIRED_DOCUMENTS = {
