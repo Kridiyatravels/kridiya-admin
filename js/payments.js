@@ -77,6 +77,9 @@
   function actionButtons(p) {
     const buttons = [];
     if (p.booking_id) buttons.push('<a class="btn btn-outline" href="booking-detail.html?id=' + esc(p.booking_id) + '">Open booking</a>');
+    if (canEditPayments && p.has_proof && statusIs(p, "proof_received")) {
+      buttons.push('<button class="btn btn-primary js-proof-verify" data-id="' + esc(p.id) + '" type="button">Verify proof</button>');
+    }
     if (canEditPayments && ["received", "proof_received", "paid"].indexOf(String(p.status || "").toLowerCase()) !== -1) {
       buttons.push('<button class="btn btn-outline js-refund-request" data-id="' + esc(p.id) + '" data-amount="' + esc(p.amount) + '" type="button">Request refund</button>');
     }
@@ -146,6 +149,12 @@
     const reason = window.prompt("Refund reason / supplier rule", "");
     if (reason === null) return;
     await callRpc("request_payment_refund", { p_payment_id: id, p_refund_amount: Number(refundAmount), p_reason: reason }, "Refund request recorded.");
+  }
+  async function verifyProof(id) {
+    if (!window.confirm("Confirm that the funds are visible in Kridiya's bank or payment-provider account. The uploaded document alone is not proof of cleared money.")) return;
+    const note = window.prompt("Verification note / bank transaction reference", "Funds confirmed against account activity.");
+    if (note === null) return;
+    await callRpc("verify_customer_payment_proof", { p_payment_id: id, p_note: note }, "Payment proof verified and funds recorded as received.");
   }
   async function approveRefund(id) {
     const note = window.prompt("Approval note", "Approved by owner/finance.");
@@ -221,6 +230,8 @@
     }
     const req = event.target.closest(".js-refund-request");
     if (req) requestRefund(req.dataset.id, req.dataset.amount);
+    const proof = event.target.closest(".js-proof-verify");
+    if (proof) verifyProof(proof.dataset.id);
     const approve = event.target.closest(".js-refund-approve");
     if (approve) approveRefund(approve.dataset.id);
     const complete = event.target.closest(".js-refund-complete");
