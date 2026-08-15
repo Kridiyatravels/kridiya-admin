@@ -1042,7 +1042,7 @@
       p_amount: Number(form.amount.value),
       p_method: form.method.value,
       p_status: form.status.value,
-      p_currency: "AED",
+      p_currency: (detail.booking && detail.booking.currency) || "AED",
       p_payment_link: form.payment_link.value || null,
       p_notes: form.notes.value || null
     });
@@ -1060,7 +1060,7 @@
       p_amount_payable: Number(form.amount_payable.value),
       p_amount_paid: form.amount_paid.value ? Number(form.amount_paid.value) : 0,
       p_status: form.status.value,
-      p_currency: "AED",
+      p_currency: (detail.booking && detail.booking.currency) || "AED",
       p_supplier_reference: form.supplier_reference.value || null,
       p_notes: form.notes.value || null
     });
