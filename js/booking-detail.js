@@ -10,6 +10,7 @@
   let canApproveSupplierPayments = false;
   let canApproveDiscounts = false;
   let discountApprovals = [];
+  let supplierOffers = [];
 
   const BOOKING_STATUS = ["enquiry", "quote_sent", "payment_pending", "confirmed", "paid", "ticketed", "completed", "cancelled", "refunded"];
   const PAYMENT_STATUS = ["not_requested", "request_sent", "proof_received", "partially_paid", "paid", "supplier_payment_pending", "supplier_paid", "refund_pending", "refunded", "failed", "cancelled"];
@@ -269,6 +270,8 @@
     detail = result.data;
     const discountResult = await sb.rpc("list_booking_discount_approvals", { p_booking_id: bookingId });
     discountApprovals = discountResult.error ? [] : (discountResult.data || []);
+    const offerResult = await sb.rpc("list_supplier_availability", { p_booking_id: bookingId });
+    supplierOffers = offerResult.error ? [] : (offerResult.data || []);
     await loadWorkflow();
     await loadQuoteContext();
     if (!businessSettings) await loadBusinessSettings();
@@ -898,10 +901,15 @@
     const rows = detail.supplier_payments || [];
     const b = detail.booking;
     const form = detail.can_edit_payments ? '<form id="supplier-payment-form" class="form-grid payment-mini-form" onsubmit="return false"><div class="field-row"><div class="field col-6"><label>SUPPLIER</label><input name="supplier_name" required value="' + esc(b.supplier_name || "") + '"></div><div class="field col-6"><label>SUPPLIER REF</label><input name="supplier_reference" value="' + esc(b.supplier_reference || "") + '"></div><div class="field col-4"><label>PAYABLE</label><input name="amount_payable" type="number" min="0.01" step="0.01" required value="' + esc(b.supplier_cost || "") + '"></div><div class="field col-8"><label>NOTES</label><input name="notes" placeholder="Supplier invoice or portal note"></div></div><p class="form-note">This records a payable request only. A different owner/admin must release the payment.</p><button class="btn btn-primary" type="submit">Record supplier payable</button></form>' : '<p class="form-note">Finance permission required to record supplier payables.</p>';
-    document.getElementById("supplier-payment-panel").innerHTML = renderSupplierControl() + form + renderPaymentRows(rows, false);
+    const offerForm = detail.can_edit_bookings ? '<form id="supplier-offer-form" class="form-grid payment-mini-form" onsubmit="return false"><div class="field-row"><div class="field col-4"><label>SUPPLIER AVAILABILITY</label><input name="supplier_name" required placeholder="Supplier name"></div><div class="field col-2"><label>STATUS</label><select name="availability"><option value="available">Available</option><option value="waitlist">Waitlist</option><option value="unavailable">Unavailable</option></select></div><div class="field col-2"><label>NET RATE</label><input name="net_rate" type="number" min="0" step="0.01"></div><div class="field col-2"><label>VALID UNTIL</label><input name="valid_until" type="datetime-local"></div><div class="field col-2"><label>REFERENCE</label><input name="supplier_reference"></div><div class="field col-12"><label>CONDITIONS</label><input name="conditions" required placeholder="Cancellation, deadline, inclusions and restrictions"></div></div><button class="btn btn-outline" type="submit">Record supplier response</button></form>' : '';
+    const offerRows = supplierOffers.length ? '<div class="ops-list">'+supplierOffers.map(function(o){return '<div class="ops-row"><div class="ops-row-main"><b>'+esc(o.supplier_name)+'</b><p>'+esc(label(o.availability))+' / '+esc(label(o.decision))+' / '+esc(o.conditions)+'</p><div class="ops-kv"><span class="ops-chip">'+esc(money(o.net_rate,o.currency))+'</span><span class="ops-chip">Valid: '+esc(dateTimeText(o.valid_until))+'</span></div></div><div class="ops-row-actions">'+(o.decision==='pending'&&o.availability==='available'?'<button class="btn btn-primary js-select-supplier-offer" data-id="'+esc(o.id)+'" type="button">Select offer</button>':'')+'</div></div>'}).join('')+'</div>' : '<p class="form-note">No supplier availability evidence yet.</p>';
+    document.getElementById("supplier-payment-panel").innerHTML = renderSupplierControl() + offerForm + offerRows + form + renderPaymentRows(rows, false);
     const f = document.getElementById("supplier-payment-form");
     if (f) f.addEventListener("submit", recordSupplierPayment);
+    const of=document.getElementById("supplier-offer-form");if(of)of.addEventListener("submit",recordSupplierOffer);
   }
+  async function recordSupplierOffer(){const f=document.getElementById("supplier-offer-form"),r=await sb.rpc("record_supplier_availability",{p_booking_id:bookingId,p_supplier_name:f.supplier_name.value,p_availability:f.availability.value,p_net_rate:f.net_rate.value?Number(f.net_rate.value):null,p_currency:(detail.booking&&detail.booking.currency)||"AED",p_valid_until:f.valid_until.value?new Date(f.valid_until.value).toISOString():null,p_supplier_reference:f.supplier_reference.value||null,p_conditions:f.conditions.value});if(r.error){toast("Could not record supplier response: "+r.error.message);return;}toast("Supplier response recorded.");await loadDetail();}
+  async function selectSupplierOffer(id){if(!confirm("Select this supplier offer and update the booking cost/reference?"))return;const r=await sb.rpc("select_supplier_availability",{p_offer_id:id});if(r.error){toast("Could not select offer: "+r.error.message);return;}toast("Supplier offer selected and booking cost updated.");await loadDetail();}
 
   function renderPaymentRows(rows, customer) {
     if (!rows.length) return '<p class="form-note">No records yet.</p>';
@@ -1186,6 +1194,7 @@
     const decideBookingDiscountButton = event.target.closest(".js-decide-booking-discount");
     const openSupplierDisputeButton = event.target.closest(".js-open-supplier-dispute");
     const resolveSupplierDisputeButton = event.target.closest(".js-resolve-supplier-dispute");
+    const selectSupplierOfferButton = event.target.closest(".js-select-supplier-offer");
     if (taskButton) completeBookingTask(taskButton.dataset.id);
     if (passengerButton) deletePassenger(passengerButton.dataset.id);
     if (documentButton) deleteDocument(documentButton.dataset.id, documentButton.dataset.path);
@@ -1205,6 +1214,7 @@
     if (decideBookingDiscountButton) decideBookingDiscount(decideBookingDiscountButton.dataset.id);
     if(openSupplierDisputeButton)openSupplierDispute(openSupplierDisputeButton.dataset.id);
     if(resolveSupplierDisputeButton)resolveSupplierDispute(resolveSupplierDisputeButton.dataset.id);
+    if(selectSupplierOfferButton)selectSupplierOffer(selectSupplierOfferButton.dataset.id);
   });
   document.addEventListener("change", function (event) {
     const proofInput = event.target.closest(".js-proof-file");
