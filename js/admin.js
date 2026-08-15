@@ -1326,7 +1326,6 @@
         stage.disabled = false;
         if (result.error) { toast("Could not update pipeline: " + result.error.message); renderList(); return; }
         if (row) Object.assign(row, result.data);
-        logActivity(sb, currentStaffId, "enquiry.pipeline_changed", "enquiry", id, { reference: row ? row.reference : null, stage: stage.value });
         renderList();
         toast("Pipeline stage updated.");
         return;
@@ -1357,7 +1356,6 @@
         toast("Could not update status: " + result.error.message);
         return;
       }
-      const prevStatus = row ? row.status : null;
       if (row) Object.assign(row, statusUpdate);
       select.setAttribute("style", statusStyle(newStatus));
       const badge = select.closest(".admin-enq").querySelector(".enq-row-head .status-badge");
@@ -1365,7 +1363,6 @@
         badge.setAttribute("style", statusStyle(newStatus));
         badge.textContent = KridiyaAuth.statusLabel(newStatus);
       }
-      logActivity(sb, currentStaffId, "enquiry.status_changed", "enquiry", id, { reference: row ? row.reference : null, from: prevStatus, to: newStatus });
       toast("Status updated.");
     });
 
