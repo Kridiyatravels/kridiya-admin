@@ -20,6 +20,7 @@
   let focusEmail = "";  // customers.html deep-link: show only this person's enquiries
   let focusId = "";     // deep-link: expand + scroll to a specific enquiry
   let notesByEnquiry = {};
+  let attachmentsByEnquiry = {};
   let requestsByEnquiry = {};
   let quotesByEnquiry = {};
   let quoteDraftsByEnquiry = {};
@@ -964,6 +965,7 @@
     listEl.innerHTML = visible.map(function (enq) {
       const created = new Date(enq.created_at);
       const notes = notesByEnquiry[enq.id] || [];
+      const attachments = attachmentsByEnquiry[enq.id] || [];
       const requests = requestsByEnquiry[enq.id] || [];
       const quotes = sortQuoteOptions(quotesByEnquiry[enq.id] || []);
       const quoteDrafts = quoteDraftsByEnquiry[enq.id] || [];
@@ -1004,6 +1006,7 @@
             (wa ? '<a class="btn btn-wa" target="_blank" rel="noopener" href="' + wa + '">' + icon("whatsapp") + " WhatsApp</a>" : "") +
             (mail ? '<a class="btn btn-outline" href="' + mail + '">' + icon("mail") + " Email</a>" : "") +
             '<button type="button" class="btn btn-outline notes-toggle" data-id="' + enq.id + '">Notes (' + notes.length + ")</button>" +
+            (attachments.length ? '<button type="button" class="btn btn-outline attachments-toggle" data-id="' + enq.id + '">Attachments (' + attachments.length + ")</button>" : "") +
             '<button type="button" class="btn btn-outline requests-toggle" data-id="' + enq.id + '">Requests (' + requests.length + ")</button>" +
             '<button type="button" class="btn btn-outline quotes-toggle" data-id="' + enq.id + '">Quote (' + quotes.length + ")</button>" +
             (booking
@@ -1012,6 +1015,15 @@
             '<a class="btn btn-outline" href="documents.html?enquiry=' + enq.id + '">Document</a>' +
             (mail ? '<a class="btn btn-outline" href="customers.html?email=' + encodeURIComponent(enq.email) + '">' + icon("user") + " Customer</a>" : "") +
           "</div>" +
+          (attachments.length
+            ? '<div class="admin-notes" data-attachments-for="' + enq.id + '" hidden><div class="admin-notes-list">' +
+                attachments.map(function (a) {
+                  const size = a.size_bytes ? " Â· " + (Number(a.size_bytes) / 1048576).toFixed(1) + " MB" : "";
+                  return '<div class="admin-note"><p><b>' + KridiyaAuth.escapeHTML(a.file_name || "Enquiry attachment") + '</b><span class="form-note">' + KridiyaAuth.escapeHTML(size) + '</span></p>' +
+                    '<button type="button" class="btn btn-outline view-file-btn" data-path="' + KridiyaAuth.escapeHTML(a.storage_path) + '">Open attachment</button></div>';
+                }).join("") +
+              "</div></div>"
+            : "") +
           '<div class="admin-notes" data-notes-for="' + enq.id + '" hidden>' +
             '<div class="admin-notes-list">' +
               (notes.length
@@ -1181,6 +1193,19 @@
     (result.data || []).forEach(function (n) {
       if (!notesByEnquiry[n.enquiry_id]) notesByEnquiry[n.enquiry_id] = [];
       notesByEnquiry[n.enquiry_id].push(n);
+    });
+  }
+
+  async function loadAttachments() {
+    const result = await sb.from("enquiry_attachments")
+      .select("id, enquiry_id, storage_path, file_name, mime_type, size_bytes, status, created_at")
+      .neq("status", "archived")
+      .order("created_at", { ascending: false });
+    if (result.error) throw result.error;
+    attachmentsByEnquiry = {};
+    (result.data || []).forEach(function (a) {
+      if (!attachmentsByEnquiry[a.enquiry_id]) attachmentsByEnquiry[a.enquiry_id] = [];
+      attachmentsByEnquiry[a.enquiry_id].push(a);
     });
   }
 
@@ -1375,6 +1400,12 @@
       const notesBtn = e.target.closest(".notes-toggle");
       if (notesBtn) {
         const panel = listEl.querySelector('.admin-notes[data-notes-for="' + notesBtn.dataset.id + '"]');
+        if (panel) panel.hidden = !panel.hidden;
+        return;
+      }
+      const attachmentsBtn = e.target.closest(".attachments-toggle");
+      if (attachmentsBtn) {
+        const panel = listEl.querySelector('.admin-notes[data-attachments-for="' + attachmentsBtn.dataset.id + '"]');
         if (panel) panel.hidden = !panel.hidden;
         return;
       }
@@ -1877,7 +1908,7 @@
 
     try {
       await sb.rpc("refresh_operations_automations");
-      await Promise.all([loadEnquiries(), loadNotes(), loadRequests(), loadQuotes(), loadBookingLinks(), loadStaffDirectory()]);
+      await Promise.all([loadEnquiries(), loadNotes(), loadAttachments(), loadRequests(), loadQuotes(), loadBookingLinks(), loadStaffDirectory()]);
       const perms = await Promise.all([
         sb.rpc("has_staff_permission", { permission_name: "create_bookings" }),
         sb.rpc("has_staff_permission", { permission_name: "edit_corporates" })
