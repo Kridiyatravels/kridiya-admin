@@ -444,15 +444,20 @@
 
   async function saveStatus() {
     const form = document.getElementById("booking-status-form");
-    const result = await sb.rpc("update_operations_booking_status", {
+    const result = await sb.rpc("update_operations_booking_status_v2", {
       p_booking_id: bookingId,
       p_status: form.status.value,
       p_payment_status: form.payment_status.value,
       p_document_status: form.document_status.value,
+      p_expected_updated_at: detail.booking.updated_at,
       p_supplier_reference: form.supplier_reference.value || null,
       p_staff_notes: form.staff_notes.value || null
     });
-    if (result.error) { toast("Could not save booking: " + result.error.message); return; }
+    if (result.error) {
+      toast("Could not save booking: " + result.error.message);
+      if (/changed after this page was loaded/i.test(result.error.message || "")) await loadDetail();
+      return;
+    }
     toast("Booking updated.");
     await loadDetail();
   }
@@ -836,15 +841,20 @@
     const nextBookingStatus = paymentStatus === "paid" && ["enquiry", "quote_sent", "payment_pending"].indexOf(String(b.status || "")) !== -1
       ? "confirmed"
       : (String(b.status || "") === "enquiry" || String(b.status || "") === "quote_sent" ? "payment_pending" : b.status);
-    const result = await sb.rpc("update_operations_booking_status", {
+    const result = await sb.rpc("update_operations_booking_status_v2", {
       p_booking_id: bookingId,
       p_status: nextBookingStatus,
       p_payment_status: paymentStatus,
       p_document_status: b.document_status,
+      p_expected_updated_at: b.updated_at,
       p_supplier_reference: b.supplier_reference || null,
       p_staff_notes: b.staff_notes || null
     });
-    if (result.error) { toast("Could not update payment control: " + result.error.message); return; }
+    if (result.error) {
+      toast("Could not update payment control: " + result.error.message);
+      if (/changed after this page was loaded/i.test(result.error.message || "")) await loadDetail();
+      return;
+    }
     toast("Payment control updated.");
     await loadDetail();
   }
