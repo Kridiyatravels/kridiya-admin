@@ -49,6 +49,21 @@
     if (result.error) throw result.error;
     return result.data || [];
   }
+  async function authorizeExport(exportType, rowCount, reason) {
+    const purpose = reason == null
+      ? window.prompt("Purpose for this sensitive export (minimum 10 characters):", "Monthly backup archive")
+      : reason;
+    if (purpose === null) return false;
+    await rpc("authorize_sensitive_export", {
+      p_export_type: exportType,
+      p_row_count: rowCount,
+      p_reason: purpose
+    });
+    return purpose;
+  }
+  function exportType(item) {
+    return String(item.title || "").toLowerCase().replace(/\s+/g, "_");
+  }
   async function table(name, select, limit) {
     const result = await sb.from(name).select(select || "*").order("created_at", { ascending: false }).limit(limit || 500);
     if (result.error) throw result.error;
@@ -184,18 +199,26 @@
     app.hidden = false;
     render();
 
-    document.getElementById("backup-list").addEventListener("click", function (event) {
+    document.getElementById("backup-list").addEventListener("click", async function (event) {
       const btn = event.target.closest("[data-export-index]");
       if (!btn) return;
       const item = exportsCache[Number(btn.dataset.exportIndex)];
-      downloadCsv(item.file, item.rows);
-      toast(item.title + " backup downloaded.");
+      try {
+        if (!(await authorizeExport(exportType(item), item.rows.length))) return;
+        downloadCsv(item.file, item.rows);
+        toast(item.title + " backup downloaded.");
+      } catch (error) { toast(error.message || "Export authorization failed.", "error"); }
     });
-    document.getElementById("download-all-backups").addEventListener("click", function () {
-      exportsCache.forEach(function (item, index) {
-        setTimeout(function () { downloadCsv(item.file, item.rows); }, index * 250);
-      });
-      toast("All backups started downloading.");
+    document.getElementById("download-all-backups").addEventListener("click", async function () {
+      try {
+        const totalRows = exportsCache.reduce(function (sum, item) { return sum + item.rows.length; }, 0);
+        const purpose = await authorizeExport("backup_pack", totalRows);
+        if (!purpose) return;
+        exportsCache.forEach(function (item, index) {
+          setTimeout(function () { downloadCsv(item.file, item.rows); }, index * 250);
+        });
+        toast("All backups started downloading.");
+      } catch (error) { toast(error.message || "Export authorization failed.", "error"); }
     });
   }
 

@@ -6,6 +6,7 @@
   let bookings = [];
   let payments = [];
   let reportRows = [];
+  let exportAllowed = false;
 
   function esc(v) { return KridiyaAuth.escapeHTML(String(v == null ? "" : v)); }
   function label(v) { return String(v || "unknown").replace(/_/g, " ").replace(/\b\w/g, function (c) { return c.toUpperCase(); }); }
@@ -45,6 +46,17 @@
     const result = await sb.rpc(name, args || {});
     if (result.error) throw result.error;
     return result.data || [];
+  }
+  async function authorizeExport(exportType, rows) {
+    if (!exportAllowed) throw new Error("Report export permission required");
+    const reason = window.prompt("Purpose for this sensitive export (minimum 10 characters):", "Monthly finance review");
+    if (reason === null) return false;
+    await rpc("authorize_sensitive_export", {
+      p_export_type: exportType,
+      p_row_count: rows.length,
+      p_reason: reason
+    });
+    return true;
   }
   function bookingDate(b) {
     return dateOnly(b.created_at || b.travel_start || b.updated_at);
@@ -124,9 +136,13 @@
         return '<div class="review-check ' + (c.done ? "done" : "todo") + '"><b>' + esc(c.title) + '</b><p>' + esc(c.text) + '</p></div>';
       }).join("") + '</div>';
     const btn = document.getElementById("owner-review-export");
-    if (btn) btn.addEventListener("click", function () {
-      downloadCsv("kridiya-owner-review-" + stamp() + ".csv", reportRows);
-      toast("Owner review report downloaded.");
+    if (btn) { btn.disabled = !exportAllowed; btn.title = exportAllowed ? "" : "Report export permission required"; }
+    if (btn) btn.addEventListener("click", async function () {
+      try {
+        if (!(await authorizeExport("owner_review", reportRows))) return;
+        downloadCsv("kridiya-owner-review-" + stamp() + ".csv", reportRows);
+        toast("Owner review report downloaded.");
+      } catch (error) { toast(error.message || "Export authorization failed.", "error"); }
     });
   }
   function groupBy(rows, keyFn) {
@@ -242,6 +258,8 @@
       gate.innerHTML = '<div class="account-main empty-state"><p><b>Finance access required.</b><br>Accounting reports are private business records.</p><a class="btn btn-primary" href="dashboard.html">Back to dashboard</a></div>';
       return;
     }
+    const exportCheck = await sb.rpc("has_staff_permission", { permission_name: "export_reports" });
+    exportAllowed = !exportCheck.error && exportCheck.data === true;
     try {
       bookings = await rpc("list_operations_bookings", { limit_count: 1000 });
       payments = await rpc("list_operations_payments", { limit_count: 1000 });
@@ -257,9 +275,14 @@
     ["flt-accounting-from", "flt-accounting-to", "flt-accounting-service", "flt-accounting-kind"].forEach(function (id) {
       document.getElementById(id).addEventListener("change", render);
     });
-    document.getElementById("accounting-export").addEventListener("click", function () {
-      downloadCsv("kridiya-accounting-report-" + stamp() + ".csv", reportRows);
-      toast("Accounting report downloaded.");
+    document.getElementById("accounting-export").disabled = !exportAllowed;
+    document.getElementById("accounting-export").title = exportAllowed ? "" : "Report export permission required";
+    document.getElementById("accounting-export").addEventListener("click", async function () {
+      try {
+        if (!(await authorizeExport("accounting_report", reportRows))) return;
+        downloadCsv("kridiya-accounting-report-" + stamp() + ".csv", reportRows);
+        toast("Accounting report downloaded.");
+      } catch (error) { toast(error.message || "Export authorization failed.", "error"); }
     });
   }
 
