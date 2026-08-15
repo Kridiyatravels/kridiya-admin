@@ -83,7 +83,7 @@
     if (canApproveRefunds && statusIs(p, "refund_pending")) {
       buttons.push('<button class="btn btn-primary js-refund-approve" data-id="' + esc(p.id) + '" type="button">Approve</button>');
     }
-    if (canApproveRefunds && (statusIs(p, "refund_pending") || statusIs(p, "refund_approved"))) {
+    if (canApproveRefunds && statusIs(p, "refund_approved")) {
       buttons.push('<button class="btn btn-primary js-refund-complete" data-id="' + esc(p.id) + '" type="button">Complete refund</button>');
     }
     return buttons.join("");
@@ -97,7 +97,7 @@
       ["refund_queue", "Refund queue"],
       ["refunded", "Refunded"]
     ];
-    return '<div class="account-main" style="margin-bottom:1rem"><div class="account-section-head"><div><h2>Finance control center</h2><p>Search, monitor, approve refunds, and open connected bookings.</p></div><input id="payments-search" class="admin-search" placeholder="Search reference, booking, company, method..." value="' + esc(activeSearch) + '" data-command-label="Search payments" data-command-desc="Find finance records by reference, booking, company or method" data-command-keys="S" data-command-action="focus-search"></div><div class="payment-command-row"><div class="ops-kv">' + filters.map(function (f) {
+    return '<div class="account-main" style="margin-bottom:1rem"><div class="account-section-head"><div><h2>Finance control center</h2><p>Search, monitor, approve refunds, and open connected bookings. The requester cannot approve or complete the same refund, and completion appears only after approval.</p></div><input id="payments-search" class="admin-search" placeholder="Search reference, booking, company, method..." value="' + esc(activeSearch) + '" data-command-label="Search payments" data-command-desc="Find finance records by reference, booking, company or method" data-command-keys="S" data-command-action="focus-search"></div><div class="payment-command-row"><div class="ops-kv">' + filters.map(function (f) {
       return '<button class="btn ' + (activeStatus === f[0] ? 'btn-primary' : 'btn-outline') + ' js-payment-filter" data-status="' + esc(f[0]) + '" type="button">' + esc(f[1]) + '</button>';
     }).join("") + '</div><div class="booking-sort admin-list-sort" id="payments-sort"><button type="button" class="booking-sort-btn" id="payments-sort-btn" aria-haspopup="true" aria-expanded="false" data-command-label="Sort payments" data-command-desc="Open payment sort menu" data-command-keys="F" data-command-action="focus-filter">Sort: <b>' + esc(sortLabel()) + '</b></button><div class="booking-sort-menu" id="payments-sort-menu" role="menu" hidden>' +
       [
