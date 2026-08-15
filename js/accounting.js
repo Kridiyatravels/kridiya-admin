@@ -7,6 +7,7 @@
   let payments = [];
   let reportRows = [];
   let exportAllowed = false;
+  let suppliers = [];
 
   function esc(v) { return KridiyaAuth.escapeHTML(String(v == null ? "" : v)); }
   function label(v) { return String(v || "unknown").replace(/_/g, " ").replace(/\b\w/g, function (c) { return c.toUpperCase(); }); }
@@ -217,6 +218,10 @@
       return { title: company, subtitle: corporateGroups[company].length + " booking(s) / " + money(s.profit) + " profit", amount: s.sales };
     });
     renderMoneyRows("corporate-accounting-list", corporateRows, "No corporate booking value yet.");
+    document.getElementById("supplier-performance-list").innerHTML = suppliers.length ? '<div class="ops-list">' + suppliers.map(function (s) {
+      const risk = num(s.dispute_count) ? 'Dispute open' : (num(s.open_balance) ? 'Balance open' : 'Settled');
+      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(s.name) + '</b><p>' + esc(label(s.status)) + ' / ' + esc(risk) + '</p><div class="ops-kv"><span class="ops-chip">' + esc(s.booking_count) + ' booking(s)</span><span class="ops-chip">' + esc(s.payable_count) + ' payable(s)</span><span class="ops-chip">Paid ' + esc(money(s.paid_total)) + '</span><span class="ops-chip">Disputes ' + esc(s.dispute_count) + '</span></div></div><div class="ops-row-actions"><span class="finance-value">Open ' + esc(money(s.open_balance)) + '</span></div></div>';
+    }).join('') + '</div>' : '<p class="form-note">No canonical suppliers recorded yet.</p>';
 
     reportRows = rows.map(function (b) {
       return {
@@ -263,6 +268,7 @@
     try {
       bookings = await rpc("list_operations_bookings", { limit_count: 1000 });
       payments = await rpc("list_operations_payments", { limit_count: 1000 });
+      try { suppliers = await rpc("list_supplier_performance"); } catch (_) { suppliers = []; }
     } catch (err) {
       gate.innerHTML = '<div class="account-main empty-state"><p>Could not load accounting report: ' + esc(err.message) + '</p></div>';
       return;
