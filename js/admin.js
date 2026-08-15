@@ -16,6 +16,7 @@
 
   let sb = null;
   let currentStaffId = null;
+  let currentStaffIsAdmin = false;
   let allEnquiries = [];
   let focusEmail = "";  // customers.html deep-link: show only this person's enquiries
   let focusId = "";     // deep-link: expand + scroll to a specific enquiry
@@ -298,14 +299,16 @@
   function workflowControlsHTML(enq) {
     const sla = slaState(enq);
     const stages = ["new", "contacted", "qualified", "checking_availability", "quote_preparation", "quote_sent", "follow_up", "accepted", "booking", "won", "lost", "not_eligible", "duplicate", "test_archived", "no_response"];
-    const assignees = '<option value="">Unassigned</option>' + staffDirectory.filter(function (row) { return row.active !== false; }).map(function (row) {
+    const lockedToColleague = !currentStaffIsAdmin && enq.assigned_staff_id && enq.assigned_staff_id !== currentStaffId;
+    const availableStaff = currentStaffIsAdmin ? staffDirectory : staffDirectory.filter(function (row) { return row.user_id === currentStaffId || row.user_id === enq.assigned_staff_id; });
+    const assignees = '<option value="">Unassigned</option>' + availableStaff.filter(function (row) { return row.active !== false; }).map(function (row) {
       return '<option value="' + esc(row.user_id) + '"' + (row.user_id === enq.assigned_staff_id ? " selected" : "") + '>' + esc(row.full_name || row.email) + '</option>';
     }).join("");
     return '<section class="enquiry-workflow" aria-label="Ownership and service level">' +
       '<div class="workflow-heading"><div><span class="workflow-eyebrow">Ownership &amp; SLA</span><b>' + esc(staffName(enq.assigned_staff_id)) + '</b></div>' +
         '<span class="sla-chip sla-' + sla.tone + '" title="' + esc(sla.detail) + '">' + esc(sla.label) + '</span></div>' +
       '<div class="workflow-grid">' +
-        '<label><span>Assigned to</span><select class="js-enquiry-assignee" data-id="' + enq.id + '">' + assignees + '</select></label>' +
+        '<label><span>Assigned to</span><select class="js-enquiry-assignee" data-id="' + enq.id + '"' + (lockedToColleague ? ' disabled title="Owner/admin approval is required to reassign this enquiry"' : '') + '>' + assignees + '</select>' + (lockedToColleague ? '<small>Owned by a colleague; owner/admin must reassign.</small>' : '') + '</label>' +
         '<label><span>Priority</span><select class="js-enquiry-priority" data-id="' + enq.id + '">' +
           ["low", "normal", "high", "urgent"].map(function (value) { return '<option value="' + value + '"' + (value === enq.priority ? " selected" : "") + '>' + esc(KridiyaAuth.statusLabel(value)) + '</option>'; }).join("") + '</select></label>' +
         '<label><span>Pipeline stage</span><select class="js-enquiry-stage" data-id="' + enq.id + '">' +
@@ -1920,10 +1923,12 @@
       await Promise.all([loadEnquiries(), loadNotes(), loadAttachments(), loadRequests(), loadQuotes(), loadBookingLinks(), loadStaffDirectory()]);
       const perms = await Promise.all([
         sb.rpc("has_staff_permission", { permission_name: "create_bookings" }),
-        sb.rpc("has_staff_permission", { permission_name: "edit_corporates" })
+        sb.rpc("has_staff_permission", { permission_name: "edit_corporates" }),
+        sb.rpc("is_admin")
       ]);
       canCreateBookings = !perms[0].error && perms[0].data === true;
       canEditCorporates = !perms[1].error && perms[1].data === true;
+      currentStaffIsAdmin = !perms[2].error && perms[2].data === true;
     } catch (err) {
       gate.innerHTML = '<div class="account-main empty-state"><p>Could not load enquiries: ' + KridiyaAuth.escapeHTML(err.message) + "</p></div>";
       return;
