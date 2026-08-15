@@ -8,6 +8,8 @@
   let workflow = { tasks: [], timeline: [], can_edit_tasks: false, can_view_activity: false };
   let businessSettings = null;
   let canApproveSupplierPayments = false;
+  let canApproveDiscounts = false;
+  let discountApprovals = [];
 
   const BOOKING_STATUS = ["enquiry", "quote_sent", "payment_pending", "confirmed", "paid", "ticketed", "completed", "cancelled", "refunded"];
   const PAYMENT_STATUS = ["not_requested", "request_sent", "proof_received", "partially_paid", "paid", "supplier_payment_pending", "supplier_paid", "refund_pending", "refunded", "failed", "cancelled"];
@@ -249,6 +251,8 @@
     }
     const adminCheck = await sb.rpc("is_admin");
     canApproveSupplierPayments = !adminCheck.error && adminCheck.data === true;
+    const discountCheck = await sb.rpc("has_staff_permission", { permission_name: "approve_discounts" });
+    canApproveDiscounts = !discountCheck.error && discountCheck.data === true;
     showStaffNav();
     gate.hidden = true;
     app.hidden = false;
@@ -262,6 +266,8 @@
       return;
     }
     detail = result.data;
+    const discountResult = await sb.rpc("list_booking_discount_approvals", { p_booking_id: bookingId });
+    discountApprovals = discountResult.error ? [] : (discountResult.data || []);
     await loadWorkflow();
     await loadQuoteContext();
     if (!businessSettings) await loadBusinessSettings();
@@ -441,8 +447,34 @@
       '<div class="field col-4"><label>DOCUMENT STATUS</label><select name="document_status" ' + (canEdit ? '' : 'disabled') + '>' + optionList(DOC_STATUS, b.document_status) + '</select></div>' +
       '<div class="field col-6"><label>SUPPLIER REFERENCE</label><input name="supplier_reference" value="' + esc(b.supplier_reference || "") + '" ' + (canEdit ? '' : 'disabled') + '></div>' +
       '<div class="field col-12"><label>INTERNAL NOTES</label><textarea name="staff_notes" ' + (canEdit ? '' : 'disabled') + '>' + esc(b.staff_notes || "") + '</textarea></div>' +
-      '</div>' + (canEdit ? '<button type="submit" class="btn btn-primary">Save booking status</button>' : '<p class="form-note">You do not have permission to edit booking status.</p>');
+      '</div>' + (canEdit ? '<button type="submit" class="btn btn-primary">Save booking status</button><button type="button" class="btn btn-outline js-request-booking-discount">Request price reduction</button>' : '<p class="form-note">You do not have permission to edit booking status.</p>') + renderDiscountApprovals();
     if (canEdit) document.getElementById("booking-status-form").onsubmit = saveStatus;
+  }
+
+  function renderDiscountApprovals() {
+    if (!discountApprovals.length) return '<p class="form-note">No price-reduction requests recorded.</p>';
+    return '<div class="ops-list payment-history">' + discountApprovals.map(function (a) {
+      const p = a.request_payload || {};
+      const action = a.status === "pending" && canApproveDiscounts ? '<button type="button" class="btn btn-primary js-decide-booking-discount" data-id="' + esc(a.id) + '">Decide request</button>' : '';
+      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(label(a.status)) + ' price reduction</b><p>' + esc(a.reason) + '</p><div class="ops-kv"><span class="ops-chip">From ' + esc(money(p.original_selling_price, a.currency)) + '</span><span class="ops-chip">To ' + esc(money(p.proposed_selling_price, a.currency)) + '</span><span class="ops-chip">Requested ' + esc(dateTimeText(a.created_at)) + '</span></div></div><div class="ops-row-actions">' + action + '</div></div>';
+    }).join("") + '</div>';
+  }
+
+  async function requestBookingDiscount() {
+    const proposed = window.prompt("Proposed new selling price (current " + Number(detail.booking.selling_price || 0).toFixed(2) + "):", ""); if (proposed === null) return;
+    const reason = window.prompt("Business reason for the reduction (minimum 10 characters):", ""); if (reason === null) return;
+    const result = await sb.rpc("request_booking_discount", { p_booking_id: bookingId, p_proposed_selling_price: Number(proposed), p_reason: reason.trim() });
+    if (result.error) { toast("Could not request price reduction: " + result.error.message); return; }
+    toast("Price reduction sent for separate approval."); await loadDetail();
+  }
+
+  async function decideBookingDiscount(id) {
+    const decision = window.prompt("Type approve or reject:", "approve"); if (decision === null) return;
+    const note = window.prompt("Decision evidence/note (minimum 10 characters):", ""); if (note === null) return;
+    const normalized = decision.trim().toLowerCase(); if (["approve","reject"].indexOf(normalized) === -1) { toast("Type approve or reject."); return; }
+    const result = await sb.rpc("decide_booking_discount", { p_approval_request_id: id, p_approve: normalized === "approve", p_decision_note: note.trim() });
+    if (result.error) { toast("Could not decide price reduction: " + result.error.message); return; }
+    toast("Price-reduction decision recorded and audited."); await loadDetail();
   }
 
   async function saveStatus() {
@@ -1146,6 +1178,8 @@
     const approveSupplierPaymentButton = event.target.closest(".js-approve-supplier-payment");
     const reportChargebackButton = event.target.closest(".js-report-chargeback");
     const resolveChargebackButton = event.target.closest(".js-resolve-chargeback");
+    const requestBookingDiscountButton = event.target.closest(".js-request-booking-discount");
+    const decideBookingDiscountButton = event.target.closest(".js-decide-booking-discount");
     if (taskButton) completeBookingTask(taskButton.dataset.id);
     if (passengerButton) deletePassenger(passengerButton.dataset.id);
     if (documentButton) deleteDocument(documentButton.dataset.id, documentButton.dataset.path);
@@ -1161,6 +1195,8 @@
     if (approveSupplierPaymentButton) approveSupplierPayment(approveSupplierPaymentButton.dataset.id, approveSupplierPaymentButton.dataset.balance);
     if (reportChargebackButton) reportChargeback(reportChargebackButton.dataset.id);
     if (resolveChargebackButton) resolveChargeback(resolveChargebackButton.dataset.id);
+    if (requestBookingDiscountButton) requestBookingDiscount();
+    if (decideBookingDiscountButton) decideBookingDiscount(decideBookingDiscountButton.dataset.id);
   });
   document.addEventListener("change", function (event) {
     const proofInput = event.target.closest(".js-proof-file");
