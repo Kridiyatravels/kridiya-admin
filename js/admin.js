@@ -21,6 +21,7 @@
   let focusId = "";     // deep-link: expand + scroll to a specific enquiry
   let notesByEnquiry = {};
   let attachmentsByEnquiry = {};
+  let travellersById = {};
   let requestsByEnquiry = {};
   let quotesByEnquiry = {};
   let quoteDraftsByEnquiry = {};
@@ -966,6 +967,7 @@
       const created = new Date(enq.created_at);
       const notes = notesByEnquiry[enq.id] || [];
       const attachments = attachmentsByEnquiry[enq.id] || [];
+      const primaryTraveller = enq.primary_traveller_id ? travellersById[enq.primary_traveller_id] : null;
       const requests = requestsByEnquiry[enq.id] || [];
       const quotes = sortQuoteOptions(quotesByEnquiry[enq.id] || []);
       const quoteDrafts = quoteDraftsByEnquiry[enq.id] || [];
@@ -994,6 +996,7 @@
             (enq.phone ? '<a href="tel:' + KridiyaAuth.escapeHTML(enq.phone) + '">' + KridiyaAuth.escapeHTML(enq.phone) + "</a> · " : "") +
             (mail ? '<a href="mailto:' + KridiyaAuth.escapeHTML(enq.email) + '">' + KridiyaAuth.escapeHTML(enq.email) + "</a>" : "No email") + "</p>" +
           corporatePreview(enq) +
+          (primaryTraveller ? '<div class="corporate-preview"><b>Saved primary traveller</b><span>' + KridiyaAuth.escapeHTML([primaryTraveller.full_name, primaryTraveller.nationality, primaryTraveller.date_of_birth ? "Born " + primaryTraveller.date_of_birth : "", primaryTraveller.passport_expiry ? "Passport expires " + primaryTraveller.passport_expiry : ""].filter(Boolean).join(" · ")) + '</span></div>' : '') +
           workflowControlsHTML(enq) +
           marketingFollowUp(enq, notes, quotes, booking) +
           crmFieldsHTML(enq) +
@@ -1140,6 +1143,12 @@
     const result = await sb.from("enquiries").select("*").order("created_at", { ascending: false });
     if (result.error) throw result.error;
     allEnquiries = result.data || [];
+    travellersById = {};
+    if (allEnquiries.some(function (e) { return !!e.primary_traveller_id; })) {
+      const travellers = await sb.rpc("list_enquiry_primary_travellers");
+      if (travellers.error) throw travellers.error;
+      (travellers.data || []).forEach(function (t) { travellersById[t.traveller_id] = t; });
+    }
   }
 
   async function loadStaffDirectory() {
