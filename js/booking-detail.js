@@ -1060,7 +1060,7 @@
       p_amount_payable: Number(form.amount_payable.value),
       p_amount_paid: form.amount_paid.value ? Number(form.amount_paid.value) : 0,
       p_status: form.status.value,
-      p_currency: (detail.booking && detail.booking.currency) || "AED",
+      p_currency: (detail.booking && (detail.booking.supplier_currency || detail.booking.currency)) || "AED",
       p_supplier_reference: form.supplier_reference.value || null,
       p_notes: form.notes.value || null
     });
