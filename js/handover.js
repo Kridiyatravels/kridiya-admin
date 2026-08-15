@@ -1,6 +1,9 @@
 "use strict";
 (function () {
   if (document.body.dataset.page !== "handover") return;
+  let sb = null;
+  let handovers = [];
+  let currentUserId = null;
 
   const SECTIONS = [
     {
@@ -140,14 +143,17 @@
         return '<li>' + esc(step) + '</li>';
       }).join("") + '</ol></article>';
     }).join("");
+    document.getElementById("shift-handover-list").innerHTML = handovers.length ? '<div class="ops-list">'+handovers.map(function(h){const action=h.status==='submitted'?(h.submitted_by===currentUserId?'<span class="ops-chip">Awaiting another staff member</span>':'<button class="btn btn-primary js-accept-handover" data-id="'+esc(h.id)+'" type="button">Accept handover</button>'):'<span class="ops-chip">Accepted</span>';return '<div class="ops-row"><div class="ops-row-main"><b>'+esc(h.summary)+'</b><p>'+esc(h.open_items)+' / Risks: '+esc(h.risks)+'</p><div class="ops-kv"><span class="ops-chip">'+esc(h.status)+'</span><span class="ops-chip">Submitted '+esc(new Date(h.submitted_at).toLocaleString("en-GB"))+'</span></div></div><div class="ops-row-actions">'+action+'</div></div>'}).join('')+'</div>' : '<p class="form-note">No signed handovers yet.</p>';
   }
+  async function loadHandovers(){const r=await sb.rpc("list_shift_handovers",{p_limit:30});if(r.error)throw r.error;handovers=r.data||[];}
 
   async function boot() {
     const gate = document.getElementById("handover-gate");
     const app = document.getElementById("handover-app");
     const user = await KridiyaAuth.currentUser();
     if (!user) { renderLoginForm(gate, boot); return; }
-    const sb = await KridiyaAuth.client();
+    currentUserId = user.id;
+    sb = await KridiyaAuth.client();
     const staffCheck = await sb.rpc("is_staff");
     if (staffCheck.error || staffCheck.data !== true) {
       gate.innerHTML = '<div class="account-main empty-state"><p><b>You do not have access.</b><br>This SOP is for Kridiya staff only.</p></div>';
@@ -156,7 +162,8 @@
     await showStaffNav();
     gate.hidden = true;
     app.hidden = false;
-    render();
+    await loadHandovers(); render();
+    document.getElementById("shift-handover-form").addEventListener("submit",async function(){const f=this;if(!f.reportValidity())return;const started=new Date(f.started_at.value),ended=new Date(f.ended_at.value);if(Number.isNaN(started.getTime())||Number.isNaN(ended.getTime())){toast("Enter valid shift start and end times.","error");return;}const r=await sb.rpc("submit_shift_handover",{p_started_at:started.toISOString(),p_ended_at:ended.toISOString(),p_summary:f.summary.value,p_open_items:f.open_items.value,p_risks:f.risks.value});if(r.error){toast(r.error.message,"error");return;}f.reset();await loadHandovers();render();toast("Shift handover submitted.");});
     document.getElementById("handover-copy").addEventListener("click", async function () {
       const text = sopText();
       if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -167,6 +174,7 @@
       }
     });
   }
+  document.addEventListener("click",async function(e){const b=e.target.closest(".js-accept-handover");if(!b)return;const note=prompt("Acceptance note (minimum 10 characters):","");if(note===null)return;const r=await sb.rpc("accept_shift_handover",{p_handover_id:b.dataset.id,p_note:note});if(r.error){toast(r.error.message,"error");return;}await loadHandovers();render();toast("Shift handover accepted.");});
 
   document.addEventListener("DOMContentLoaded", boot);
 })();

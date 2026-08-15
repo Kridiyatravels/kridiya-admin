@@ -19,11 +19,12 @@
   <div id="handover-app" hidden>
     <div class="account-head"><div><h1>SOP & Handover</h1><p>Standard operating method for enquiries, bookings, finance, documents, staff, security, and emergency handling.</p></div><button class="btn btn-primary" type="button" id="handover-copy">Copy SOP</button></div>
     <div id="handover-summary" class="account-main"></div>
+    <div class="account-main"><div class="account-section-head"><div><h2>Signed shift handover</h2><p>Submit the shift record; a different staff member must accept it.</p></div></div><form id="shift-handover-form" class="form-grid" onsubmit="return false"><div class="field-row"><div class="field col-3"><label>SHIFT START</label><input name="started_at" type="datetime-local" required></div><div class="field col-3"><label>SHIFT END</label><input name="ended_at" type="datetime-local" required></div><div class="field col-6"><label>SUMMARY</label><input name="summary" required></div><div class="field col-6"><label>OPEN ITEMS</label><textarea name="open_items" required></textarea></div><div class="field col-6"><label>RISKS / BLOCKERS</label><textarea name="risks" required></textarea></div></div><button class="btn btn-primary" type="submit">Submit handover</button></form><div id="shift-handover-list"></div></div>
     <div id="handover-sections" class="handover-grid"></div>
   </div>
 </div></section></main>
 <footer id="site-footer" class="site-footer"></footer>
 <script src="https://kridiyatravel.com/js/auth.js" defer></script>
 <script src="js/staff-common.js?v=20260726c" defer></script>
-<script src="js/handover.js?v=20260726n" defer></script>
+<script src="js/handover.js?v=20260815a" defer></script>
 </body></html>
