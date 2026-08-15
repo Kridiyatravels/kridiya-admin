@@ -8,6 +8,7 @@
   let reportRows = [];
   let exportAllowed = false;
   let suppliers = [];
+  let canManageSuppliers = false;
 
   function esc(v) { return KridiyaAuth.escapeHTML(String(v == null ? "" : v)); }
   function label(v) { return String(v || "unknown").replace(/_/g, " ").replace(/\b\w/g, function (c) { return c.toUpperCase(); }); }
@@ -220,7 +221,7 @@
     renderMoneyRows("corporate-accounting-list", corporateRows, "No corporate booking value yet.");
     document.getElementById("supplier-performance-list").innerHTML = suppliers.length ? '<div class="ops-list">' + suppliers.map(function (s) {
       const risk = num(s.dispute_count) ? 'Dispute open' : (num(s.open_balance) ? 'Balance open' : 'Settled');
-      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(s.name) + '</b><p>' + esc(label(s.status)) + ' / ' + esc(risk) + '</p><div class="ops-kv"><span class="ops-chip">' + esc(s.booking_count) + ' booking(s)</span><span class="ops-chip">' + esc(s.payable_count) + ' payable(s)</span><span class="ops-chip">Paid ' + esc(money(s.paid_total)) + '</span><span class="ops-chip">Disputes ' + esc(s.dispute_count) + '</span></div></div><div class="ops-row-actions"><span class="finance-value">Open ' + esc(money(s.open_balance)) + '</span></div></div>';
+      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(s.name) + '</b><p>' + esc(label(s.status)) + ' / ' + esc(risk) + (s.payment_terms ? ' / ' + esc(s.payment_terms) : '') + '</p><div class="ops-kv"><span class="ops-chip">' + esc(s.booking_count) + ' booking(s)</span><span class="ops-chip">' + esc(s.payable_count) + ' payable(s)</span><span class="ops-chip">Paid ' + esc(money(s.paid_total)) + '</span><span class="ops-chip">Disputes ' + esc(s.dispute_count) + '</span></div></div><div class="ops-row-actions"><span class="finance-value">Open ' + esc(money(s.open_balance)) + '</span>' + (canManageSuppliers ? '<button class="btn btn-outline js-manage-supplier" data-id="' + esc(s.id) + '" type="button">Manage</button>' : '') + '</div></div>';
     }).join('') + '</div>' : '<p class="form-note">No canonical suppliers recorded yet.</p>';
 
     reportRows = rows.map(function (b) {
@@ -265,6 +266,8 @@
     }
     const exportCheck = await sb.rpc("has_staff_permission", { permission_name: "export_reports" });
     exportAllowed = !exportCheck.error && exportCheck.data === true;
+    const supplierManageCheck = await sb.rpc("has_staff_permission", { permission_name: "manage_settings" });
+    canManageSuppliers = !supplierManageCheck.error && supplierManageCheck.data === true;
     try {
       bookings = await rpc("list_operations_bookings", { limit_count: 1000 });
       payments = await rpc("list_operations_payments", { limit_count: 1000 });
@@ -291,6 +294,18 @@
       } catch (error) { toast(error.message || "Export authorization failed.", "error"); }
     });
   }
+
+  document.addEventListener("click", async function (event) {
+    const button = event.target.closest(".js-manage-supplier"); if (!button) return;
+    const s = suppliers.find(function (row) { return row.id === button.dataset.id; }); if (!s) return;
+    const status = window.prompt("Supplier status: active, on_hold, or inactive", s.status || "active"); if (status === null) return;
+    const email = window.prompt("Supplier email (optional):", s.email || ""); if (email === null) return;
+    const phone = window.prompt("Supplier phone (optional):", s.phone || ""); if (phone === null) return;
+    const terms = window.prompt("Payment terms (optional):", s.payment_terms || ""); if (terms === null) return;
+    const notes = window.prompt("Internal notes / mandatory hold reason:", s.notes || ""); if (notes === null) return;
+    try { await rpc("update_supplier_profile", { p_supplier_id:s.id,p_status:status.trim().toLowerCase(),p_email:email,p_phone:phone,p_payment_terms:terms,p_notes:notes }); suppliers=await rpc("list_supplier_performance"); render(); toast("Supplier profile updated and audited."); }
+    catch (error) { toast(error.message || "Could not update supplier.", "error"); }
+  });
 
   document.addEventListener("DOMContentLoaded", boot);
 })();
