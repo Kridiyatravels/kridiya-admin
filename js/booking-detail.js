@@ -931,6 +931,7 @@
       const supplierBalance = !customer ? Math.max(0, amountNum(r.amount_payable) - amountNum(r.amount_paid)) : 0;
       const supplierBalanceChip = !customer && supplierBalance > 0 ? '<span class="ops-chip">Balance: ' + esc(money(supplierBalance, r.currency)) + '</span>' : '';
       const supplierDisputeChip = !customer && r.status === "disputed" ? '<span class="ops-chip">Disputed</span>' : '';
+      const supplierDisputeBtn = !customer && ["pending","partial"].indexOf(r.status) !== -1 && detail.can_edit_payments ? '<button class="btn btn-outline js-open-supplier-dispute" data-id="'+esc(r.id)+'" type="button">Open dispute</button>' : (!customer && r.status === "disputed" && canApproveSupplierPayments ? '<button class="btn btn-primary js-resolve-supplier-dispute" data-id="'+esc(r.id)+'" type="button">Resolve dispute</button>' : '');
       const supplierApprovalBtn = !customer && canApproveSupplierPayments && ["pending", "partial"].indexOf(String(r.status || "")) !== -1 && supplierBalance > 0
         ? '<button class="btn btn-primary js-approve-supplier-payment" data-id="' + esc(r.id) + '" data-balance="' + esc(supplierBalance) + '" type="button">Release payment</button>'
         : '';
@@ -939,7 +940,7 @@
           + (r.sharepoint_invoice_url ? '<a class="btn btn-outline" target="_blank" rel="noopener" href="' + esc(r.sharepoint_invoice_url) + '">SharePoint</a>' : '')
           + (detail.can_edit_payments ? '<label class="btn btn-outline proof-upload-label">' + (r.supplier_invoice_path ? 'Replace invoice' : 'Upload invoice') + '<input type="file" class="js-supplier-invoice-file" data-id="' + esc(r.id) + '" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx" hidden></label>' : '')
         : '';
-      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(title) + '</b><p>' + esc(label(r.status)) + (r.notes ? ' - ' + esc(r.notes) : '') + '</p><div class="ops-kv">' + ref + proofChip + invoiceChip + sharepointChip + supplierBalanceChip + supplierDisputeChip + (customer && r.status === "proof_received" ? '<span class="ops-chip">Proof only - no receipt yet</span>' : '') + '</div></div><div class="ops-row-actions"><span class="finance-value">' + esc(amount) + '</span>' + receiptBtn + refundBtn + chargebackBtn + supplierNoteBtn + supplierApprovalBtn + proofActions + invoiceActions + '</div></div>';
+      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(title) + '</b><p>' + esc(label(r.status)) + (r.notes ? ' - ' + esc(r.notes) : '') + '</p><div class="ops-kv">' + ref + proofChip + invoiceChip + sharepointChip + supplierBalanceChip + supplierDisputeChip + (customer && r.status === "proof_received" ? '<span class="ops-chip">Proof only - no receipt yet</span>' : '') + '</div></div><div class="ops-row-actions"><span class="finance-value">' + esc(amount) + '</span>' + receiptBtn + refundBtn + chargebackBtn + supplierNoteBtn + supplierApprovalBtn + supplierDisputeBtn + proofActions + invoiceActions + '</div></div>';
     }).join("") + '</div>';
   }
 
@@ -1141,6 +1142,8 @@
     toast("Supplier payment released and audited.");
     await loadDetail();
   }
+  async function openSupplierDispute(id){const ref=prompt("Supplier dispute/reference:","");if(ref===null)return;const reason=prompt("Dispute reason (minimum 10 characters):","");if(reason===null)return;const r=await sb.rpc("open_supplier_payment_dispute",{p_supplier_payment_id:id,p_reference:ref.trim(),p_reason:reason.trim()});if(r.error){toast("Could not open dispute: "+r.error.message);return;}toast("Supplier dispute opened; payment release is held.");await loadDetail();}
+  async function resolveSupplierDispute(id){const resolution=prompt("Resolution: release or cancel","release");if(resolution===null)return;const note=prompt("Resolution evidence/note (minimum 10 characters):","");if(note===null)return;const r=await sb.rpc("resolve_supplier_payment_dispute",{p_supplier_payment_id:id,p_resolution:resolution.trim().toLowerCase(),p_note:note.trim()});if(r.error){toast("Could not resolve dispute: "+r.error.message);return;}toast("Supplier dispute resolved and audited.");await loadDetail();}
 
   async function reportChargeback(id) {
     const reference = window.prompt("Provider chargeback/dispute reference:", "");
@@ -1180,6 +1183,8 @@
     const resolveChargebackButton = event.target.closest(".js-resolve-chargeback");
     const requestBookingDiscountButton = event.target.closest(".js-request-booking-discount");
     const decideBookingDiscountButton = event.target.closest(".js-decide-booking-discount");
+    const openSupplierDisputeButton = event.target.closest(".js-open-supplier-dispute");
+    const resolveSupplierDisputeButton = event.target.closest(".js-resolve-supplier-dispute");
     if (taskButton) completeBookingTask(taskButton.dataset.id);
     if (passengerButton) deletePassenger(passengerButton.dataset.id);
     if (documentButton) deleteDocument(documentButton.dataset.id, documentButton.dataset.path);
@@ -1197,6 +1202,8 @@
     if (resolveChargebackButton) resolveChargeback(resolveChargebackButton.dataset.id);
     if (requestBookingDiscountButton) requestBookingDiscount();
     if (decideBookingDiscountButton) decideBookingDiscount(decideBookingDiscountButton.dataset.id);
+    if(openSupplierDisputeButton)openSupplierDispute(openSupplierDisputeButton.dataset.id);
+    if(resolveSupplierDisputeButton)resolveSupplierDispute(resolveSupplierDisputeButton.dataset.id);
   });
   document.addEventListener("change", function (event) {
     const proofInput = event.target.closest(".js-proof-file");
