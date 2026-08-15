@@ -4,6 +4,7 @@
   let sb = null;
   let rows = [];
   let deskBookings = [];
+  let deskCases = [];
   let canEdit = false;
   let activeSearch = "";
   let activeStatus = "";
@@ -106,6 +107,7 @@
       if (event.target.closest(".corporate-portal-form")) return savePortalMember(event);
     });
     document.getElementById("corporate-list").addEventListener("click", handleCorporateListClick);
+    document.getElementById("corporate-case-list").addEventListener("click", handleCaseAction);
     document.getElementById("corporate-search").addEventListener("input", function (event) {
       activeSearch = event.target.value.trim().toLowerCase();
       renderRows();
@@ -177,10 +179,36 @@
     rows = result.data || [];
     await loadPortalMembers();
     await loadCorporateDesk();
+    await loadCorporateCases();
     renderStats();
     renderCorporateDesk();
+    renderCorporateCases();
     renderCorporateControl();
     renderRows();
+  }
+
+  async function loadCorporateCases() {
+    const result = await sb.rpc("list_corporate_desk_cases", { p_status: null, p_limit: 200 });
+    deskCases = result.error ? [] : (result.data || []);
+    if (result.error) toast("Could not load Corporate Desk cases: " + result.error.message, "error");
+  }
+
+  function renderCorporateCases() {
+    const target = document.getElementById("corporate-case-list");
+    target.innerHTML = deskCases.length ? '<div class="ops-list">' + deskCases.map(function (c) {
+      const controls = canEdit && !/resolved|closed/.test(c.status) ? '<div class="ops-row-actions"><button class="btn btn-outline btn-sm js-case-action" data-id="' + esc(c.id) + '" data-status="in_progress">Take case</button><button class="btn btn-primary btn-sm js-case-action" data-id="' + esc(c.id) + '" data-status="waiting_company">Reply</button><button class="btn btn-outline btn-sm js-case-action" data-id="' + esc(c.id) + '" data-status="resolved">Resolve</button></div>' : '';
+      return '<article class="ops-row"><div class="ops-row-main"><b>' + esc(c.company_name + " - " + c.subject) + '</b><p>' + esc(c.description) + '</p>' + (c.staff_response ? '<p><b>Response:</b> ' + esc(c.staff_response) + '</p>' : '') + '<div class="ops-kv"><span class="ops-chip">' + esc(label(c.category)) + '</span><span class="ops-chip">' + esc(label(c.urgency)) + '</span><span class="ops-chip">' + esc(label(c.status)) + '</span></div></div>' + controls + '</article>';
+    }).join('') + '</div>' : '<p class="form-note">No Corporate Desk cases yet.</p>';
+  }
+
+  async function handleCaseAction(event) {
+    const btn = event.target.closest(".js-case-action"); if (!btn) return;
+    let response = null;
+    if (btn.dataset.status === "waiting_company" || btn.dataset.status === "resolved") { response = prompt("Company-safe response (minimum 3 characters):", ""); if (response === null) return; }
+    btn.disabled = true;
+    const result = await sb.rpc("update_corporate_desk_case", { p_case_id: btn.dataset.id, p_status: btn.dataset.status, p_staff_response: response });
+    if (result.error) { toast(result.error.message, "error"); btn.disabled = false; return; }
+    toast("Corporate Desk case updated."); await loadCorporateCases(); renderCorporateCases();
   }
 
 
