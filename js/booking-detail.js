@@ -881,6 +881,10 @@
       const refundBtn = customer && (amountNum(r.refund_amount) > 0 || ["refund_pending", "refunded"].indexOf(String(r.status || "")) !== -1)
         ? '<button class="btn btn-outline js-print-refund-note" data-id="' + esc(r.id) + '" type="button">Refund note</button>'
         : '';
+      const chargebackBtn = customer && r.status === "received" && detail.can_edit_payments
+        ? '<button class="btn btn-outline js-report-chargeback" data-id="' + esc(r.id) + '" type="button">Report chargeback</button>'
+        : (customer && r.status === "chargeback_open" && canApproveSupplierPayments
+          ? '<button class="btn btn-primary js-resolve-chargeback" data-id="' + esc(r.id) + '" type="button">Resolve chargeback</button>' : '');
       const supplierNoteBtn = !customer
         ? '<button class="btn btn-outline js-print-supplier-note" data-id="' + esc(r.id) + '" type="button">Payment note</button>'
         : '';
@@ -903,7 +907,7 @@
           + (r.sharepoint_invoice_url ? '<a class="btn btn-outline" target="_blank" rel="noopener" href="' + esc(r.sharepoint_invoice_url) + '">SharePoint</a>' : '')
           + (detail.can_edit_payments ? '<label class="btn btn-outline proof-upload-label">' + (r.supplier_invoice_path ? 'Replace invoice' : 'Upload invoice') + '<input type="file" class="js-supplier-invoice-file" data-id="' + esc(r.id) + '" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx" hidden></label>' : '')
         : '';
-      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(title) + '</b><p>' + esc(label(r.status)) + (r.notes ? ' - ' + esc(r.notes) : '') + '</p><div class="ops-kv">' + ref + proofChip + invoiceChip + sharepointChip + supplierBalanceChip + supplierDisputeChip + (customer && r.status === "proof_received" ? '<span class="ops-chip">Proof only - no receipt yet</span>' : '') + '</div></div><div class="ops-row-actions"><span class="finance-value">' + esc(amount) + '</span>' + receiptBtn + refundBtn + supplierNoteBtn + supplierApprovalBtn + proofActions + invoiceActions + '</div></div>';
+      return '<div class="ops-row"><div class="ops-row-main"><b>' + esc(title) + '</b><p>' + esc(label(r.status)) + (r.notes ? ' - ' + esc(r.notes) : '') + '</p><div class="ops-kv">' + ref + proofChip + invoiceChip + sharepointChip + supplierBalanceChip + supplierDisputeChip + (customer && r.status === "proof_received" ? '<span class="ops-chip">Proof only - no receipt yet</span>' : '') + '</div></div><div class="ops-row-actions"><span class="finance-value">' + esc(amount) + '</span>' + receiptBtn + refundBtn + chargebackBtn + supplierNoteBtn + supplierApprovalBtn + proofActions + invoiceActions + '</div></div>';
     }).join("") + '</div>';
   }
 
@@ -1106,6 +1110,26 @@
     await loadDetail();
   }
 
+  async function reportChargeback(id) {
+    const reference = window.prompt("Provider chargeback/dispute reference:", "");
+    if (reference === null) return;
+    const reason = window.prompt("Reason and provider notice details (minimum 10 characters):", "");
+    if (reason === null) return;
+    const result = await sb.rpc("report_payment_chargeback", { p_payment_id: id, p_reference: reference.trim(), p_reason: reason.trim() });
+    if (result.error) { toast("Could not report chargeback: " + result.error.message); return; }
+    toast("Chargeback opened; disputed funds removed from cleared balance."); await loadDetail();
+  }
+
+  async function resolveChargeback(id) {
+    const resolution = window.prompt("Resolution: type won or lost", "won");
+    if (resolution === null) return;
+    const note = window.prompt("Resolution evidence/note (minimum 10 characters):", "");
+    if (note === null) return;
+    const result = await sb.rpc("resolve_payment_chargeback", { p_payment_id: id, p_resolution: resolution.trim().toLowerCase(), p_note: note.trim() });
+    if (result.error) { toast("Could not resolve chargeback: " + result.error.message); return; }
+    toast("Chargeback resolved and audited."); await loadDetail();
+  }
+
   document.addEventListener("click", function (event) {
     const taskButton = event.target.closest(".js-complete-task");
     const passengerButton = event.target.closest(".js-delete-passenger");
@@ -1120,6 +1144,8 @@
     const viewProofButton = event.target.closest(".js-view-proof");
     const viewSupplierInvoiceButton = event.target.closest(".js-view-supplier-invoice");
     const approveSupplierPaymentButton = event.target.closest(".js-approve-supplier-payment");
+    const reportChargebackButton = event.target.closest(".js-report-chargeback");
+    const resolveChargebackButton = event.target.closest(".js-resolve-chargeback");
     if (taskButton) completeBookingTask(taskButton.dataset.id);
     if (passengerButton) deletePassenger(passengerButton.dataset.id);
     if (documentButton) deleteDocument(documentButton.dataset.id, documentButton.dataset.path);
@@ -1133,6 +1159,8 @@
     if (viewProofButton) viewPaymentProof(viewProofButton.dataset.id, viewProofButton.dataset.path);
     if (viewSupplierInvoiceButton) viewSupplierInvoice(viewSupplierInvoiceButton.dataset.id, viewSupplierInvoiceButton.dataset.path);
     if (approveSupplierPaymentButton) approveSupplierPayment(approveSupplierPaymentButton.dataset.id, approveSupplierPaymentButton.dataset.balance);
+    if (reportChargebackButton) reportChargeback(reportChargebackButton.dataset.id);
+    if (resolveChargebackButton) resolveChargeback(resolveChargebackButton.dataset.id);
   });
   document.addEventListener("change", function (event) {
     const proofInput = event.target.closest(".js-proof-file");
