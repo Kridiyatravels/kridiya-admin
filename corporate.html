@@ -30,6 +30,7 @@
       <div class="account-section-head"><div><h2>Corporate account control</h2><p>Billing readiness, contact completeness, LPO controls, and account risk.</p></div></div>
       <div id="corporate-control-panel"></div>
     </div>
+    <div class="account-main"><div class="account-section-head"><div><h2>Travel policies and budgets</h2><p>Company-wide or branch-level booking and approval controls.</p></div></div><form id="corporate-policy-form" class="form-grid" onsubmit="return false"><div class="field-row"><div class="field col-3"><label>COMPANY</label><select name="corporate_account_id" required></select></div><div class="field col-3"><label>POLICY NAME</label><input name="policy_name" required></div><div class="field col-2"><label>CURRENCY</label><input name="currency" value="AED" required></div><div class="field col-2"><label>TRIP BUDGET</label><input name="trip_budget_limit" type="number" min="0"></div><div class="field col-2"><label>APPROVAL ABOVE</label><input name="approval_threshold" type="number" min="0"></div><div class="field col-2"><label>ADVANCE DAYS</label><input name="advance_booking_days" type="number" min="0" value="0"></div><div class="field col-2"><label>MAX CABIN</label><select name="max_cabin"><option value="economy">Economy</option><option value="premium_economy">Premium economy</option><option value="business">Business</option><option value="first">First</option></select></div><div class="field col-2"><label>HOTEL STARS</label><input name="max_hotel_stars" type="number" min="1" max="5"></div><div class="field col-2"><label>STATUS</label><select name="status"><option value="active">Active</option><option value="draft">Draft</option></select></div><div class="field col-2"><label>FROM</label><input name="effective_from" type="date"></div><div class="field col-2"><label>TO</label><input name="effective_to" type="date"></div><div class="field col-2"><label><input name="requires_lpo" type="checkbox"> LPO required</label></div><div class="field col-2"><label><input name="requires_second_approval" type="checkbox"> Two approvals</label></div><div class="field col-12"><label>NOTES</label><input name="notes"></div></div><button class="btn btn-primary" type="submit">Save policy</button></form><div id="corporate-policy-list"></div></div>
     <div class="account-main">
       <div class="account-section-head"><div><h2>Corporate Desk cases</h2><p>Company-submitted support, finance, document and emergency cases.</p></div></div>
       <div id="corporate-case-list"><p class="form-note">Loading cases...</p></div>
@@ -70,5 +71,5 @@
 <footer id="site-footer" class="site-footer"></footer>
 <script src="https://kridiyatravel.com/js/auth.js" defer></script>
 <script src="js/staff-common.js?v=20260726c" defer></script>
-<script src="js/corporate.js?v=20260816b" defer></script>
+<script src="js/corporate.js?v=20260816c" defer></script>
 </body></html>

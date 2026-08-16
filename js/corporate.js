@@ -6,6 +6,7 @@
   let deskBookings = [];
   let deskCases = [];
   let financeEvidence = [];
+  let travelPolicies = [];
   let canEdit = false;
   let activeSearch = "";
   let activeStatus = "";
@@ -103,6 +104,7 @@
       card.hidden = !card.hidden;
     });
     document.getElementById("corporate-form").addEventListener("submit", saveCompany);
+    document.getElementById("corporate-policy-form").addEventListener("submit", savePolicy);
     document.getElementById("corporate-list").addEventListener("submit", function (event) {
       if (event.target.closest(".corporate-contact-form")) return saveContact(event);
       if (event.target.closest(".corporate-portal-form")) return savePortalMember(event);
@@ -130,6 +132,8 @@
     app.hidden = false;
     await loadCompanies();
   }
+  async function savePolicy(){const f=document.getElementById("corporate-policy-form"),n=function(v){return v===""?null:Number(v);};const r=await sb.rpc("save_corporate_travel_policy",{p_corporate_account_id:f.corporate_account_id.value,p_branch_id:null,p_policy_name:f.policy_name.value,p_currency:f.currency.value,p_trip_budget_limit:n(f.trip_budget_limit.value),p_approval_threshold:n(f.approval_threshold.value),p_advance_booking_days:n(f.advance_booking_days.value)||0,p_max_cabin:f.max_cabin.value,p_max_hotel_stars:n(f.max_hotel_stars.value),p_requires_lpo:f.requires_lpo.checked,p_requires_second_approval:f.requires_second_approval.checked,p_status:f.status.value,p_effective_from:f.effective_from.value||null,p_effective_to:f.effective_to.value||null,p_notes:f.notes.value||null});if(r.error){toast(r.error.message,"error");return;}toast("Travel policy saved.");f.reset();await loadPolicies();}
+  async function loadPolicies(){const r=await sb.rpc("list_corporate_travel_policies",{p_corporate_account_id:null});travelPolicies=r.error?[]:(r.data||[]);const target=document.getElementById("corporate-policy-list");target.innerHTML=travelPolicies.length?'<div class="ops-list">'+travelPolicies.map(function(p){const c=rows.find(function(x){return x.id===p.corporate_account_id;});return '<div class="ops-row"><div class="ops-row-main"><b>'+esc((c?c.company_name:"Company")+" - "+p.policy_name)+'</b><p>'+esc([p.trip_budget_limit!=null?p.currency+" "+p.trip_budget_limit:"",p.approval_threshold!=null?"Approval above "+p.approval_threshold:"",label(p.max_cabin),p.requires_lpo?"LPO required":"",p.requires_second_approval?"Two approvals":""].filter(Boolean).join(" / "))+'</p></div></div>';}).join('')+'</div>':'<p class="form-note">No policies configured.</p>';if(r.error)toast(r.error.message,"error");}
 
   async function saveCompany() {
     const form = document.getElementById("corporate-form");
@@ -180,11 +184,13 @@
     const result = await sb.rpc("list_corporate_accounts");
     if (result.error) { toast("Could not load companies: " + result.error.message); return; }
     rows = result.data || [];
+    const policyCompany=document.querySelector("#corporate-policy-form [name=corporate_account_id]");policyCompany.innerHTML='<option value="">Choose...</option>'+rows.map(function(c){return '<option value="'+esc(c.id)+'">'+esc(c.company_name)+'</option>';}).join('');
     await loadBranches();
     await loadPortalMembers();
     await loadCorporateDesk();
     await loadCorporateCases();
     await loadFinanceEvidence();
+    await loadPolicies();
     renderStats();
     renderCorporateDesk();
     renderCorporateCases();
