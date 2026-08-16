@@ -5,6 +5,7 @@
   let rows = [];
   let deskBookings = [];
   let deskCases = [];
+  let financeEvidence = [];
   let canEdit = false;
   let activeSearch = "";
   let activeStatus = "";
@@ -108,6 +109,7 @@
     });
     document.getElementById("corporate-list").addEventListener("click", handleCorporateListClick);
     document.getElementById("corporate-case-list").addEventListener("click", handleCaseAction);
+    document.getElementById("corporate-finance-evidence-list").addEventListener("click", handleFinanceEvidenceAction);
     document.getElementById("corporate-search").addEventListener("input", function (event) {
       activeSearch = event.target.value.trim().toLowerCase();
       renderRows();
@@ -180,9 +182,11 @@
     await loadPortalMembers();
     await loadCorporateDesk();
     await loadCorporateCases();
+    await loadFinanceEvidence();
     renderStats();
     renderCorporateDesk();
     renderCorporateCases();
+    renderFinanceEvidence();
     renderCorporateControl();
     renderRows();
   }
@@ -192,6 +196,10 @@
     deskCases = result.error ? [] : (result.data || []);
     if (result.error) toast("Could not load Corporate Desk cases: " + result.error.message, "error");
   }
+
+  async function loadFinanceEvidence(){const r=await sb.rpc("list_corporate_finance_evidence",{p_status:null});financeEvidence=r.error?[]:(r.data||[]);if(r.error)toast("Could not load finance evidence: "+r.error.message,"error");}
+  function renderFinanceEvidence(){const target=document.getElementById("corporate-finance-evidence-list");target.innerHTML=financeEvidence.length?'<div class="ops-list">'+financeEvidence.map(function(x){return '<article class="ops-row"><div class="ops-row-main"><b>'+esc(x.company_name+" - "+label(x.evidence_type))+'</b><p>'+esc([x.booking_reference,x.file_name,x.reference,x.review_note].filter(Boolean).join(" / "))+'</p><div class="ops-kv"><span class="ops-chip">'+esc(label(x.status))+'</span></div></div><div class="ops-row-actions"><button class="btn btn-outline btn-sm js-open-evidence" data-path="'+esc(x.storage_path)+'" type="button">Open file</button>'+(x.status==='pending'?'<button class="btn btn-primary btn-sm js-review-evidence" data-id="'+esc(x.id)+'" data-status="verified" type="button">Verify</button><button class="btn btn-outline btn-sm js-review-evidence" data-id="'+esc(x.id)+'" data-status="rejected" type="button">Reject</button>':'')+'</div></article>';}).join('')+'</div>':'<p class="form-note">No corporate finance evidence yet.</p>';}
+  async function handleFinanceEvidenceAction(event){const open=event.target.closest(".js-open-evidence"),review=event.target.closest(".js-review-evidence");if(open){open.disabled=true;const r=await sb.storage.from("corporate-finance-evidence").createSignedUrl(open.dataset.path,300,{download:false});open.disabled=false;if(r.error){toast(r.error.message,"error");return;}window.open(r.data.signedUrl,"_blank","noopener");return;}if(!review)return;const note=prompt("Review note (minimum 3 characters):","");if(note===null)return;review.disabled=true;const r=await sb.rpc("review_corporate_finance_evidence",{p_evidence_id:review.dataset.id,p_status:review.dataset.status,p_note:note});if(r.error){toast(r.error.message,"error");review.disabled=false;return;}toast("Finance evidence "+review.dataset.status+".");await loadFinanceEvidence();renderFinanceEvidence();}
 
   function renderCorporateCases() {
     const target = document.getElementById("corporate-case-list");
