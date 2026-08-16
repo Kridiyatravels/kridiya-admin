@@ -11,10 +11,24 @@
     <div class="account-head"><div><h1>Operations workspace</h1><p>One controlled queue for enquiries, bookings, payments, documents, suppliers, and follow-ups.</p></div><div class="workspace-live"><span></span>Live work queue</div></div>
     <div id="tasks-summary" class="stat-row"></div>
     <div class="account-main task-workbench">
+      <div class="account-head"><div><h2>Exception & recovery desk</h2><p>Contain, own, communicate, recover, and close operational failures with evidence.</p></div></div>
+      <form id="exception-form" class="form-grid"><div class="field-row">
+        <div class="field col-3"><label>CATEGORY</label><select name="category"><option value="travel_disruption">Travel disruption</option><option value="supplier">Supplier</option><option value="payment">Payment</option><option value="document">Document</option><option value="security">Security</option><option value="privacy">Privacy</option><option value="integration">Integration</option><option value="data_quality">Data quality</option><option value="cross_company">Cross-company</option><option value="deadline">Deadline</option><option value="other">Other</option></select></div>
+        <div class="field col-2"><label>SEVERITY</label><select name="severity"><option value="medium">Medium</option><option value="low">Low</option><option value="high">High</option><option value="critical">Critical</option></select></div>
+        <div class="field col-2"><label>URGENCY</label><select name="urgency"><option value="normal">Normal</option><option value="urgent">Urgent</option><option value="immediate">Immediate</option></select></div>
+        <div class="field col-2"><label>RECORD TYPE</label><select name="entity_type"><option value="booking">Booking</option><option value="enquiry">Enquiry</option><option value="payment">Payment</option><option value="document">Document</option><option value="supplier">Supplier</option><option value="corporate_desk_case">Corporate case</option><option value="customer">Customer</option><option value="integration">Integration</option><option value="system">System</option><option value="other">Other</option></select></div>
+        <div class="field col-3"><label>RECORD UUID (OPTIONAL)</label><input name="entity_id" placeholder="Affected record ID"></div>
+        <div class="field col-6"><label>TITLE</label><input name="title" minlength="3" maxlength="180" required></div>
+        <div class="field col-6"><label>OWNER</label><select name="owner_user_id"><option value="">Unassigned</option></select></div>
+        <div class="field"><label>WHAT FAILED / CURRENT IMPACT</label><textarea name="description" rows="3" minlength="10" maxlength="5000" required></textarea></div>
+      </div><button class="btn btn-primary" type="submit">Open exception</button></form>
+      <div id="exception-list" class="task-list"></div>
+    </div>
+    <div class="account-main task-workbench">
       <div class="task-viewbar"><div id="task-saved-views" class="saved-view-list"></div><button class="btn btn-outline" id="task-save-view" type="button">Save current view</button></div>
       <div class="task-filters">
         <label><span>Queue</span><select id="task-queue"><option value="active">Active work</option><option value="mine">My work</option><option value="unassigned">Unassigned</option><option value="overdue">Overdue</option><option value="today">Due today</option><option value="snoozed">Snoozed</option><option value="done">Completed</option><option value="all">All tasks</option></select></label>
-        <label><span>Work type</span><select id="task-entity"><option value="">All work</option><option value="customer_support_request">Customer support</option><option value="enquiry">Enquiries</option><option value="booking">Bookings</option><option value="payment">Payments</option><option value="document">Documents</option><option value="supplier">Suppliers</option></select></label>
+        <label><span>Work type</span><select id="task-entity"><option value="">All work</option><option value="operational_exception">Exceptions</option><option value="customer_support_request">Customer support</option><option value="enquiry">Enquiries</option><option value="booking">Bookings</option><option value="payment">Payments</option><option value="document">Documents</option><option value="supplier">Suppliers</option></select></label>
         <label><span>Priority</span><select id="task-priority"><option value="">All priorities</option><option value="urgent">Urgent</option><option value="high">High</option><option value="normal">Normal</option><option value="low">Low</option></select></label>
         <label class="task-search"><span>Search</span><input id="task-search" type="search" placeholder="Task, reference, customer, assignee"></label>
       </div>
@@ -67,5 +81,5 @@
   </form>
 </dialog>
 <dialog id="support-detail-dialog" class="task-action-dialog" aria-labelledby="support-detail-title"><form method="dialog"><div class="task-dialog-head"><div><h2 id="support-detail-title">Customer support request</h2><p id="support-detail-meta"></p></div><button class="task-dialog-close" value="cancel" type="submit" aria-label="Close">&times;</button></div><div id="support-detail-description" class="form-banner"></div><label class="task-custom-snooze"><span>Status</span><select id="support-detail-status"><option value="acknowledged">Acknowledged</option><option value="in_progress">In progress</option><option value="waiting_customer">Waiting for customer</option><option value="resolved">Resolved</option><option value="closed">Closed</option><option value="cancelled">Cancelled</option></select></label><label class="task-custom-snooze"><span>Customer-visible resolution / update</span><textarea id="support-detail-resolution" rows="4" maxlength="4000"></textarea></label><div class="task-dialog-actions"><button class="btn btn-outline" value="cancel" type="submit">Close</button><button class="btn btn-primary" id="support-detail-save" type="button">Save update</button></div></form></dialog>
-<script src="https://kridiyatravel.com/js/auth.js" defer></script><script src="js/staff-common.js?v=20260804a" defer></script><script src="js/tasks.js?v=20260815a" defer></script>
+<script src="https://kridiyatravel.com/js/auth.js" defer></script><script src="js/staff-common.js?v=20260804a" defer></script><script src="js/tasks.js?v=20260816b" defer></script>
 </body></html>
