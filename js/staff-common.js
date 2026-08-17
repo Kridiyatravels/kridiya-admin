@@ -75,6 +75,7 @@ const STAFF_NAV_MODEL = [
   ] },
   { group: "Admin", items: [
     { href: "incidents.html", page: "incidents", label: "Incident control", icon: "bell", desc: "Restricted incident procedures", access: { adminOnly: true } },
+    { href: "improvements.html", page: "improvements", label: "Corrective actions", icon: "check", desc: "Root cause & prevention", access: { adminOnly: true } },
     { href: "handover.html", page: "handover", label: "SOP", icon: "note", desc: "Operating handover", access: { adminOnly: true } },
     { href: "staff.html", page: "staff", label: "Staff", icon: "users", desc: "Team & permissions", access: { adminOnly: true } },
     { href: "activity.html", page: "activity", label: "Activity", icon: "clock", desc: "Audit log", access: { adminOnly: true } },
