@@ -79,6 +79,7 @@ const STAFF_NAV_MODEL = [
     { href: "handover.html", page: "handover", label: "SOP", icon: "note", desc: "Operating handover", access: { adminOnly: true } },
     { href: "staff.html", page: "staff", label: "Staff", icon: "users", desc: "Team & permissions", access: { adminOnly: true } },
     { href: "activity.html", page: "activity", label: "Activity", icon: "clock", desc: "Audit log", access: { adminOnly: true } },
+    { href: "management.html", page: "management", label: "Management control", icon: "chart", desc: "SLA, margin & exception signals" },
     { href: "reports.html", page: "reports", label: "Management reports", icon: "chart", desc: "Scheduled canonical snapshots" },
     { href: "backups.html", page: "backups", label: "Backups", icon: "download", desc: "Data exports", access: { adminOnly: true } }
   ] }
