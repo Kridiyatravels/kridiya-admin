@@ -74,6 +74,7 @@ const STAFF_NAV_MODEL = [
     { href: "portals.html", page: "portals", label: "Portals", icon: "link", desc: "B2B supplier portals" }
   ] },
   { group: "Admin", items: [
+    { href: "incidents.html", page: "incidents", label: "Incident control", icon: "bell", desc: "Restricted incident procedures", access: { adminOnly: true } },
     { href: "handover.html", page: "handover", label: "SOP", icon: "note", desc: "Operating handover", access: { adminOnly: true } },
     { href: "staff.html", page: "staff", label: "Staff", icon: "users", desc: "Team & permissions", access: { adminOnly: true } },
     { href: "activity.html", page: "activity", label: "Activity", icon: "clock", desc: "Audit log", access: { adminOnly: true } },
