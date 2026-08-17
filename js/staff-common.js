@@ -56,6 +56,7 @@ const STAFF_NAV_MODEL = [
   { group: "Daily work", items: [
     { href: "dashboard.html", page: "dashboard", label: "Dashboard", icon: "grid", desc: "Overview & shortcuts", primary: true },
     { href: "tasks.html", page: "tasks", label: "Work queue", icon: "check", desc: "Unified tasks & deadlines", primary: true },
+    { href: "disruptions.html", page: "disruptions", label: "Disruptions", icon: "bell", desc: "Affected trips & recovery updates", primary: true },
     { href: "admin.html", page: "admin", label: "Enquiries", icon: "inbox", desc: "Website enquiries", primary: true },
     { href: "customers.html", page: "customers", label: "Customers", icon: "user", desc: "Customer profiles", primary: true },
     { href: "bookings.html", page: "bookings", label: "Bookings", icon: "ticket", desc: "Confirmed bookings", primary: true },
