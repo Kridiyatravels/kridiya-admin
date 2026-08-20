@@ -465,7 +465,7 @@ function renderStaffChrome() {
           const user = await KridiyaAuth.currentUser();
           if (user) {
             const sb = await KridiyaAuth.client();
-            await logActivity(sb, user.id, "auth.logout", "user", user.id, {});
+            await logActivity(sb, "auth.logout", "user", user.id, {});
           }
         } catch (e) { /* best-effort */ }
         await KridiyaAuth.logout();
@@ -541,15 +541,15 @@ function statusStyle(status) {
 }
 
 /* Best-effort activity log write - never blocks the real action if it
-   fails (e.g. RLS denies it for a non-staff caller mid-session). */
-async function logActivity(sb, actorId, eventType, entityType, entityId, metadata) {
+   fails (e.g. the caller is no longer an active staff member). The RPC
+   stamps auth.uid() server-side; callers cannot choose the audit actor. */
+async function logActivity(sb, eventType, entityType, entityId, metadata) {
   try {
-    await sb.from("audit_events").insert({
-      actor_user_id: actorId,
-      event_type: eventType,
-      entity_type: entityType || null,
-      entity_id: entityId || null,
-      metadata: metadata || {}
+    await sb.rpc("record_staff_activity_event", {
+      p_event_type: eventType,
+      p_entity_type: entityType || null,
+      p_entity_id: entityId || null,
+      p_metadata: metadata || {}
     });
   } catch (e) { /* logging is best-effort */ }
 }
@@ -708,7 +708,7 @@ function renderLoginForm(gateEl, onSuccess) {
         await KridiyaAuth.logout();
         throw new Error("This account is not an admin. Staff: use the PIN tab instead.");
       }
-      logActivity(sb, user.id, "auth.login", "user", user.id, { method: "password" });
+      logActivity(sb, "auth.login", "user", user.id, { method: "password" });
       onSuccess();
     } catch (err) {
       banner.hidden = false;

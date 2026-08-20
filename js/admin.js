@@ -1239,7 +1239,7 @@
     form.reset();
     document.getElementById("enquiry-new-panel").hidden = true;
     renderList();
-    logActivity(sb, currentStaffId, "enquiry.staff_created", "enquiry", result.data.id, {
+    logActivity(sb, "enquiry.staff_created", "enquiry", result.data.id, {
       reference: result.data.reference,
       source: source,
       service_type: result.data.service_type
@@ -1397,7 +1397,7 @@
         assignee.disabled = false;
         if (result.error) { toast("Could not update ownership: " + result.error.message); renderList(); return; }
         Object.assign(row, result.data || {});
-        logActivity(sb, currentStaffId, "enquiry.assignment_updated", "enquiry", id, {
+        logActivity(sb, "enquiry.assignment_updated", "enquiry", id, {
           reference: row.reference, assigned_staff_id: assignedStaffId, priority: row.priority
         });
         renderList();
@@ -1746,7 +1746,7 @@
       const panel = listEl.querySelector('.admin-notes[data-notes-for="' + id + '"]');
       if (panel) panel.hidden = false;
       const noteRow = allEnquiries.find(function (r) { return r.id === id; });
-      logActivity(sb, currentStaffId, "enquiry.note_added", "enquiry", id, { reference: noteRow ? noteRow.reference : null });
+      logActivity(sb, "enquiry.note_added", "enquiry", id, { reference: noteRow ? noteRow.reference : null });
     });
 
     listEl.addEventListener("submit", async function (e) {
@@ -1775,7 +1775,7 @@
       const panel = listEl.querySelector('.admin-notes[data-requests-for="' + id + '"]');
       if (panel) panel.hidden = false;
       const reqEnq = allEnquiries.find(function (r) { return r.id === id; });
-      logActivity(sb, currentStaffId, "enquiry.request_sent", "enquiry", id, { reference: reqEnq ? reqEnq.reference : null, kind: form.kind.value, label: label });
+      logActivity(sb, "enquiry.request_sent", "enquiry", id, { reference: reqEnq ? reqEnq.reference : null, kind: form.kind.value, label: label });
       toast("Request sent to customer.");
     });
 
@@ -1845,7 +1845,7 @@
       delete quoteDraftsByEnquiry[id];
       renderList();
       reopenQuotePanel(listEl, id);
-      logActivity(sb, currentStaffId, "enquiry.quote_sent", "enquiry", id, {
+      logActivity(sb, "enquiry.quote_sent", "enquiry", id, {
         reference: quoteEnq ? quoteEnq.reference : null,
         options: sortedOptions.length,
         lowest_amount: sortedOptions[0].price_amount,
@@ -1874,7 +1874,7 @@
     notesByEnquiry[id].unshift(result.data);
     renderList();
     const enq = allEnquiries.find(function (r) { return r.id === id; });
-    logActivity(sb, currentStaffId, "enquiry.marketing_outcome_added", "enquiry", id, { reference: enq ? enq.reference : null, note: note });
+    logActivity(sb, "enquiry.marketing_outcome_added", "enquiry", id, { reference: enq ? enq.reference : null, note: note });
     toast("Marketing outcome saved.");
   }
 
@@ -1944,7 +1944,7 @@
       });
       if (result.error) throw result.error;
       const data = result.data || {};
-      logActivity(sb, currentStaffId, "enquiry.converted_to_corporate_booking", "booking", data.booking_id || null, {
+      logActivity(sb, "enquiry.converted_to_corporate_booking", "booking", data.booking_id || null, {
         reference: enq.reference,
         company_name: detail(enq, "Company_name"),
         existing_booking: data.existing_booking === true
@@ -1990,7 +1990,7 @@
       });
       if (result.error) throw result.error;
       const data = result.data || {};
-      logActivity(sb, currentStaffId, "corporate.application_approved", "corporate_account", data.corporate_account_id || null, {
+      logActivity(sb, "corporate.application_approved", "corporate_account", data.corporate_account_id || null, {
         reference: enq.reference,
         company_name: companyName,
         booking_id: data.booking_id || null,

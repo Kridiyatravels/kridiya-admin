@@ -1817,7 +1817,7 @@
     btn.disabled = false;
     if (result.error) { toast("Could not save settings: " + result.error.message); return; }
     settings = withBusinessDefaults(result.data);
-    logActivity(sb, currentUserId, "settings.updated", "business_settings", null, {});
+    logActivity(sb, "settings.updated", "business_settings", null, {});
     toast("Business settings saved.");
     renderSettingsSummary();
     renderDocControl();
@@ -1836,7 +1836,7 @@
     populateSettingsForm();
     renderSettingsSummary();
     renderDocControl();
-    logActivity(sb, currentUserId, "settings.reset", "business_settings", null, {});
+    logActivity(sb, "settings.reset", "business_settings", null, {});
     toast("Business settings reset to defaults.");
   }
 
@@ -1946,7 +1946,7 @@
       showInlinePreview(title, bodyHTML);
       document.getElementById("doc-preview-number").textContent = doc.document_number;
       openPrintWindow(title, bodyHTML);
-      logActivity(sb, currentUserId, "document.generated", "document", doc.id, { number: doc.document_number, kind: kindId, customer: customerName });
+      logActivity(sb, "document.generated", "document", doc.id, { number: doc.document_number, kind: kindId, customer: customerName });
       loadDocumentArchive();
       toast(title + " saved.");
     } catch (err) {

@@ -128,7 +128,7 @@
       btn.addEventListener("click", async function () {
         try {
           const user = await KridiyaAuth.currentUser();
-          if (user) await logActivity(sb, user.id, "auth.logout", "user", user.id, {});
+          if (user) await logActivity(sb, "auth.logout", "user", user.id, {});
         } catch (e) { /* best-effort */ }
         await KridiyaAuth.logout();
         location.href = "dashboard.html";

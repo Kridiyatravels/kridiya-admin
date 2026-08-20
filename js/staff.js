@@ -277,7 +277,7 @@
         if (result.data === "not_found") {
           toast(email + " needs to register an account on kridiyatravel.com first, then try again.");
         } else {
-          await logActivity(sb, myId, "staff.granted", "user", null, { email: email, role: role });
+          await logActivity(sb, "staff.granted", "user", null, { email: email, role: role });
           toast(email + " now has " + role + " access.");
           document.getElementById("grant-email").value = "";
           await loadStaff();
@@ -358,7 +358,7 @@
       if (result.error) {
         const fallback = await sb.from("staff_permissions").upsert(Object.assign({ user_id: userId }, update), { onConflict: "user_id" });
         if (fallback.error) { toast("Could not save permissions: " + result.error.message); return; }
-        await logActivity(sb, (await KridiyaAuth.currentUser()).id, "staff.permissions_updated", "user", userId, {});
+        await logActivity(sb, "staff.permissions_updated", "user", userId, {});
       }
       toast("Permissions saved.");
       await loadStaff();
@@ -414,7 +414,7 @@
       try {
         const result = await sb.rpc("revoke_staff", { target_user_id: userId });
         if (result.error) throw result.error;
-        await logActivity(sb, myId, "staff.revoked", "user", userId, {});
+        await logActivity(sb, "staff.revoked", "user", userId, {});
         toast("Access removed.");
         await loadStaff();
         await loadMonitoring();

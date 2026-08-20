@@ -591,7 +591,7 @@
   function renderTimelinePanel() {
     const panel = document.getElementById("booking-timeline-panel");
     if (!workflow.can_view_activity) {
-      panel.innerHTML = '<p class="form-note">Report or booking edit permission required to view activity.</p>';
+      panel.innerHTML = '<p class="form-note">View activity permission required to see the booking timeline.</p>';
       return;
     }
     const rows = workflow.timeline || [];
