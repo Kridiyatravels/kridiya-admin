@@ -1929,20 +1929,15 @@
     btn.disabled = true;
     btn.textContent = "Saving…";
     try {
-      const insertResult = await sb
-        .from("documents")
-        .insert({
-          document_type: data.document_type_override || kind.docType,
-          enquiry_id: linkedEnquiry ? linkedEnquiry.id : null,
-          customer_name: customerName,
-          customer_email: data.customer_email || prefillEmail() || null,
-          amount_total: data.total != null ? data.total : null,
-          currency: data.currency || "AED",
-          payload: Object.assign({}, data, { kind: kindId, service: kind.service || null }),
-          created_by: currentUserId
-        })
-        .select("*")
-        .single();
+      const insertResult = await sb.rpc("create_operations_document", {
+        p_document_type: data.document_type_override || kind.docType,
+        p_enquiry_id: linkedEnquiry ? linkedEnquiry.id : null,
+        p_customer_name: customerName,
+        p_customer_email: data.customer_email || prefillEmail() || null,
+        p_amount_total: data.total != null ? data.total : null,
+        p_currency: data.currency || "AED",
+        p_payload: Object.assign({}, data, { kind: kindId, service: kind.service || null })
+      });
       if (insertResult.error) throw insertResult.error;
 
       const doc = insertResult.data;
