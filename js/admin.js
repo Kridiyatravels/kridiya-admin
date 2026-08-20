@@ -1,7 +1,7 @@
 /* ============================================================
    Kridiya Travel — staff enquiry admin (admin.kridiyatravel.com)
-   Read/write access is enforced server-side by RLS (public.is_staff());
-   this page just renders what Supabase allows the signed-in user to see.
+   Read access is enforced server-side. Enquiry mutations use permission-
+   gated RPCs; the UI mirrors those permissions for a clear view-only mode.
    ============================================================ */
 "use strict";
 
@@ -27,6 +27,7 @@
   let quotesByEnquiry = {};
   let quoteDraftsByEnquiry = {};
   let bookingByEnquiry = {};
+  let canEditEnquiries = false;
   let canCreateBookings = false;
   let canEditCorporates = false;
   let activeSort = "created_desc";
@@ -65,6 +66,42 @@
   function fmtWhen(iso) {
     if (!iso) return "";
     return new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  }
+
+  function enquiryMutationError(action, error) {
+    const message = String(error && error.message ? error.message : "Unknown error");
+    if (/changed after this page was loaded/i.test(message)) {
+      return "Enquiry changed after this page was loaded. Reload and review the latest values.";
+    }
+    return action + ": " + message;
+  }
+
+  function editPermissionRequired() {
+    if (canEditEnquiries) return false;
+    toast("Edit enquiries permission required.");
+    return true;
+  }
+
+  async function updateEnquiryLifecycle(enq, changes) {
+    if (!enq) throw new Error("Enquiry not found");
+    const next = {
+      status: changes.status == null ? enq.status : changes.status,
+      pipeline_stage: changes.pipeline_stage == null ? enq.pipeline_stage : changes.pipeline_stage,
+      priority: changes.priority == null ? enq.priority : changes.priority
+    };
+    const result = await sb.rpc("update_operations_enquiry_lifecycle", {
+      p_enquiry_id: enq.id,
+      p_status: next.status,
+      p_pipeline_stage: next.pipeline_stage,
+      p_priority: next.priority,
+      p_expected_updated_at: enq.updated_at
+    });
+    if (result.error) throw result.error;
+    Object.assign(enq, next, {
+      last_activity_at: result.data,
+      updated_at: result.data
+    });
+    return enq;
   }
 
   function waReplyLink(enq) {
@@ -167,9 +204,9 @@
       '<div class="marketing-actions">' +
         '<button type="button" class="btn btn-outline js-copy-followup" data-id="' + enq.id + '" data-kind="whatsapp">Copy WhatsApp follow-up</button>' +
         '<button type="button" class="btn btn-outline js-copy-followup" data-id="' + enq.id + '" data-kind="email">Copy email follow-up</button>' +
-        '<button type="button" class="btn btn-outline js-quick-note" data-id="' + enq.id + '" data-note="Marketing follow-up: customer interested, next action required.">Interested</button>' +
-        '<button type="button" class="btn btn-outline js-quick-note" data-id="' + enq.id + '" data-note="Marketing follow-up: customer not ready now, keep warm for later.">Keep warm</button>' +
-        (enq.status !== "closed"
+        (canEditEnquiries ? '<button type="button" class="btn btn-outline js-quick-note" data-id="' + enq.id + '" data-note="Marketing follow-up: customer interested, next action required.">Interested</button>' : '') +
+        (canEditEnquiries ? '<button type="button" class="btn btn-outline js-quick-note" data-id="' + enq.id + '" data-note="Marketing follow-up: customer not ready now, keep warm for later.">Keep warm</button>' : '') +
+        (canEditEnquiries && enq.status !== "closed"
           ? '<button type="button" class="btn btn-outline js-close-enquiry" data-id="' + enq.id + '" data-reason="no_response" data-note="Lead closed as lost or unresponsive.">Lost/unresponsive</button>' +
             '<button type="button" class="btn btn-outline js-close-enquiry" data-id="' + enq.id + '" data-reason="invalid_enquiry" data-note="Internal integration test archived — no customer action required.">Archive test</button>'
           : '') +
@@ -196,24 +233,27 @@
   function crmFieldsHTML(enq) {
     const source = enq.last_touch_source || enq.utm_source || enq.first_touch_source || marketingSource(enq);
     const consent = enq.marketing_consent ? "Opted in" : "Not opted in";
+    const disabled = canEditEnquiries ? "" : " disabled";
     return '<form class="enquiry-crm-form" data-id="' + enq.id + '">' +
       '<div class="crm-field"><label>Source</label><input value="' + KridiyaAuth.escapeHTML(source || "Unknown") + '" readonly></div>' +
-      '<div class="crm-field"><label>Lead temperature</label><select name="lead_temperature">' +
+      '<div class="crm-field"><label>Lead temperature</label><select name="lead_temperature"' + disabled + '>' +
         crmSelectOptions(["cold", "warm", "hot"], enq.lead_temperature, "Not set") + "</select></div>" +
-      '<div class="crm-field"><label>Lead score</label><input name="lead_score" type="number" min="0" max="100" value="' +
+      '<div class="crm-field"><label>Lead score</label><input name="lead_score" type="number" min="0" max="100"' + disabled + ' value="' +
         KridiyaAuth.escapeHTML(enq.lead_score == null ? "" : String(enq.lead_score)) + '"></div>' +
-      '<div class="crm-field"><label>Next action</label><input name="next_action" maxlength="500" value="' +
+      '<div class="crm-field"><label>Next action</label><input name="next_action" maxlength="500"' + disabled + ' value="' +
         KridiyaAuth.escapeHTML(enq.next_action || "") + '" placeholder="Call, revise quote, request passport…"></div>' +
-      '<div class="crm-field"><label>Next action date</label><input name="next_action_at" type="datetime-local" value="' +
+      '<div class="crm-field"><label>Next action date</label><input name="next_action_at" type="datetime-local"' + disabled + ' value="' +
         localDateTimeValue(enq.next_action_at) + '"></div>' +
-      '<div class="crm-field"><label>Lost reason</label><select name="lost_reason">' +
+      '<div class="crm-field"><label>Lost reason</label><select name="lost_reason"' + disabled + '>' +
         crmSelectOptions(["price", "no_response", "dates_changed", "not_available", "booked_elsewhere", "duplicate", "invalid_enquiry", "visa_ineligible", "payment_issue", "other"], enq.lost_reason, "Not lost") + "</select></div>" +
-      '<div class="crm-field"><label>Est. booking value (AED)</label><input name="estimated_booking_value" type="number" min="0" step="0.01" value="' +
+      '<div class="crm-field"><label>Est. booking value (AED)</label><input name="estimated_booking_value" type="number" min="0" step="0.01"' + disabled + ' value="' +
         KridiyaAuth.escapeHTML(enq.estimated_booking_value == null ? "" : String(enq.estimated_booking_value)) + '"></div>' +
-      '<div class="crm-field"><label>Est. gross profit (AED)</label><input name="estimated_gross_profit" type="number" step="0.01" value="' +
+      '<div class="crm-field"><label>Est. gross profit (AED)</label><input name="estimated_gross_profit" type="number" step="0.01"' + disabled + ' value="' +
         KridiyaAuth.escapeHTML(enq.estimated_gross_profit == null ? "" : String(enq.estimated_gross_profit)) + '"></div>' +
       '<div class="crm-field"><label>Marketing consent</label><input value="' + consent + '" readonly></div>' +
-      '<button class="btn btn-primary" type="submit">Save CRM details</button>' +
+      (canEditEnquiries
+        ? '<button class="btn btn-primary" type="submit">Save CRM details</button>'
+        : '<p class="form-note">View only — edit enquiries permission required.</p>') +
     "</form>";
   }
 
@@ -247,8 +287,8 @@
 
   function convertPanel(enq) {
     if (!isCorporateEnquiry(enq)) return "";
-    if (!canCreateBookings || !canEditCorporates) {
-      return '<div class="admin-notes" data-convert-for="' + enq.id + '" hidden><p class="form-note">You need create booking and edit corporate permissions to approve or convert this corporate enquiry.</p></div>';
+    if (!canEditEnquiries || !canCreateBookings || !canEditCorporates) {
+      return '<div class="admin-notes" data-convert-for="' + enq.id + '" hidden><p class="form-note">You need edit enquiry, create booking, and edit corporate permissions to approve or convert this corporate enquiry.</p></div>';
     }
     return '<div class="admin-notes corporate-convert-panel" data-convert-for="' + enq.id + '" hidden>' +
       '<div class="corporate-approval-head"><div><b>Approve corporate portal access</b><p>After creating the user in Supabase Auth, paste the user ID here. The system activates the corporate account, links the contact, creates portal access, and opens the booking record.</p></div><span>Staff controlled</span></div>' +
@@ -300,6 +340,10 @@
     const sla = slaState(enq);
     const stages = ["new", "contacted", "qualified", "checking_availability", "quote_preparation", "quote_sent", "follow_up", "accepted", "booking", "won", "lost", "not_eligible", "duplicate", "test_archived", "no_response"];
     const lockedToColleague = !currentStaffIsAdmin && enq.assigned_staff_id && enq.assigned_staff_id !== currentStaffId;
+    const editDisabled = canEditEnquiries ? "" : ' disabled title="Edit enquiries permission required"';
+    const assigneeDisabled = lockedToColleague
+      ? ' disabled title="Owner/admin approval is required to reassign this enquiry"'
+      : editDisabled;
     const availableStaff = currentStaffIsAdmin ? staffDirectory : staffDirectory.filter(function (row) { return row.user_id === currentStaffId || row.user_id === enq.assigned_staff_id; });
     const assignees = '<option value="">Unassigned</option>' + availableStaff.filter(function (row) { return row.active !== false; }).map(function (row) {
       return '<option value="' + esc(row.user_id) + '"' + (row.user_id === enq.assigned_staff_id ? " selected" : "") + '>' + esc(row.full_name || row.email) + '</option>';
@@ -308,12 +352,12 @@
       '<div class="workflow-heading"><div><span class="workflow-eyebrow">Ownership &amp; SLA</span><b>' + esc(staffName(enq.assigned_staff_id)) + '</b></div>' +
         '<span class="sla-chip sla-' + sla.tone + '" title="' + esc(sla.detail) + '">' + esc(sla.label) + '</span></div>' +
       '<div class="workflow-grid">' +
-        '<label><span>Assigned to</span><select class="js-enquiry-assignee" data-id="' + enq.id + '"' + (lockedToColleague ? ' disabled title="Owner/admin approval is required to reassign this enquiry"' : '') + '>' + assignees + '</select>' + (lockedToColleague ? '<small>Owned by a colleague; owner/admin must reassign.</small>' : '') + '</label>' +
-        '<label><span>Priority</span><select class="js-enquiry-priority" data-id="' + enq.id + '">' +
+        '<label><span>Assigned to</span><select class="js-enquiry-assignee" data-id="' + enq.id + '"' + assigneeDisabled + '>' + assignees + '</select>' + (lockedToColleague ? '<small>Owned by a colleague; owner/admin must reassign.</small>' : '') + '</label>' +
+        '<label><span>Priority</span><select class="js-enquiry-priority" data-id="' + enq.id + '"' + editDisabled + '>' +
           ["low", "normal", "high", "urgent"].map(function (value) { return '<option value="' + value + '"' + (value === enq.priority ? " selected" : "") + '>' + esc(KridiyaAuth.statusLabel(value)) + '</option>'; }).join("") + '</select></label>' +
-        '<label><span>Pipeline stage</span><select class="js-enquiry-stage" data-id="' + enq.id + '">' +
+        '<label><span>Pipeline stage</span><select class="js-enquiry-stage" data-id="' + enq.id + '"' + editDisabled + '>' +
           stages.map(function (value) { return '<option value="' + value + '"' + (value === enq.pipeline_stage ? " selected" : "") + '>' + esc(KridiyaAuth.statusLabel(value)) + '</option>'; }).join("") + '</select></label>' +
-        (!enq.first_response_at ? '<button type="button" class="btn btn-primary js-first-response" data-id="' + enq.id + '">Mark first response</button>' : '') +
+        (canEditEnquiries && !enq.first_response_at ? '<button type="button" class="btn btn-primary js-first-response" data-id="' + enq.id + '">Mark first response</button>' : '') +
       '</div></section>';
   }
 
@@ -1004,7 +1048,8 @@
           marketingFollowUp(enq, notes, quotes, booking) +
           crmFieldsHTML(enq) +
           '<div class="admin-enq-actions">' +
-            '<select class="status-select status-pill-select" data-id="' + enq.id + '" style="' + statusStyle(enq.status) + '">' +
+            '<select class="status-select status-pill-select" data-id="' + enq.id + '" style="' + statusStyle(enq.status) + '"' +
+              (canEditEnquiries ? "" : ' disabled title="Edit enquiries permission required"') + '>' +
               STATUS_OPTIONS.map(function (s) {
                 return '<option value="' + s + '"' + (s === enq.status ? " selected" : "") + ">" + KridiyaAuth.statusLabel(s) + "</option>";
               }).join("") +
@@ -1017,7 +1062,7 @@
             '<button type="button" class="btn btn-outline quotes-toggle" data-id="' + enq.id + '">Quote (' + quotes.length + ")</button>" +
             (booking
               ? '<a class="btn btn-primary" href="booking-detail.html?id=' + KridiyaAuth.escapeHTML(booking.id) + '">Open booking</a>'
-              : (corporate ? '<button type="button" class="btn btn-outline convert-toggle" data-id="' + enq.id + '">Convert</button>' : "")) +
+              : (corporate && canEditEnquiries ? '<button type="button" class="btn btn-outline convert-toggle" data-id="' + enq.id + '">Convert</button>' : "")) +
             '<a class="btn btn-outline" href="documents.html?enquiry=' + enq.id + '">Document</a>' +
             (mail ? '<a class="btn btn-outline" href="customers.html?email=' + encodeURIComponent(enq.email) + '">' + icon("user") + " Customer</a>" : "") +
           "</div>" +
@@ -1040,10 +1085,12 @@
                   }).join("")
                 : '<p class="form-note">No internal notes yet.</p>') +
             "</div>" +
-            '<form class="admin-note-form" data-id="' + enq.id + '">' +
-              '<textarea placeholder="Add an internal note (staff only, customer never sees this)…" required></textarea>' +
-              '<button class="btn btn-primary" type="submit">Add note</button>' +
-            "</form>" +
+            (canEditEnquiries
+              ? '<form class="admin-note-form" data-id="' + enq.id + '">' +
+                  '<textarea placeholder="Add an internal note (staff only, customer never sees this)…" required></textarea>' +
+                  '<button class="btn btn-primary" type="submit">Add note</button>' +
+                "</form>"
+              : '<p class="form-note">View only — edit enquiries permission required to add notes.</p>') +
           "</div>" +
           '<div class="admin-notes" data-requests-for="' + enq.id + '" hidden>' +
             '<div class="admin-notes-list">' +
@@ -1060,11 +1107,13 @@
                   }).join("")
                 : '<p class="form-note">No requests sent yet.</p>') +
             "</div>" +
-            '<form class="admin-request-form" data-id="' + enq.id + '">' +
-              '<select name="kind"><option value="text">Text answer</option><option value="file">File upload</option></select>' +
-              '<input name="label" type="text" placeholder="e.g. Passport number and expiry date" required style="flex:1 1 260px;min-height:44px;border:1px solid var(--line);border-radius:var(--r-sm);padding:0 0.7rem">' +
-              '<button class="btn btn-primary" type="submit">Ask</button>' +
-            "</form>" +
+            (canEditEnquiries
+              ? '<form class="admin-request-form" data-id="' + enq.id + '">' +
+                  '<select name="kind"><option value="text">Text answer</option><option value="file">File upload</option></select>' +
+                  '<input name="label" type="text" placeholder="e.g. Passport number and expiry date" required style="flex:1 1 260px;min-height:44px;border:1px solid var(--line);border-radius:var(--r-sm);padding:0 0.7rem">' +
+                  '<button class="btn btn-primary" type="submit">Ask</button>' +
+                "</form>"
+              : '<p class="form-note">View only — edit enquiries permission required to send requests.</p>') +
           "</div>" +
           '<div class="admin-notes" data-quotes-for="' + enq.id + '" hidden>' +
             (quotes.length ? '<div class="quote-actions-bar"><button type="button" class="btn btn-primary js-copy-quotes" data-id="' + enq.id + '">' + icon("mail") + ' Copy for WhatsApp</button><span class="form-note">' + quotes.length + ' option(s) in this quote</span></div>' : '') +
@@ -1080,7 +1129,7 @@
                       (q.baggage ? '<p class="quote-line">Baggage: ' + KridiyaAuth.escapeHTML(q.baggage) + "</p>" : "");
                     return '<div class="admin-note quote-option">' +
                       '<p class="quote-option-head"><b>' + KridiyaAuth.escapeHTML(numberedQuoteTitle(q.title, i)) + "</b> — " + fmtMoney(q.price_amount, q.currency) + " " + quotePriceBasis(enq.service_type) + ' <span class="admin-badge">' + KridiyaAuth.statusLabel(q.status) + "</span>" +
-                        '<button type="button" class="quote-remove js-remove-quote" data-id="' + q.id + '" data-enq="' + enq.id + '" title="Remove this option" aria-label="Remove option">×</button></p>' +
+                        (canEditEnquiries ? '<button type="button" class="quote-remove js-remove-quote" data-id="' + q.id + '" data-enq="' + enq.id + '" title="Remove this option" aria-label="Remove option">×</button>' : '') + '</p>' +
                       (odLines || legacy) +
                       (adds.length ? '<div class="ops-kv">' + adds.map(function (a) { return '<span class="ops-chip">+ ' + KridiyaAuth.escapeHTML(a.name) + (a.price != null ? " " + fmtMoney(a.price, q.currency) : "") + "</span>"; }).join("") + "</div>" : "") +
                       (q.valid_until ? '<p class="form-note" style="margin:0.2rem 0 0">Valid until ' + fmtWhen(q.valid_until) + "</p>" : "") +
@@ -1088,7 +1137,7 @@
                   }).join("")
                 : '<p class="form-note">No saved quote yet. Build one or more options below, then save the complete quote.</p>') +
             "</div>" +
-            quoteDraftsHTML(quoteDrafts, enq.id) +
+            (canEditEnquiries ? quoteDraftsHTML(quoteDrafts, enq.id) +
             '<form class="admin-quote-form pro-quote-form" data-id="' + enq.id + '" data-service="' + KridiyaAuth.escapeHTML(enq.service_type || "") + '" novalidate>' +
               '<div class="quote-builder-head"><div><b>Build quote options</b><span>Add each supplier or package, then save once.</span></div><span class="quote-option-step">Option ' + (quoteDrafts.length + 1) + "</span></div>" +
               '<div class="qf-grid">' +
@@ -1105,7 +1154,7 @@
                 '<button class="btn btn-outline js-add-quote-option" type="button">+ Add another option</button>' +
                 '<button class="btn btn-primary" type="submit">Save quote</button>' +
               "</div>" +
-            "</form>" +
+            "</form>" : '<p class="form-note">View only — edit enquiries permission required to change quotes.</p>') +
           "</div>" +
           (booking ? "" : convertPanel(enq)) +
           "</div>" +
@@ -1274,7 +1323,10 @@
     const newToggle = document.getElementById("enquiry-new-toggle");
     const newPanel = document.getElementById("enquiry-new-panel");
     const newForm = document.getElementById("enquiry-new-form");
+    newToggle.hidden = !canEditEnquiries;
+    if (!canEditEnquiries) newPanel.hidden = true;
     newToggle.addEventListener("click", function () {
+      if (editPermissionRequired()) return;
       newPanel.hidden = !newPanel.hidden;
       if (!newPanel.hidden) document.getElementById("manual-full-name").focus();
     });
@@ -1284,6 +1336,7 @@
     });
     newForm.addEventListener("submit", async function (event) {
       event.preventDefault();
+      if (editPermissionRequired()) return;
       await createManualEnquiry(newForm);
     });
 
@@ -1329,40 +1382,62 @@
 
     listEl.addEventListener("change", async function (e) {
       const assignee = e.target.closest(".js-enquiry-assignee");
-      const priority = e.target.closest(".js-enquiry-priority");
-      if (assignee || priority) {
-        const control = assignee || priority;
-        const id = control.dataset.id;
+      if (assignee) {
+        if (editPermissionRequired()) { renderList(); return; }
+        const id = assignee.dataset.id;
         const row = allEnquiries.find(function (item) { return item.id === id; });
         if (!row) return;
-        const assignedStaffId = assignee ? (assignee.value || null) : (row.assigned_staff_id || null);
-        const priorityValue = priority ? priority.value : (row.priority || "normal");
-        control.disabled = true;
+        const assignedStaffId = assignee.value || null;
+        assignee.disabled = true;
         const result = await sb.rpc("assign_enquiry", {
           p_enquiry_id: id,
           p_assigned_staff_id: assignedStaffId,
-          p_priority: priorityValue
+          p_priority: row.priority || "normal"
         });
-        control.disabled = false;
+        assignee.disabled = false;
         if (result.error) { toast("Could not update ownership: " + result.error.message); renderList(); return; }
         Object.assign(row, result.data || {});
         logActivity(sb, currentStaffId, "enquiry.assignment_updated", "enquiry", id, {
-          reference: row.reference, assigned_staff_id: assignedStaffId, priority: priorityValue
+          reference: row.reference, assigned_staff_id: assignedStaffId, priority: row.priority
         });
         renderList();
-        toast(assignee ? "Enquiry assignment updated." : "Priority updated.");
+        toast("Enquiry assignment updated.");
+        return;
+      }
+
+      const priority = e.target.closest(".js-enquiry-priority");
+      if (priority) {
+        if (editPermissionRequired()) { renderList(); return; }
+        const id = priority.dataset.id;
+        const row = allEnquiries.find(function (item) { return item.id === id; });
+        if (!row) return;
+        priority.disabled = true;
+        try {
+          await updateEnquiryLifecycle(row, { priority: priority.value });
+        } catch (error) {
+          toast(enquiryMutationError("Could not update priority", error));
+          renderList();
+          return;
+        }
+        renderList();
+        toast("Priority updated.");
         return;
       }
 
       const stage = e.target.closest(".js-enquiry-stage");
       if (stage) {
+        if (editPermissionRequired()) { renderList(); return; }
         const id = stage.dataset.id;
         const row = allEnquiries.find(function (item) { return item.id === id; });
+        if (!row) return;
         stage.disabled = true;
-        const result = await sb.from("enquiries").update({ pipeline_stage: stage.value, last_activity_at: new Date().toISOString() }).eq("id", id).select("*").single();
-        stage.disabled = false;
-        if (result.error) { toast("Could not update pipeline: " + result.error.message); renderList(); return; }
-        if (row) Object.assign(row, result.data);
+        try {
+          await updateEnquiryLifecycle(row, { pipeline_stage: stage.value });
+        } catch (error) {
+          toast(enquiryMutationError("Could not update pipeline", error));
+          renderList();
+          return;
+        }
         renderList();
         toast("Pipeline stage updated.");
         return;
@@ -1373,33 +1448,39 @@
       const id = select.dataset.id;
       const newStatus = select.value;
       const row = allEnquiries.find(function (r) { return r.id === id; });
-      const statusUpdate = { status: newStatus };
-      const now = new Date().toISOString();
-      if (newStatus === "checking_availability" && row && !row.first_response_at) {
-        statusUpdate.first_response_at = now;
-        statusUpdate.qualified_at = row.qualified_at || now;
-      }
-      if (newStatus === "quote_sent" && row && !row.quote_sent_at) statusUpdate.quote_sent_at = now;
-      if ((newStatus === "confirmed" || newStatus === "booked") && row && !row.booking_confirmed_at) {
-        statusUpdate.booking_confirmed_at = now;
-      }
-      select.disabled = true;
-      let result = await sb.from("enquiries").update(statusUpdate).eq("id", id);
-      if (result.error && (result.error.code === "PGRST204" || result.error.code === "42703")) {
-        result = await sb.from("enquiries").update({ status: newStatus }).eq("id", id);
-      }
-      select.disabled = false;
-      if (result.error) {
-        toast("Could not update status: " + result.error.message);
+      if (!row) return;
+      if (editPermissionRequired()) { renderList(); return; }
+      if (newStatus === "closed") {
+        toast("Use a close outcome action so the required reason and note are recorded.");
+        renderList();
         return;
       }
-      if (row) Object.assign(row, statusUpdate);
-      select.setAttribute("style", statusStyle(newStatus));
-      const badge = select.closest(".admin-enq").querySelector(".enq-row-head .status-badge");
-      if (badge) {
-        badge.setAttribute("style", statusStyle(newStatus));
-        badge.textContent = KridiyaAuth.statusLabel(newStatus);
+      select.disabled = true;
+      if (newStatus === "checking_availability" && !row.first_response_at) {
+        const firstResponse = await sb.rpc("record_operations_enquiry_first_response", {
+          p_enquiry_id: id,
+          p_expected_updated_at: row.updated_at
+        });
+        if (firstResponse.error) {
+          toast(enquiryMutationError("Could not record first response", firstResponse.error));
+          renderList();
+          return;
+        }
+        Object.assign(row, {
+          first_response_at: firstResponse.data,
+          pipeline_stage: row.pipeline_stage === "new" ? "contacted" : row.pipeline_stage,
+          last_activity_at: firstResponse.data,
+          updated_at: firstResponse.data
+        });
       }
+      try {
+        await updateEnquiryLifecycle(row, { status: newStatus });
+      } catch (error) {
+        toast(enquiryMutationError("Could not update status", error));
+        renderList();
+        return;
+      }
+      renderList();
       toast("Status updated.");
     });
 
@@ -1435,6 +1516,7 @@
       }
       const addQuoteOptionBtn = e.target.closest(".js-add-quote-option");
       if (addQuoteOptionBtn) {
+        if (editPermissionRequired()) return;
         const quoteForm = addQuoteOptionBtn.closest(".admin-quote-form");
         const enquiryId = quoteForm.dataset.id;
         const drafts = quoteDraftsByEnquiry[enquiryId] || [];
@@ -1450,6 +1532,7 @@
       }
       const removeQuoteDraftBtn = e.target.closest(".js-remove-quote-draft");
       if (removeQuoteDraftBtn) {
+        if (editPermissionRequired()) return;
         const enquiryId = removeQuoteDraftBtn.dataset.enq;
         const draftIndex = Number(removeQuoteDraftBtn.dataset.index);
         if (quoteDraftsByEnquiry[enquiryId] && Number.isInteger(draftIndex)) {
@@ -1494,32 +1577,42 @@
       }
       const quickNoteBtn = e.target.closest(".js-quick-note");
       if (quickNoteBtn) {
+        if (editPermissionRequired()) return;
         await saveQuickMarketingNote(quickNoteBtn);
         return;
       }
       const closeEnquiryBtn = e.target.closest(".js-close-enquiry");
       if (closeEnquiryBtn) {
+        if (editPermissionRequired()) return;
         await closeEnquiry(closeEnquiryBtn);
         return;
       }
       const responseBtn = e.target.closest(".js-first-response");
       if (responseBtn) {
+        if (editPermissionRequired()) return;
         const id = responseBtn.dataset.id;
         const row = allEnquiries.find(function (item) { return item.id === id; });
-        const now = new Date().toISOString();
+        if (!row) return;
         responseBtn.disabled = true;
-        const result = await sb.from("enquiries").update({ first_response_at: now, pipeline_stage: "contacted", last_activity_at: now }).eq("id", id).select("*").single();
+        const result = await sb.rpc("record_operations_enquiry_first_response", {
+          p_enquiry_id: id,
+          p_expected_updated_at: row.updated_at
+        });
         responseBtn.disabled = false;
-        if (result.error) { toast("Could not record first response: " + result.error.message); return; }
-        if (row) Object.assign(row, result.data);
-        await sb.from("tasks_reminders").update({ status: "done", completed_at: now }).eq("entity_type", "enquiry").eq("entity_id", id).eq("task_type", "follow_up").eq("status", "open");
-        logActivity(sb, currentStaffId, "enquiry.first_response_recorded", "enquiry", id, { reference: row ? row.reference : null });
+        if (result.error) { toast(enquiryMutationError("Could not record first response", result.error)); return; }
+        Object.assign(row, {
+          first_response_at: result.data,
+          pipeline_stage: row.pipeline_stage === "new" ? "contacted" : row.pipeline_stage,
+          last_activity_at: result.data,
+          updated_at: result.data
+        });
         renderList();
         toast("First response recorded. SLA met.");
         return;
       }
       const removeQuoteBtn = e.target.closest(".js-remove-quote");
       if (removeQuoteBtn) {
+        if (editPermissionRequired()) return;
         if (!confirm("Remove this option from the quote?")) return;
         const qid = removeQuoteBtn.dataset.id;
         const eqid = removeQuoteBtn.dataset.enq;
@@ -1541,6 +1634,7 @@
       }
       const doConvertBtn = e.target.closest(".convert-corporate-btn");
       if (doConvertBtn) {
+        if (editPermissionRequired()) return;
         await convertCorporateEnquiry(doConvertBtn);
         return;
       }
@@ -1561,7 +1655,18 @@
       const form = e.target.closest(".enquiry-crm-form");
       if (!form) return;
       e.preventDefault();
+      if (editPermissionRequired()) return;
       const id = form.dataset.id;
+      const row = allEnquiries.find(function (item) { return item.id === id; });
+      if (!row) { toast("Could not save CRM details: Enquiry not found"); return; }
+      const requiredFields = [
+        "lead_temperature", "lead_score", "next_action", "next_action_at",
+        "lost_reason", "estimated_booking_value", "estimated_gross_profit"
+      ];
+      if (requiredFields.some(function (name) { return !form.elements[name]; })) {
+        toast("Could not save CRM details: Reload the page to restore the complete CRM form.");
+        return;
+      }
       const valueOrNull = function (name) {
         const value = String(form.elements[name].value || "").trim();
         return value || null;
@@ -1582,15 +1687,26 @@
       };
       const btn = form.querySelector('button[type="submit"]');
       btn.disabled = true;
-      const result = await sb.from("enquiries").update(update).eq("id", id).select("*").single();
+      const result = await sb.rpc("update_operations_enquiry_crm_details", {
+        p_enquiry_id: id,
+        p_lead_temperature: update.lead_temperature,
+        p_lead_score: update.lead_score,
+        p_next_action: update.next_action,
+        p_next_action_at: update.next_action_at,
+        p_lost_reason: update.lost_reason,
+        p_estimated_booking_value: update.estimated_booking_value,
+        p_estimated_gross_profit: update.estimated_gross_profit,
+        p_expected_updated_at: row.updated_at
+      });
       btn.disabled = false;
       if (result.error) {
-        toast("Could not save CRM details: " + result.error.message);
+        toast(enquiryMutationError("Could not save CRM details", result.error));
         return;
       }
-      const rowIndex = allEnquiries.findIndex(function (row) { return row.id === id; });
-      if (rowIndex !== -1) allEnquiries[rowIndex] = result.data;
-      logActivity(sb, currentStaffId, "enquiry.crm_updated", "enquiry", id, update);
+      Object.assign(row, update, {
+        last_activity_at: result.data,
+        updated_at: result.data
+      });
       renderList();
       toast("CRM details saved.");
     });
@@ -1599,6 +1715,7 @@
       const form = e.target.closest(".corporate-approval-form");
       if (!form) return;
       e.preventDefault();
+      if (editPermissionRequired()) return;
       await approveCorporateApplication(form);
     });
 
@@ -1606,6 +1723,7 @@
       const form = e.target.closest(".admin-note-form");
       if (!form) return;
       e.preventDefault();
+      if (editPermissionRequired()) return;
       const textarea = form.querySelector("textarea");
       const note = textarea.value.trim();
       if (!note) return;
@@ -1635,6 +1753,7 @@
       const form = e.target.closest(".admin-request-form");
       if (!form) return;
       e.preventDefault();
+      if (editPermissionRequired()) return;
       const id = form.dataset.id;
       const label = form.label.value.trim();
       if (!label) return;
@@ -1674,6 +1793,7 @@
       const form = e.target.closest(".admin-quote-form");
       if (!form) return;
       e.preventDefault();
+      if (editPermissionRequired()) return;
       const id = form.dataset.id;
       const drafts = (quoteDraftsByEnquiry[id] || []).slice();
       if (quoteFormHasOption(form) || !drafts.length) {
@@ -1710,17 +1830,17 @@
       }
       if (!quotesByEnquiry[id]) quotesByEnquiry[id] = [];
       quotesByEnquiry[id] = sortQuoteOptions(quotesByEnquiry[id].concat(result.data || []));
-      const quoteTimestamp = new Date().toISOString();
-      let enquiryUpdate = await sb.from("enquiries")
-        .update({ status: "quote_sent", quote_sent_at: quoteTimestamp })
-        .eq("id", id);
-      if (enquiryUpdate.error && (enquiryUpdate.error.code === "PGRST204" || enquiryUpdate.error.code === "42703")) {
-        enquiryUpdate = await sb.from("enquiries").update({ status: "quote_sent" }).eq("id", id);
-      }
       const quoteEnq = allEnquiries.find(function (r) { return r.id === id; });
-      if (!enquiryUpdate.error && quoteEnq) {
-        quoteEnq.status = "quote_sent";
-        quoteEnq.quote_sent_at = quoteTimestamp;
+      if (quoteEnq) {
+        try {
+          await updateEnquiryLifecycle(quoteEnq, { status: "quote_sent" });
+        } catch (error) {
+          delete quoteDraftsByEnquiry[id];
+          renderList();
+          reopenQuotePanel(listEl, id);
+          toast(enquiryMutationError("Quote saved, but the enquiry status could not be updated", error));
+          return;
+        }
       }
       delete quoteDraftsByEnquiry[id];
       renderList();
@@ -1770,38 +1890,41 @@
       : "Close this enquiry as lost or unresponsive?")) return;
 
     btn.disabled = true;
-    const update = {
-      status: "closed",
-      lost_reason: reason,
-      next_action: null,
-      next_action_at: null
-    };
-    let result = await sb.from("enquiries").update(update).eq("id", id);
-    if (result.error && (result.error.code === "PGRST204" || result.error.code === "42703")) {
-      result = await sb.from("enquiries").update({ status: "closed" }).eq("id", id);
-    }
+    const result = await sb.rpc("close_operations_enquiry", {
+      p_enquiry_id: id,
+      p_lost_reason: reason,
+      p_note: note,
+      p_expected_updated_at: enq.updated_at
+    });
     if (result.error) {
       btn.disabled = false;
-      toast("Could not close enquiry: " + result.error.message);
+      toast(enquiryMutationError("Could not close enquiry", result.error));
       return;
     }
 
-    const noteResult = await sb
-      .from("enquiry_notes")
-      .insert({ enquiry_id: id, note: note, created_by: currentStaffId })
-      .select("id, enquiry_id, note, created_at")
-      .single();
-    Object.assign(enq, update);
-    if (!noteResult.error) {
-      if (!notesByEnquiry[id]) notesByEnquiry[id] = [];
-      notesByEnquiry[id].unshift(noteResult.data);
-    }
-    logActivity(sb, currentStaffId, isTest ? "enquiry.test_archived" : "enquiry.closed_lost", "enquiry", id, {
-      reference: enq.reference,
-      lost_reason: reason
+    const terminalStage = reason === "invalid_enquiry" ? "test_archived" :
+      reason === "duplicate" ? "duplicate" :
+      reason === "visa_ineligible" ? "not_eligible" :
+      reason === "no_response" ? "no_response" : "lost";
+    Object.assign(enq, {
+      status: "closed",
+      pipeline_stage: terminalStage,
+      lost_reason: reason,
+      next_action: null,
+      next_action_at: null,
+      last_activity_at: result.data,
+      updated_at: result.data
     });
+    let notesRefreshed = true;
+    try {
+      await loadNotes();
+    } catch (error) {
+      notesRefreshed = false;
+    }
     renderList();
-    toast(isTest ? "Test enquiry archived." : "Enquiry closed as lost/unresponsive.");
+    toast(notesRefreshed
+      ? (isTest ? "Test enquiry archived." : "Enquiry closed as lost/unresponsive.")
+      : "Enquiry closed, but notes could not be refreshed. Reload to see the closure note.");
   }
 
   async function convertCorporateEnquiry(btn) {
@@ -1922,13 +2045,15 @@
       await sb.rpc("refresh_operations_automations");
       await Promise.all([loadEnquiries(), loadNotes(), loadAttachments(), loadRequests(), loadQuotes(), loadBookingLinks(), loadStaffDirectory()]);
       const perms = await Promise.all([
+        sb.rpc("has_staff_permission", { permission_name: "edit_enquiries" }),
         sb.rpc("has_staff_permission", { permission_name: "create_bookings" }),
         sb.rpc("has_staff_permission", { permission_name: "edit_corporates" }),
         sb.rpc("is_admin")
       ]);
-      canCreateBookings = !perms[0].error && perms[0].data === true;
-      canEditCorporates = !perms[1].error && perms[1].data === true;
-      currentStaffIsAdmin = !perms[2].error && perms[2].data === true;
+      canEditEnquiries = !perms[0].error && perms[0].data === true;
+      canCreateBookings = !perms[1].error && perms[1].data === true;
+      canEditCorporates = !perms[2].error && perms[2].data === true;
+      currentStaffIsAdmin = !perms[3].error && perms[3].data === true;
     } catch (err) {
       gate.innerHTML = '<div class="account-main empty-state"><p>Could not load enquiries: ' + KridiyaAuth.escapeHTML(err.message) + "</p></div>";
       return;
